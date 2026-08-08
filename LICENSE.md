@@ -1,3 +1,8 @@
+---
+title: MIT License
+permalink: /LICENSE/
+---
+
 # MIT License
 
 Copyright (c) 2026 Robert Dawson

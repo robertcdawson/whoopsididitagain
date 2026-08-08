@@ -1,0 +1,13 @@
+title: whoopsididitagain
+description: A personal, single-user app built on the WHOOP API.
+theme: jekyll-theme-cayman
+show_downloads: false
+
+# README.md is for the repo, index.md is for this site. Rendering both would
+# publish two near-identical landing pages.
+exclude:
+  - README.md
+  - .gitignore
+  - .claude
+  - Gemfile
+  - Gemfile.lock

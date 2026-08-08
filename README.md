@@ -74,11 +74,14 @@ this one needs — so no approval submission is required here.
 Paste this into the dashboard's Privacy Policy field:
 
 ```
-https://github.com/robertcdawson/whoopsididitagain/blob/main/PRIVACY.md
+https://robertcdawson.github.io/whoopsididitagain/privacy/
 ```
 
-If you'd prefer a cleaner, rendered page, enable GitHub Pages on this repo
-(Settings → Pages → deploy from `main`) and use the Pages URL instead.
+That page is published by GitHub Pages from [`PRIVACY.md`](PRIVACY.md) in this
+repo, so the file is the single source of truth — edit it, push, and the
+published page updates. The raw file view at
+`https://github.com/robertcdawson/whoopsididitagain/blob/main/PRIVACY.md` also
+remains valid if you ever need it.
 
 ### Credentials
 
