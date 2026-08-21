@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whoops.local/contracts/v1/whoop-auth.schema.json",
+  "title": "WHOOP authentication contracts v1",
+  "$defs": {
+    "authorizationStart": {
+      "type": "object",
+      "required": ["authorizationUrl"],
+      "additionalProperties": false,
+      "properties": {
+        "authorizationUrl": { "type": "string", "format": "uri" }
+      }
+    },
+    "appSession": {
+      "type": "object",
+      "required": ["accessToken", "refreshToken", "accessExpiresIn"],
+      "additionalProperties": false,
+      "properties": {
+        "accessToken": { "type": "string", "minLength": 1 },
+        "refreshToken": { "type": "string", "minLength": 1 },
+        "accessExpiresIn": { "type": "integer", "minimum": 60 }
+      }
+    },
+    "connectionStatus": {
+      "type": "object",
+      "required": ["connected", "whoopUserId", "tokenExpiresAt"],
+      "additionalProperties": false,
+      "properties": {
+        "connected": { "type": "boolean" },
+        "whoopUserId": { "type": ["string", "null"] },
+        "tokenExpiresAt": { "type": ["string", "null"], "format": "date-time" }
+      }
+    }
+  }
+}

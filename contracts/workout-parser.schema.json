@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whoops.local/contracts/workout-parser.schema.json",
+  "title": "Workout parser result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "rawText",
+    "format",
+    "intendedStimulus",
+    "segments",
+    "ambiguities",
+    "parserConfidence",
+    "parserVersion"
+  ],
+  "properties": {
+    "title": { "type": "string", "minLength": 1 },
+    "rawText": { "type": "string", "minLength": 1 },
+    "format": {
+      "enum": ["for_time", "amrap", "emom", "rounds", "strength", "intervals", "manual"]
+    },
+    "timeCapSeconds": { "type": ["integer", "null"], "minimum": 1 },
+    "intendedStimulus": { "$ref": "#/$defs/stimulus" },
+    "segments": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/segment" }
+    },
+    "ambiguities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ambiguity" }
+    },
+    "parserConfidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "parserVersion": { "type": "string", "minLength": 1 },
+    "modelVersion": { "type": ["string", "null"], "minLength": 1 }
+  },
+  "$defs": {
+    "stimulus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary",
+        "secondary"
+      ],
+      "properties": {
+        "primary": { "type": "string", "minLength": 1 },
+        "secondary": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "estimatedDurationMinimumMinutes": { "type": ["integer", "null"], "minimum": 1 },
+        "estimatedDurationMaximumMinutes": { "type": ["integer", "null"], "minimum": 1 }
+      }
+    },
+    "ambiguity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "originalText", "message"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "line": { "type": ["integer", "null"], "minimum": 1 },
+        "originalText": { "type": "string" },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "segment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sequence",
+        "type",
+        "notes",
+        "movements"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "sequence": { "type": "integer", "minimum": 1 },
+        "type": { "enum": ["work", "rest", "warmup", "cooldown"] },
+        "rounds": { "type": ["integer", "null"], "minimum": 1 },
+        "durationSeconds": { "type": ["integer", "null"], "minimum": 1 },
+        "restSeconds": { "type": ["integer", "null"], "minimum": 1 },
+        "notes": { "type": "string" },
+        "movements": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/movement" }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "rest" } },
+            "required": ["type"]
+          },
+          "then": {
+            "required": ["durationSeconds"],
+            "properties": {
+              "durationSeconds": { "type": "integer", "minimum": 1 },
+              "rounds": { "type": "null" },
+              "restSeconds": { "type": "null" },
+              "movements": { "maxItems": 0 }
+            }
+          },
+          "else": {
+            "properties": {
+              "movements": { "minItems": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "movement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName",
+        "originalText",
+        "notes"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "canonicalMovementID": { "type": ["string", "null"], "minLength": 1 },
+        "displayName": { "type": "string", "minLength": 1 },
+        "originalText": { "type": "string" },
+        "repetitions": { "type": ["integer", "null"], "minimum": 1 },
+        "distanceMeters": { "type": ["integer", "null"], "minimum": 1 },
+        "calories": { "type": ["integer", "null"], "minimum": 1 },
+        "loadValue": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "loadUnit": { "type": ["string", "null"], "minLength": 1 },
+        "percentageOfOneRepMax": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "durationSeconds": { "type": ["integer", "null"], "minimum": 1 },
+        "tempo": { "type": ["string", "null"], "minLength": 1 },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

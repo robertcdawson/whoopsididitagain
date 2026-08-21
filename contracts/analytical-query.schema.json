@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whoops.local/contracts/analytical-query.schema.json",
+  "title": "Constrained analytical query placeholder",
+  "description": "Reserved contract boundary. The complete analytical query schema is post-MVP.",
+  "type": "object",
+  "required": ["analysisType", "metric"],
+  "additionalProperties": false,
+  "properties": {
+    "analysisType": { "type": "string", "enum": ["compare_groups", "trend", "association"] },
+    "metric": { "type": "string", "minLength": 1 }
+  }
+}

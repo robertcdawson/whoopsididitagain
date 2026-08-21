@@ -1,0 +1,229 @@
+import Foundation
+import SwiftData
+import XCTest
+
+@testable import WhoopsApp
+
+final class HealthKitMilestoneTests: XCTestCase {
+    private final class FakeReader: HealthKitReading, @unchecked Sendable {
+        let isHealthDataAvailable = true
+        let batches: [HealthMetric: HealthKitChangeBatch]
+
+        init(batches: [HealthMetric: HealthKitChangeBatch]) {
+            self.batches = batches
+        }
+
+        func requestReadAuthorization() async throws {}
+
+        func anchoredChanges(
+            for metric: HealthMetric,
+            anchorData: Data?
+        ) async throws -> HealthKitChangeBatch {
+            batches[metric]
+                ?? HealthKitChangeBatch(
+                    samples: [],
+                    deletedSampleIDs: [],
+                    anchorData: Data(metric.rawValue.utf8)
+                )
+        }
+
+        func startObserving(
+            onChange: @escaping @Sendable (HealthMetric) async -> Void
+        ) async {}
+    }
+
+    private final class TestAnchorStore: HealthKitAnchorStoring, @unchecked Sendable {
+        private let lock = NSLock()
+        private var requested = false
+        private var anchors: [HealthMetric: Data] = [:]
+
+        func authorizationWasRequested() -> Bool {
+            lock.withLock { requested }
+        }
+
+        func markAuthorizationRequested() {
+            lock.withLock { requested = true }
+        }
+
+        func anchorData(for metric: HealthMetric) -> Data? {
+            lock.withLock { anchors[metric] }
+        }
+
+        func saveAnchorData(_ data: Data, for metric: HealthMetric) {
+            lock.withLock { anchors[metric] = data }
+        }
+    }
+
+    @MainActor
+    func testPartialPermissionImportKeepsAvailableTypesAndAnchorsAllQueries() async throws {
+        let sample = snapshot(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+            metric: .restingHeartRate,
+            start: "2026-08-16T14:00:00Z",
+            end: "2026-08-16T14:01:00Z",
+            value: 54,
+            localDay: "2026-08-16"
+        )
+        let reader = FakeReader(batches: [
+            .restingHeartRate: HealthKitChangeBatch(
+                samples: [sample],
+                deletedSampleIDs: [],
+                anchorData: Data("resting-anchor".utf8)
+            )
+        ])
+        let anchors = TestAnchorStore()
+        let persistence = HealthKitPersistence(container: try makeContainer())
+        let repository = LiveHealthKitRepository(
+            client: reader,
+            persistence: persistence,
+            anchors: anchors
+        )
+
+        try await repository.requestReadAuthorization()
+        let history = try await repository.history()
+        let authorizationState = await repository.authorizationState()
+
+        XCTAssertEqual(authorizationState, .requested)
+        XCTAssertEqual(history.recordCount, 1)
+        XCTAssertEqual(history.days.first?.restingHeartRate, 54)
+        XCTAssertNotNil(anchors.anchorData(for: .heartRate))
+        XCTAssertNotNil(anchors.anchorData(for: .restingHeartRate))
+    }
+
+    @MainActor
+    func testRepeatedBatchIsIdempotentAndDeletionRemovesTheSourceRecord() throws {
+        let container = try makeContainer()
+        let persistence = HealthKitPersistence(container: container)
+        let id = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+        let sample = snapshot(
+            id: id,
+            metric: .hrvSDNN,
+            start: "2026-08-16T14:00:00Z",
+            end: "2026-08-16T14:01:00Z",
+            value: 48.5,
+            localDay: "2026-08-16"
+        )
+        let batch = HealthKitChangeBatch(
+            samples: [sample],
+            deletedSampleIDs: [],
+            anchorData: Data("one".utf8)
+        )
+
+        _ = try persistence.apply(batch, importedAt: .now)
+        _ = try persistence.apply(batch, importedAt: .now)
+        XCTAssertEqual(try persistence.history().recordCount, 1)
+
+        _ = try persistence.apply(
+            HealthKitChangeBatch(
+                samples: [],
+                deletedSampleIDs: [id],
+                anchorData: Data("two".utf8)
+            ),
+            importedAt: .now
+        )
+        XCTAssertEqual(try persistence.history().recordCount, 0)
+    }
+
+    @MainActor
+    func testDuplicateWorkoutLinkPreservesBothSourceRecords() throws {
+        let container = try makeContainer()
+        let whoopContext = ModelContext(container)
+        let start = Self.date("2026-08-16T17:00:00Z")
+        let end = Self.date("2026-08-16T18:00:00Z")
+        whoopContext.insert(
+            WhoopSourceRecord(
+                id: "workout:whoop-1",
+                resourceType: WhoopResourceType.workout.rawValue,
+                sourceIdentifier: "whoop-1",
+                sourceUpdatedAt: end,
+                startAt: start,
+                endAt: end,
+                rawPayload: Data(),
+                lastImportedAt: .now
+            )
+        )
+        try whoopContext.save()
+
+        let healthSample = snapshot(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
+            metric: .workout,
+            start: "2026-08-16T17:03:00Z",
+            end: "2026-08-16T18:02:00Z",
+            value: 59,
+            localDay: "2026-08-16"
+        )
+        let persistence = HealthKitPersistence(container: container)
+
+        _ = try persistence.apply(
+            HealthKitChangeBatch(
+                samples: [healthSample],
+                deletedSampleIDs: [],
+                anchorData: Data("workout".utf8)
+            ),
+            importedAt: .now
+        )
+        let history = try persistence.history()
+
+        XCTAssertEqual(history.recordCount, 1)
+        XCTAssertEqual(history.linkedWorkoutCount, 1)
+        XCTAssertEqual(try whoopContext.fetchCount(FetchDescriptor<WhoopSourceRecord>()), 1)
+    }
+
+    func testDayKeyUsesTheSamplesTimeZoneAcrossTravelAndDST() {
+        let instant = Self.date("2026-03-08T07:30:00Z")
+
+        XCTAssertEqual(
+            HealthDayKey.day(
+                containing: instant,
+                timeZone: TimeZone(identifier: "America/Los_Angeles")!
+            ),
+            "2026-03-07"
+        )
+        XCTAssertEqual(
+            HealthDayKey.day(
+                containing: instant,
+                timeZone: TimeZone(identifier: "Asia/Tokyo")!
+            ),
+            "2026-03-08"
+        )
+    }
+
+    @MainActor
+    private func makeContainer() throws -> ModelContainer {
+        try ModelContainer(
+            for: WhoopSourceRecord.self,
+            HealthKitSourceRecord.self,
+            WorkoutSourceLink.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+    }
+
+    private func snapshot(
+        id: UUID,
+        metric: HealthMetric,
+        start: String,
+        end: String,
+        value: Double,
+        localDay: String
+    ) -> HealthSampleSnapshot {
+        HealthSampleSnapshot(
+            id: id,
+            metric: metric,
+            startAt: Self.date(start),
+            endAt: Self.date(end),
+            value: value,
+            unit: metric == .hrvSDNN ? "ms" : nil,
+            categoryValue: nil,
+            workoutActivityType: metric == .workout ? 20 : nil,
+            sourceName: "Test Watch",
+            sourceBundleIdentifier: "com.example.test-watch",
+            timeZoneIdentifier: "America/Los_Angeles",
+            timeZoneOffsetSeconds: -25_200,
+            localDay: localDay
+        )
+    }
+
+    private static func date(_ string: String) -> Date {
+        ISO8601DateFormatter().date(from: string)!
+    }
+}

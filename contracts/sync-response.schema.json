@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whoops.local/contracts/v1/sync-response.schema.json",
+  "title": "WHOOP synchronization response v1",
+  "type": "object",
+  "required": ["data", "meta"],
+  "additionalProperties": false,
+  "properties": {
+    "data": {
+      "type": "object",
+      "required": ["mode", "startedAt", "completedAt", "resources"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["initial", "incremental"] },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "resources": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": { "$ref": "#/$defs/resource" }
+        }
+      }
+    },
+    "meta": { "$ref": "#/$defs/metadata" }
+  },
+  "$defs": {
+    "resource": {
+      "type": "object",
+      "required": ["resourceType", "records", "pageCount", "windowStart"],
+      "additionalProperties": false,
+      "properties": {
+        "resourceType": {
+          "type": "string",
+          "enum": ["cycle", "recovery", "sleep", "workout"]
+        },
+        "records": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "pageCount": { "type": "integer", "minimum": 1 },
+        "windowStart": { "type": "string", "format": "date-time" }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["requestId"],
+      "additionalProperties": false,
+      "properties": {
+        "requestId": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
