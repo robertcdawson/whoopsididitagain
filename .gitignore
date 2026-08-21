@@ -16,11 +16,18 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+.next/
+.turbo/
+coverage/
+*.tsbuildinfo
 
 # Build output
 dist/
 build/
 *.egg-info/
+DerivedData/
+*.xcuserstate
+xcuserdata/
 
 # Logs
 *.log

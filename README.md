@@ -28,10 +28,101 @@ something more interesting with it than scroll the official app.
 
 ## Status
 
-🚧 **Early scaffolding.** The repository currently contains project
-documentation and licensing only. Implementation, and therefore the tech stack,
-is still to be decided — this README will grow a real setup section once there
-is something to set up.
+🚧 **Milestone 4.1 personal movement library.** The Train tab accepts raw
+CrossFit, weightlifting, and conditioning text; produces a schema-validated,
+editable plan; reports unresolved ambiguity instead of inventing details; and
+checks canonical movement demands against active restrictions. Candidate
+substitutions explain the stimulus they preserve and the specificity they trade
+away. Planned work and actual completion are stored separately, including
+session RPE, movement modifications, and pain response. The deterministic
+parser works locally without an LLM.
+
+The app now merges its bundled catalog with a personal, on-device movement
+library. Stable facts such as names, aliases, category, equipment, supported
+measurements, and restriction-demand tags are reusable; reps, load, distance,
+tempo, and other prescriptions remain specific to each workout.
+
+## Architecture
+
+- `ios/WhoopsApp` — native SwiftUI app with Today, Train, Trends, and Settings
+- `backend` — TypeScript/Next.js service; the first endpoint is
+  `GET /api/v1/health`
+- `contracts` — versioned app/backend JSON Schema contracts
+- `fixtures` — synthetic-only test data
+- `docs` — product plan, architecture, decisions, and tasks
+
+Health and training history will be stored locally on the iPhone. WHOOP OAuth
+credentials will remain encrypted on the backend. Deterministic calculations
+will continue to work without an LLM.
+
+## Development setup
+
+Requirements:
+
+- Xcode 26 or a compatible toolchain with an iOS 18+ simulator
+- Native ARM64 Node.js 24 (selected automatically by `.nvmrc` when using `nvm`)
+- npm 11+
+
+Install and run the backend:
+
+```sh
+cd backend
+cp .env.example .env.local
+nvm use
+npm install
+npm run dev
+```
+
+The health endpoint does not require credentials. WHOOP connection routes do.
+Open
+`ios/WhoopsApp/WhoopsApp.xcodeproj` in Xcode and run the `WhoopsApp` scheme.
+The Today tab can call a backend running at `http://localhost:3000`. The iOS
+Simulator uses that URL by default. For a physical iPhone, set the
+`WHOOPS_BACKEND_URL` scheme environment variable to an HTTPS URL reachable by
+the phone.
+
+On the iPhone, open Settings in the app and choose **Allow Apple Health read
+access**. Every requested category is optional; importing continues for any
+categories you allow. After the system permission sheet is completed, the app
+shows **Connected**; that means the read-only connection was set up, not that
+Apple disclosed permission for every category. The integration never writes to
+Apple Health.
+
+For daily planning, review the seeded restrictions and sleep schedule in the
+app's Settings tab, then complete the morning check-in on Today. The resulting
+recommendation is deterministic and works without an LLM. You can override and
+annotate it without erasing the calculated recommendation.
+
+In Train, paste a workout and choose **Parse and review**. Parser notes remain
+visible for context rather than becoming a second checklist. Review the workout
+details, edit only the movements that need changes, check restriction conflicts,
+then confirm the review once when saving the plan. After training, choose
+**Record actual** and change the copied values to what you performed before
+recording session RPE and pain. Use **Enter manually** whenever the parser cannot
+interpret the source text.
+
+Tap a saved planned-workout card to inspect its complete structure, prescriptions, recovery,
+restriction evaluation, and original source. Edit and Record actual remain separate actions. Recent
+completed-workout rows open the recorded session and movement values.
+
+The deterministic parser accepts ordinary or stylized Unicode programming. Standalone headings
+become workout titles, repeated explicit rests become interval structure, and heart-rate or RPE
+targets remain editable context instead of appearing as manual movements.
+Uniform recovery between repeated rounds or efforts stays on the work segment. Use a dedicated Rest
+segment—with one required duration and no movements—when recovery differs within the workout.
+
+Open **Your Movements** in Train to search recent and bundled movements, add or
+edit personal movements, and archive entries without changing past workouts.
+The library can preview and import the movement store from a WOD Lab version 1
+JSON export. Reimporting the same export matches existing movements instead of
+creating duplicates; WOD Lab workout prescriptions and coaching notes are not
+imported.
+
+Run all repository checks after installing backend dependencies:
+
+```sh
+./scripts/check.sh
+```
 
 ## WHOOP API access
 
@@ -63,8 +154,9 @@ In the WHOOP Developer Dashboard you'll need:
 - **App Name** — `whoopsididitagain`
 - **Contact Email** — your email
 - **Privacy Policy URL** — see below
-- **Redirect URI(s)** — at least one is required (e.g. `http://localhost:8080/callback`
-  during development)
+- **Redirect URI(s)** — for Simulator development, use
+  `http://localhost:3000/api/v1/auth/whoop/callback`; for a physical iPhone,
+  use the same path on your reachable HTTPS backend
 
 Apps in development are capped at **10 WHOOP members**, which is nine more than
 this one needs — so no approval submission is required here.
@@ -91,13 +183,26 @@ file, which is gitignored and must never be committed:
 ```sh
 WHOOP_CLIENT_ID=your_client_id
 WHOOP_CLIENT_SECRET=your_client_secret
-WHOOP_REDIRECT_URI=http://localhost:8080/callback
+WHOOP_REDIRECT_URI=http://localhost:3000/api/v1/auth/whoop/callback
+# Optional in development; omit to use the ephemeral in-memory store
+DATABASE_URL=postgresql://user:password@localhost:5432/whoops
+OAUTH_ENCRYPTION_KEY=<output of: openssl rand -base64 32>
+APP_SESSION_SIGNING_KEY=<output of: openssl rand -base64 32>
+APP_DEEP_LINK=whoops://oauth/callback
 ```
+
+Run `npm run db:migrate` before production or any persistent local-backend
+testing. Without `DATABASE_URL`, non-production mode intentionally uses an
+in-memory credential store that is cleared whenever the backend restarts.
 
 ## Documents
 
 - [Privacy Policy](PRIVACY.md) — required by the WHOOP Developer Dashboard
 - [License](LICENSE.md) — MIT
+- [Product plan](docs/PROJECT_PLAN.md) — product source of truth
+- [Architecture](docs/ARCHITECTURE.md) — implemented system boundaries
+- [Decisions](docs/DECISIONS.md) — architecture decision log
+- [Tasks](docs/TASKS.md) — milestone execution status
 
 ## Disclaimer
 

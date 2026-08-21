@@ -1,0 +1,155 @@
+import SwiftUI
+
+struct SettingsView: View {
+    @StateObject private var whoop: WhoopConnectionModel
+    @StateObject private var healthKit: HealthKitConnectionModel
+    let assessmentRepository: any AssessmentRepository
+
+    init(
+        whoopRepository: any WhoopRepository,
+        healthKitRepository: any HealthKitRepository,
+        assessmentRepository: any AssessmentRepository
+    ) {
+        _whoop = StateObject(wrappedValue: WhoopConnectionModel(repository: whoopRepository))
+        _healthKit = StateObject(
+            wrappedValue: HealthKitConnectionModel(repository: healthKitRepository)
+        )
+        self.assessmentRepository = assessmentRepository
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("Connections") {
+                    HStack {
+                        Label("WHOOP", systemImage: "heart.circle")
+                        Spacer()
+                        Text(whoop.status.connected ? "Connected" : "Not connected")
+                            .foregroundStyle(whoop.status.connected ? .green : .secondary)
+                    }
+
+                    if whoop.status.connected {
+                        if let userID = whoop.status.whoopUserId {
+                            LabeledContent("WHOOP user", value: userID)
+                        }
+                        Toggle(
+                            "Delete local WHOOP history",
+                            isOn: $whoop.deleteLocalHistoryOnDisconnect
+                        )
+                        Button("Disconnect WHOOP", role: .destructive) {
+                            Task { await whoop.disconnect() }
+                        }
+                        .disabled(whoop.isWorking)
+                    } else {
+                        Button {
+                            Task { await whoop.connect() }
+                        } label: {
+                            if whoop.isWorking {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                            } else {
+                                Text("Connect WHOOP")
+                                    .frame(maxWidth: .infinity)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(whoop.isWorking)
+                        .accessibilityIdentifier("connect-whoop")
+                    }
+
+                    HStack {
+                        Label("Apple Health", systemImage: "heart.text.square")
+                        Spacer()
+                        Text(healthKit.statusText)
+                            .foregroundStyle(
+                                healthKit.authorizationState == .requested ? .green : .secondary
+                            )
+                    }
+
+                    if healthKit.authorizationState == .requested {
+                        LabeledContent(
+                            "Imported records",
+                            value: healthKit.history.recordCount.formatted()
+                        )
+                        LabeledContent(
+                            "Linked workouts",
+                            value: healthKit.history.linkedWorkoutCount.formatted()
+                        )
+                        if let lastSyncAt = healthKit.history.lastSyncAt {
+                            LabeledContent(
+                                "Last Apple Health sync",
+                                value: lastSyncAt.formatted(.relative(presentation: .named))
+                            )
+                        }
+                        Button("Synchronize Apple Health") {
+                            Task { await healthKit.synchronize() }
+                        }
+                        .disabled(healthKit.isWorking)
+                    } else if healthKit.authorizationState == .notRequested {
+                        Button("Allow Apple Health read access") {
+                            Task { await healthKit.requestAccess() }
+                        }
+                        .disabled(healthKit.isWorking)
+                        .accessibilityIdentifier("connect-apple-health")
+                    }
+
+                    Text(
+                        "Read-only. Imported data depends on the Health categories you allowed; Apple does not reveal which read categories were denied."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
+                if let errorMessage = whoop.errorMessage {
+                    Section("Connection issue") {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
+                    }
+                }
+
+                if let errorMessage = healthKit.errorMessage {
+                    Section("Apple Health issue") {
+                        Text(errorMessage)
+                            .foregroundStyle(.red)
+                    }
+                }
+
+                Section("Daily planning") {
+                    NavigationLink {
+                        RestrictionManagementView(repository: assessmentRepository)
+                    } label: {
+                        Label("Injuries and restrictions", systemImage: "bandage")
+                    }
+                    NavigationLink {
+                        SleepScheduleSettingsView(repository: assessmentRepository)
+                    } label: {
+                        Label("Sleep schedule", systemImage: "bed.double")
+                    }
+                }
+
+                Section("Privacy") {
+                    Label("Imported health data stays on this device", systemImage: "lock.shield")
+                    Label("Export local data", systemImage: "square.and.arrow.up")
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("About") {
+                    LabeledContent("Foundation version", value: "0.6.4")
+                }
+            }
+            .navigationTitle("Settings")
+            .task {
+                await whoop.refresh()
+                await healthKit.refresh()
+            }
+        }
+    }
+}
+
+#Preview {
+    SettingsView(
+        whoopRepository: PreviewWhoopRepository(),
+        healthKitRepository: PreviewHealthKitRepository(),
+        assessmentRepository: PreviewAssessmentRepository()
+    )
+}

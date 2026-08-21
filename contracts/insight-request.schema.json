@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://whoops.local/contracts/insight-request.schema.json",
+  "title": "Insight narration request placeholder",
+  "description": "Reserved contract boundary. The complete insight schema is delivered in Milestone 5.",
+  "type": "object",
+  "required": ["reasonCodes", "confidence"],
+  "additionalProperties": false,
+  "properties": {
+    "reasonCodes": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "type": "string", "enum": ["exploratory", "low", "moderate", "high"] }
+  }
+}

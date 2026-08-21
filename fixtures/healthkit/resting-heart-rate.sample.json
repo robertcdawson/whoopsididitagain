@@ -1,0 +1,10 @@
+{
+  "identifier": "synthetic-rhr-001",
+  "type": "HKQuantityTypeIdentifierRestingHeartRate",
+  "value": 56,
+  "unit": "count/min",
+  "startAt": "2026-07-02T07:15:00-07:00",
+  "endAt": "2026-07-02T07:15:00-07:00",
+  "source": "Synthetic Watch",
+  "fixtureNotice": "Synthetic data; not associated with a real person"
+}

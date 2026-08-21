@@ -1,0 +1,23 @@
+{
+  "title": "Row + Strict Press · For time",
+  "format": "for_time",
+  "timeCapSeconds": null,
+  "intendedStimulus": {
+    "primary": "Mixed-modal strength endurance",
+    "secondary": ["Overhead work", "Grip endurance"],
+    "estimatedDurationMinimumMinutes": 12,
+    "estimatedDurationMaximumMinutes": 30
+  },
+  "movements": [
+    { "canonicalMovementID": "row", "distanceMeters": 1500 },
+    { "canonicalMovementID": "strict_press", "repetitions": 21, "loadValue": 95, "loadUnit": "lb" },
+    { "canonicalMovementID": "row", "distanceMeters": 1000 },
+    { "canonicalMovementID": "strict_press", "repetitions": 15, "loadValue": 115, "loadUnit": "lb" },
+    { "canonicalMovementID": "row", "distanceMeters": 500 },
+    { "canonicalMovementID": "strict_press", "repetitions": 9, "loadValue": 135, "loadUnit": "lb" },
+    { "canonicalMovementID": "row", "distanceMeters": 250 }
+  ],
+  "ambiguities": [],
+  "parserVersion": "deterministic-1.0.0",
+  "fixtureNotice": "Synthetic data; not associated with a real person"
+}

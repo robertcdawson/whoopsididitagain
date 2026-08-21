@@ -1,0 +1,705 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 71;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift */; };
+		B00000000000000000000002 /* WhoopsApp/App/AppTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000002 /* WhoopsApp/App/AppTabView.swift */; };
+		B00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift */; };
+		B00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift */; };
+		B00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift */; };
+		B00000000000000000000006 /* WhoopsApp/Domain/Protocols/ExternalSystemProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000006 /* WhoopsApp/Domain/Protocols/ExternalSystemProtocols.swift */; };
+		B00000000000000000000007 /* WhoopsApp/Data/Networking/BackendClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000007 /* WhoopsApp/Data/Networking/BackendClient.swift */; };
+		B00000000000000000000008 /* WhoopsApp/Data/Repositories/FoundationStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000008 /* WhoopsApp/Data/Repositories/FoundationStubs.swift */; };
+		B00000000000000000000009 /* WhoopsApp/DesignSystem/FoundationCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000009 /* WhoopsApp/DesignSystem/FoundationCard.swift */; };
+		B0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift */; };
+		B0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift */; };
+		B0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift */; };
+		B0000000000000000000000D /* WhoopsApp/Features/Settings/SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000000D /* WhoopsApp/Features/Settings/SettingsView.swift */; };
+		B0000000000000000000000E /* WhoopsApp/Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000000E /* WhoopsApp/Resources/Assets.xcassets */; };
+		B0000000000000000000000F /* WhoopsAppTests/APIModelsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000000F /* WhoopsAppTests/APIModelsTests.swift */; };
+		B00000000000000000000010 /* WhoopsAppTests/FoundationBoundariesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000010 /* WhoopsAppTests/FoundationBoundariesTests.swift */; };
+		B00000000000000000000011 /* WhoopsAppUITests/WhoopsAppUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000011 /* WhoopsAppUITests/WhoopsAppUITests.swift */; };
+		B00000000000000000000012 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F00000000000000000000015 /* XCTest.framework */; };
+		B00000000000000000000013 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F00000000000000000000015 /* XCTest.framework */; };
+		B00000000000000000000014 /* WhoopsApp/Domain/Models/WhoopModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000016 /* WhoopsApp/Domain/Models/WhoopModels.swift */; };
+		B00000000000000000000015 /* WhoopsApp/Data/Security/KeychainSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000017 /* WhoopsApp/Data/Security/KeychainSessionStore.swift */; };
+		B00000000000000000000016 /* WhoopsApp/Data/Persistence/WhoopPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000018 /* WhoopsApp/Data/Persistence/WhoopPersistence.swift */; };
+		B00000000000000000000017 /* WhoopsApp/Data/Repositories/LiveWhoopRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000019 /* WhoopsApp/Data/Repositories/LiveWhoopRepository.swift */; };
+		B00000000000000000000018 /* WhoopsApp/Features/Settings/WhoopConnectionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001A /* WhoopsApp/Features/Settings/WhoopConnectionModel.swift */; };
+		B00000000000000000000019 /* WhoopsApp/Domain/Models/HealthKitModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001C /* WhoopsApp/Domain/Models/HealthKitModels.swift */; };
+		B0000000000000000000001A /* WhoopsApp/Data/HealthKit/HealthKitAnchorStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001D /* WhoopsApp/Data/HealthKit/HealthKitAnchorStore.swift */; };
+		B0000000000000000000001B /* WhoopsApp/Data/HealthKit/HealthDayKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001E /* WhoopsApp/Data/HealthKit/HealthDayKey.swift */; };
+		B0000000000000000000001C /* WhoopsApp/Data/HealthKit/HealthKitClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000001F /* WhoopsApp/Data/HealthKit/HealthKitClient.swift */; };
+		B0000000000000000000001D /* WhoopsApp/Data/Persistence/HealthKitPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000020 /* WhoopsApp/Data/Persistence/HealthKitPersistence.swift */; };
+		B0000000000000000000001E /* WhoopsApp/Data/Repositories/LiveHealthKitRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000021 /* WhoopsApp/Data/Repositories/LiveHealthKitRepository.swift */; };
+		B0000000000000000000001F /* WhoopsApp/Features/Settings/HealthKitConnectionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000022 /* WhoopsApp/Features/Settings/HealthKitConnectionModel.swift */; };
+		B00000000000000000000020 /* WhoopsAppTests/HealthKitMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000024 /* WhoopsAppTests/HealthKitMilestoneTests.swift */; };
+		B00000000000000000000021 /* WhoopsApp/Domain/Models/AssessmentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000025 /* WhoopsApp/Domain/Models/AssessmentModels.swift */; };
+		B00000000000000000000022 /* WhoopsApp/Domain/Services/VersionedReadinessEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000026 /* WhoopsApp/Domain/Services/VersionedReadinessEngine.swift */; };
+		B00000000000000000000023 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000027 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift */; };
+		B00000000000000000000024 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000028 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift */; };
+		B00000000000000000000025 /* WhoopsApp/Features/Settings/SleepScheduleSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000029 /* WhoopsApp/Features/Settings/SleepScheduleSettingsView.swift */; };
+		B00000000000000000000026 /* WhoopsApp/Features/Today/MorningCheckInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002A /* WhoopsApp/Features/Today/MorningCheckInView.swift */; };
+		B00000000000000000000027 /* WhoopsAppTests/AssessmentMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002B /* WhoopsAppTests/AssessmentMilestoneTests.swift */; };
+		B00000000000000000000028 /* WhoopsApp/Domain/Models/WorkoutModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002C /* WhoopsApp/Domain/Models/WorkoutModels.swift */; };
+		B00000000000000000000029 /* WhoopsApp/Domain/Services/VersionedWorkoutParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002D /* WhoopsApp/Domain/Services/VersionedWorkoutParser.swift */; };
+		B0000000000000000000002A /* WhoopsApp/Domain/Services/WorkoutScalingEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002E /* WhoopsApp/Domain/Services/WorkoutScalingEngine.swift */; };
+		B0000000000000000000002B /* WhoopsApp/Data/Persistence/WorkoutPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000002F /* WhoopsApp/Data/Persistence/WorkoutPersistence.swift */; };
+		B0000000000000000000002C /* WhoopsApp/Features/Training/WorkoutPlanEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000030 /* WhoopsApp/Features/Training/WorkoutPlanEditorView.swift */; };
+		B0000000000000000000002D /* WhoopsApp/Features/Training/WorkoutCompletionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000031 /* WhoopsApp/Features/Training/WorkoutCompletionView.swift */; };
+		B0000000000000000000002E /* WhoopsAppTests/WorkoutMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000032 /* WhoopsAppTests/WorkoutMilestoneTests.swift */; };
+		B0000000000000000000002F /* WhoopsApp/Domain/Models/MovementLibraryModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000033 /* WhoopsApp/Domain/Models/MovementLibraryModels.swift */; };
+		B00000000000000000000030 /* WhoopsApp/Domain/Services/WODLabMovementImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000034 /* WhoopsApp/Domain/Services/WODLabMovementImporter.swift */; };
+		B00000000000000000000031 /* WhoopsApp/Domain/Services/LibraryWorkoutServices.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000035 /* WhoopsApp/Domain/Services/LibraryWorkoutServices.swift */; };
+		B00000000000000000000032 /* WhoopsApp/Data/Persistence/MovementLibraryPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000036 /* WhoopsApp/Data/Persistence/MovementLibraryPersistence.swift */; };
+		B00000000000000000000033 /* WhoopsApp/Features/Training/MovementLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000037 /* WhoopsApp/Features/Training/MovementLibraryView.swift */; };
+		B00000000000000000000034 /* WhoopsAppTests/WODLabMovementImporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000038 /* WhoopsAppTests/WODLabMovementImporterTests.swift */; };
+		B00000000000000000000035 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000039 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift */; };
+		CBE5C84A30326AFA001C1E49 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = CBE5C84930326AFA001C1E49 /* AppIcon.icon */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C00000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A00000000000000000000001;
+			remoteInfo = WhoopsApp;
+		};
+		C00000000000000000000002 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A00000000000000000000001;
+			remoteInfo = WhoopsApp;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		CBE5C84930326AFA001C1E49 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		F00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/WhoopsApp.swift; sourceTree = "<group>"; };
+		F00000000000000000000002 /* WhoopsApp/App/AppTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/AppTabView.swift; sourceTree = "<group>"; };
+		F00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/APIModels.swift; sourceTree = "<group>"; };
+		F00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/AppError.swift; sourceTree = "<group>"; };
+		F00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/FoundationModels.swift; sourceTree = "<group>"; };
+		F00000000000000000000006 /* WhoopsApp/Domain/Protocols/ExternalSystemProtocols.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Protocols/ExternalSystemProtocols.swift; sourceTree = "<group>"; };
+		F00000000000000000000007 /* WhoopsApp/Data/Networking/BackendClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Networking/BackendClient.swift; sourceTree = "<group>"; };
+		F00000000000000000000008 /* WhoopsApp/Data/Repositories/FoundationStubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Repositories/FoundationStubs.swift; sourceTree = "<group>"; };
+		F00000000000000000000009 /* WhoopsApp/DesignSystem/FoundationCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/DesignSystem/FoundationCard.swift; sourceTree = "<group>"; };
+		F0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Today/TodayView.swift; sourceTree = "<group>"; };
+		F0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Training/TrainingView.swift; sourceTree = "<group>"; };
+		F0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Trends/TrendsView.swift; sourceTree = "<group>"; };
+		F0000000000000000000000D /* WhoopsApp/Features/Settings/SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Settings/SettingsView.swift; sourceTree = "<group>"; };
+		F0000000000000000000000E /* WhoopsApp/Resources/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = WhoopsApp/Resources/Assets.xcassets; sourceTree = "<group>"; };
+		F0000000000000000000000F /* WhoopsAppTests/APIModelsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/APIModelsTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000010 /* WhoopsAppTests/FoundationBoundariesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/FoundationBoundariesTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000011 /* WhoopsAppUITests/WhoopsAppUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppUITests/WhoopsAppUITests.swift; sourceTree = "<group>"; };
+		F00000000000000000000012 /* WhoopsApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WhoopsApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F00000000000000000000013 /* WhoopsAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WhoopsAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F00000000000000000000014 /* WhoopsAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WhoopsAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F00000000000000000000015 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		F00000000000000000000016 /* WhoopsApp/Domain/Models/WhoopModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/WhoopModels.swift; sourceTree = "<group>"; };
+		F00000000000000000000017 /* WhoopsApp/Data/Security/KeychainSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Security/KeychainSessionStore.swift; sourceTree = "<group>"; };
+		F00000000000000000000018 /* WhoopsApp/Data/Persistence/WhoopPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Persistence/WhoopPersistence.swift; sourceTree = "<group>"; };
+		F00000000000000000000019 /* WhoopsApp/Data/Repositories/LiveWhoopRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Repositories/LiveWhoopRepository.swift; sourceTree = "<group>"; };
+		F0000000000000000000001A /* WhoopsApp/Features/Settings/WhoopConnectionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Settings/WhoopConnectionModel.swift; sourceTree = "<group>"; };
+		F0000000000000000000001B /* WhoopsApp/Resources/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = WhoopsApp/Resources/Info.plist; sourceTree = "<group>"; };
+		F0000000000000000000001C /* WhoopsApp/Domain/Models/HealthKitModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/HealthKitModels.swift; sourceTree = "<group>"; };
+		F0000000000000000000001D /* WhoopsApp/Data/HealthKit/HealthKitAnchorStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/HealthKit/HealthKitAnchorStore.swift; sourceTree = "<group>"; };
+		F0000000000000000000001E /* WhoopsApp/Data/HealthKit/HealthDayKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/HealthKit/HealthDayKey.swift; sourceTree = "<group>"; };
+		F0000000000000000000001F /* WhoopsApp/Data/HealthKit/HealthKitClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/HealthKit/HealthKitClient.swift; sourceTree = "<group>"; };
+		F00000000000000000000020 /* WhoopsApp/Data/Persistence/HealthKitPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Persistence/HealthKitPersistence.swift; sourceTree = "<group>"; };
+		F00000000000000000000021 /* WhoopsApp/Data/Repositories/LiveHealthKitRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Repositories/LiveHealthKitRepository.swift; sourceTree = "<group>"; };
+		F00000000000000000000022 /* WhoopsApp/Features/Settings/HealthKitConnectionModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Settings/HealthKitConnectionModel.swift; sourceTree = "<group>"; };
+		F00000000000000000000023 /* WhoopsApp/Resources/WhoopsApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WhoopsApp/Resources/WhoopsApp.entitlements; sourceTree = "<group>"; };
+		F00000000000000000000024 /* WhoopsAppTests/HealthKitMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/HealthKitMilestoneTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000025 /* WhoopsApp/Domain/Models/AssessmentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/AssessmentModels.swift; sourceTree = "<group>"; };
+		F00000000000000000000026 /* WhoopsApp/Domain/Services/VersionedReadinessEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/VersionedReadinessEngine.swift; sourceTree = "<group>"; };
+		F00000000000000000000027 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Persistence/AssessmentPersistence.swift; sourceTree = "<group>"; };
+		F00000000000000000000028 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Settings/RestrictionManagementView.swift; sourceTree = "<group>"; };
+		F00000000000000000000029 /* WhoopsApp/Features/Settings/SleepScheduleSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Settings/SleepScheduleSettingsView.swift; sourceTree = "<group>"; };
+		F0000000000000000000002A /* WhoopsApp/Features/Today/MorningCheckInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Today/MorningCheckInView.swift; sourceTree = "<group>"; };
+		F0000000000000000000002B /* WhoopsAppTests/AssessmentMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/AssessmentMilestoneTests.swift; sourceTree = "<group>"; };
+		F0000000000000000000002C /* WhoopsApp/Domain/Models/WorkoutModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/WorkoutModels.swift; sourceTree = "<group>"; };
+		F0000000000000000000002D /* WhoopsApp/Domain/Services/VersionedWorkoutParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/VersionedWorkoutParser.swift; sourceTree = "<group>"; };
+		F0000000000000000000002E /* WhoopsApp/Domain/Services/WorkoutScalingEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/WorkoutScalingEngine.swift; sourceTree = "<group>"; };
+		F0000000000000000000002F /* WhoopsApp/Data/Persistence/WorkoutPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Persistence/WorkoutPersistence.swift; sourceTree = "<group>"; };
+		F00000000000000000000030 /* WhoopsApp/Features/Training/WorkoutPlanEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Training/WorkoutPlanEditorView.swift; sourceTree = "<group>"; };
+		F00000000000000000000031 /* WhoopsApp/Features/Training/WorkoutCompletionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Training/WorkoutCompletionView.swift; sourceTree = "<group>"; };
+		F00000000000000000000032 /* WhoopsAppTests/WorkoutMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/WorkoutMilestoneTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000033 /* WhoopsApp/Domain/Models/MovementLibraryModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/MovementLibraryModels.swift; sourceTree = "<group>"; };
+		F00000000000000000000034 /* WhoopsApp/Domain/Services/WODLabMovementImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/WODLabMovementImporter.swift; sourceTree = "<group>"; };
+		F00000000000000000000035 /* WhoopsApp/Domain/Services/LibraryWorkoutServices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/LibraryWorkoutServices.swift; sourceTree = "<group>"; };
+		F00000000000000000000036 /* WhoopsApp/Data/Persistence/MovementLibraryPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Persistence/MovementLibraryPersistence.swift; sourceTree = "<group>"; };
+		F00000000000000000000037 /* WhoopsApp/Features/Training/MovementLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Training/MovementLibraryView.swift; sourceTree = "<group>"; };
+		F00000000000000000000038 /* WhoopsAppTests/WODLabMovementImporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/WODLabMovementImporterTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000039 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/MovementLibraryMilestoneTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E00000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E00000000000000000000002 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00000000000000000000012 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E00000000000000000000003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00000000000000000000013 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		G00000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				G00000000000000000000002 /* WhoopsApp */,
+				G00000000000000000000003 /* WhoopsAppTests */,
+				G00000000000000000000004 /* WhoopsAppUITests */,
+				G00000000000000000000005 /* Frameworks */,
+				G00000000000000000000006 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		G00000000000000000000002 /* WhoopsApp */ = {
+			isa = PBXGroup;
+			children = (
+				CBE5C84930326AFA001C1E49 /* AppIcon.icon */,
+				F00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift */,
+				F00000000000000000000002 /* WhoopsApp/App/AppTabView.swift */,
+				F00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift */,
+				F00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift */,
+				F00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift */,
+				F00000000000000000000006 /* WhoopsApp/Domain/Protocols/ExternalSystemProtocols.swift */,
+				F00000000000000000000007 /* WhoopsApp/Data/Networking/BackendClient.swift */,
+				F00000000000000000000008 /* WhoopsApp/Data/Repositories/FoundationStubs.swift */,
+				F00000000000000000000009 /* WhoopsApp/DesignSystem/FoundationCard.swift */,
+				F0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift */,
+				F0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift */,
+				F0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift */,
+				F0000000000000000000000D /* WhoopsApp/Features/Settings/SettingsView.swift */,
+				F0000000000000000000000E /* WhoopsApp/Resources/Assets.xcassets */,
+				F00000000000000000000016 /* WhoopsApp/Domain/Models/WhoopModels.swift */,
+				F00000000000000000000017 /* WhoopsApp/Data/Security/KeychainSessionStore.swift */,
+				F00000000000000000000018 /* WhoopsApp/Data/Persistence/WhoopPersistence.swift */,
+				F00000000000000000000019 /* WhoopsApp/Data/Repositories/LiveWhoopRepository.swift */,
+				F0000000000000000000001A /* WhoopsApp/Features/Settings/WhoopConnectionModel.swift */,
+				F0000000000000000000001B /* WhoopsApp/Resources/Info.plist */,
+				F0000000000000000000001C /* WhoopsApp/Domain/Models/HealthKitModels.swift */,
+				F0000000000000000000001D /* WhoopsApp/Data/HealthKit/HealthKitAnchorStore.swift */,
+				F0000000000000000000001E /* WhoopsApp/Data/HealthKit/HealthDayKey.swift */,
+				F0000000000000000000001F /* WhoopsApp/Data/HealthKit/HealthKitClient.swift */,
+				F00000000000000000000020 /* WhoopsApp/Data/Persistence/HealthKitPersistence.swift */,
+				F00000000000000000000021 /* WhoopsApp/Data/Repositories/LiveHealthKitRepository.swift */,
+				F00000000000000000000022 /* WhoopsApp/Features/Settings/HealthKitConnectionModel.swift */,
+				F00000000000000000000023 /* WhoopsApp/Resources/WhoopsApp.entitlements */,
+				F00000000000000000000025 /* WhoopsApp/Domain/Models/AssessmentModels.swift */,
+				F00000000000000000000026 /* WhoopsApp/Domain/Services/VersionedReadinessEngine.swift */,
+				F00000000000000000000027 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift */,
+				F00000000000000000000028 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift */,
+				F00000000000000000000029 /* WhoopsApp/Features/Settings/SleepScheduleSettingsView.swift */,
+				F0000000000000000000002A /* WhoopsApp/Features/Today/MorningCheckInView.swift */,
+				F0000000000000000000002C /* WhoopsApp/Domain/Models/WorkoutModels.swift */,
+				F0000000000000000000002D /* WhoopsApp/Domain/Services/VersionedWorkoutParser.swift */,
+				F0000000000000000000002E /* WhoopsApp/Domain/Services/WorkoutScalingEngine.swift */,
+				F0000000000000000000002F /* WhoopsApp/Data/Persistence/WorkoutPersistence.swift */,
+				F00000000000000000000030 /* WhoopsApp/Features/Training/WorkoutPlanEditorView.swift */,
+				F00000000000000000000031 /* WhoopsApp/Features/Training/WorkoutCompletionView.swift */,
+				F00000000000000000000033 /* WhoopsApp/Domain/Models/MovementLibraryModels.swift */,
+				F00000000000000000000034 /* WhoopsApp/Domain/Services/WODLabMovementImporter.swift */,
+				F00000000000000000000035 /* WhoopsApp/Domain/Services/LibraryWorkoutServices.swift */,
+				F00000000000000000000036 /* WhoopsApp/Data/Persistence/MovementLibraryPersistence.swift */,
+				F00000000000000000000037 /* WhoopsApp/Features/Training/MovementLibraryView.swift */,
+			);
+			name = WhoopsApp;
+			sourceTree = "<group>";
+		};
+		G00000000000000000000003 /* WhoopsAppTests */ = {
+			isa = PBXGroup;
+			children = (
+				F0000000000000000000000F /* WhoopsAppTests/APIModelsTests.swift */,
+				F00000000000000000000010 /* WhoopsAppTests/FoundationBoundariesTests.swift */,
+				F00000000000000000000024 /* WhoopsAppTests/HealthKitMilestoneTests.swift */,
+				F0000000000000000000002B /* WhoopsAppTests/AssessmentMilestoneTests.swift */,
+				F00000000000000000000032 /* WhoopsAppTests/WorkoutMilestoneTests.swift */,
+				F00000000000000000000038 /* WhoopsAppTests/WODLabMovementImporterTests.swift */,
+				F00000000000000000000039 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift */,
+			);
+			name = WhoopsAppTests;
+			sourceTree = "<group>";
+		};
+		G00000000000000000000004 /* WhoopsAppUITests */ = {
+			isa = PBXGroup;
+			children = (
+				F00000000000000000000011 /* WhoopsAppUITests/WhoopsAppUITests.swift */,
+			);
+			name = WhoopsAppUITests;
+			sourceTree = "<group>";
+		};
+		G00000000000000000000005 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F00000000000000000000015 /* XCTest.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		G00000000000000000000006 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F00000000000000000000012 /* WhoopsApp.app */,
+				F00000000000000000000013 /* WhoopsAppTests.xctest */,
+				F00000000000000000000014 /* WhoopsAppUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00000000000000000000001 /* WhoopsApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = L00000000000000000000002 /* Build configuration list for PBXNativeTarget "WhoopsApp" */;
+			buildPhases = (
+				S00000000000000000000001 /* Sources */,
+				E00000000000000000000001 /* Frameworks */,
+				R00000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WhoopsApp;
+			productName = WhoopsApp;
+			productReference = F00000000000000000000012 /* WhoopsApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A00000000000000000000002 /* WhoopsAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = L00000000000000000000003 /* Build configuration list for PBXNativeTarget "WhoopsAppTests" */;
+			buildPhases = (
+				S00000000000000000000002 /* Sources */,
+				E00000000000000000000002 /* Frameworks */,
+				R00000000000000000000002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				T00000000000000000000001 /* PBXTargetDependency */,
+			);
+			name = WhoopsAppTests;
+			productName = WhoopsAppTests;
+			productReference = F00000000000000000000013 /* WhoopsAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A00000000000000000000003 /* WhoopsAppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = L00000000000000000000004 /* Build configuration list for PBXNativeTarget "WhoopsAppUITests" */;
+			buildPhases = (
+				S00000000000000000000003 /* Sources */,
+				E00000000000000000000003 /* Frameworks */,
+				R00000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				T00000000000000000000002 /* PBXTargetDependency */,
+			);
+			name = WhoopsAppUITests;
+			productName = WhoopsAppUITests;
+			productReference = F00000000000000000000014 /* WhoopsAppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D00000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
+				TargetAttributes = {
+					A00000000000000000000001 = {
+						CreatedOnToolsVersion = 26.6;
+						SystemCapabilities = {
+							com.apple.HealthKit = {
+								enabled = 1;
+							};
+						};
+					};
+					A00000000000000000000002 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = A00000000000000000000001;
+					};
+					A00000000000000000000003 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = A00000000000000000000001;
+					};
+				};
+			};
+			buildConfigurationList = L00000000000000000000001 /* Build configuration list for PBXProject "WhoopsApp" */;
+			compatibilityVersion = "Xcode 16.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = G00000000000000000000001;
+			productRefGroup = G00000000000000000000006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00000000000000000000001 /* WhoopsApp */,
+				A00000000000000000000002 /* WhoopsAppTests */,
+				A00000000000000000000003 /* WhoopsAppUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		R00000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0000000000000000000000E /* WhoopsApp/Resources/Assets.xcassets in Resources */,
+				CBE5C84A30326AFA001C1E49 /* AppIcon.icon in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		R00000000000000000000002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		R00000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		S00000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift in Sources */,
+				B00000000000000000000002 /* WhoopsApp/App/AppTabView.swift in Sources */,
+				B00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift in Sources */,
+				B00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift in Sources */,
+				B00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift in Sources */,
+				B00000000000000000000006 /* WhoopsApp/Domain/Protocols/ExternalSystemProtocols.swift in Sources */,
+				B00000000000000000000007 /* WhoopsApp/Data/Networking/BackendClient.swift in Sources */,
+				B00000000000000000000008 /* WhoopsApp/Data/Repositories/FoundationStubs.swift in Sources */,
+				B00000000000000000000009 /* WhoopsApp/DesignSystem/FoundationCard.swift in Sources */,
+				B0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift in Sources */,
+				B0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift in Sources */,
+				B0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift in Sources */,
+				B0000000000000000000000D /* WhoopsApp/Features/Settings/SettingsView.swift in Sources */,
+				B00000000000000000000014 /* WhoopsApp/Domain/Models/WhoopModels.swift in Sources */,
+				B00000000000000000000015 /* WhoopsApp/Data/Security/KeychainSessionStore.swift in Sources */,
+				B00000000000000000000016 /* WhoopsApp/Data/Persistence/WhoopPersistence.swift in Sources */,
+				B00000000000000000000017 /* WhoopsApp/Data/Repositories/LiveWhoopRepository.swift in Sources */,
+				B00000000000000000000018 /* WhoopsApp/Features/Settings/WhoopConnectionModel.swift in Sources */,
+				B00000000000000000000019 /* WhoopsApp/Domain/Models/HealthKitModels.swift in Sources */,
+				B0000000000000000000001A /* WhoopsApp/Data/HealthKit/HealthKitAnchorStore.swift in Sources */,
+				B0000000000000000000001B /* WhoopsApp/Data/HealthKit/HealthDayKey.swift in Sources */,
+				B0000000000000000000001C /* WhoopsApp/Data/HealthKit/HealthKitClient.swift in Sources */,
+				B0000000000000000000001D /* WhoopsApp/Data/Persistence/HealthKitPersistence.swift in Sources */,
+				B0000000000000000000001E /* WhoopsApp/Data/Repositories/LiveHealthKitRepository.swift in Sources */,
+				B0000000000000000000001F /* WhoopsApp/Features/Settings/HealthKitConnectionModel.swift in Sources */,
+				B00000000000000000000021 /* WhoopsApp/Domain/Models/AssessmentModels.swift in Sources */,
+				B00000000000000000000022 /* WhoopsApp/Domain/Services/VersionedReadinessEngine.swift in Sources */,
+				B00000000000000000000023 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift in Sources */,
+				B00000000000000000000024 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift in Sources */,
+				B00000000000000000000025 /* WhoopsApp/Features/Settings/SleepScheduleSettingsView.swift in Sources */,
+				B00000000000000000000026 /* WhoopsApp/Features/Today/MorningCheckInView.swift in Sources */,
+				B00000000000000000000028 /* WhoopsApp/Domain/Models/WorkoutModels.swift in Sources */,
+				B00000000000000000000029 /* WhoopsApp/Domain/Services/VersionedWorkoutParser.swift in Sources */,
+				B0000000000000000000002A /* WhoopsApp/Domain/Services/WorkoutScalingEngine.swift in Sources */,
+				B0000000000000000000002B /* WhoopsApp/Data/Persistence/WorkoutPersistence.swift in Sources */,
+				B0000000000000000000002C /* WhoopsApp/Features/Training/WorkoutPlanEditorView.swift in Sources */,
+				B0000000000000000000002D /* WhoopsApp/Features/Training/WorkoutCompletionView.swift in Sources */,
+				B0000000000000000000002F /* WhoopsApp/Domain/Models/MovementLibraryModels.swift in Sources */,
+				B00000000000000000000030 /* WhoopsApp/Domain/Services/WODLabMovementImporter.swift in Sources */,
+				B00000000000000000000031 /* WhoopsApp/Domain/Services/LibraryWorkoutServices.swift in Sources */,
+				B00000000000000000000032 /* WhoopsApp/Data/Persistence/MovementLibraryPersistence.swift in Sources */,
+				B00000000000000000000033 /* WhoopsApp/Features/Training/MovementLibraryView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		S00000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B0000000000000000000000F /* WhoopsAppTests/APIModelsTests.swift in Sources */,
+				B00000000000000000000010 /* WhoopsAppTests/FoundationBoundariesTests.swift in Sources */,
+				B00000000000000000000020 /* WhoopsAppTests/HealthKitMilestoneTests.swift in Sources */,
+				B00000000000000000000027 /* WhoopsAppTests/AssessmentMilestoneTests.swift in Sources */,
+				B0000000000000000000002E /* WhoopsAppTests/WorkoutMilestoneTests.swift in Sources */,
+				B00000000000000000000034 /* WhoopsAppTests/WODLabMovementImporterTests.swift in Sources */,
+				B00000000000000000000035 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		S00000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B00000000000000000000011 /* WhoopsAppUITests/WhoopsAppUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		T00000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A00000000000000000000001 /* WhoopsApp */;
+			targetProxy = C00000000000000000000001 /* PBXContainerItemProxy */;
+		};
+		T00000000000000000000002 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A00000000000000000000001 /* WhoopsApp */;
+			targetProxy = C00000000000000000000002 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		X00000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		X00000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		X00000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WhoopsApp/Resources/WhoopsApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WhoopsApp/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.6.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		X00000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WhoopsApp/Resources/WhoopsApp.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WhoopsApp/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.6.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		X00000000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WhoopsApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WhoopsApp";
+			};
+			name = Debug;
+		};
+		X00000000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/WhoopsApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/WhoopsApp";
+			};
+			name = Release;
+		};
+		X00000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = WhoopsApp;
+			};
+			name = Debug;
+		};
+		X00000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = WhoopsApp;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		L00000000000000000000001 /* Build configuration list for PBXProject "WhoopsApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X00000000000000000000001 /* Debug */,
+				X00000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		L00000000000000000000002 /* Build configuration list for PBXNativeTarget "WhoopsApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X00000000000000000000003 /* Debug */,
+				X00000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		L00000000000000000000003 /* Build configuration list for PBXNativeTarget "WhoopsAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X00000000000000000000005 /* Debug */,
+				X00000000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		L00000000000000000000004 /* Build configuration list for PBXNativeTarget "WhoopsAppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X00000000000000000000007 /* Debug */,
+				X00000000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D00000000000000000000001 /* Project object */;
+}
