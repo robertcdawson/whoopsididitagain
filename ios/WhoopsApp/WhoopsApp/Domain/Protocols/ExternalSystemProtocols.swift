@@ -82,6 +82,7 @@ protocol ReadinessEngine: Sendable {
 protocol AssessmentRepository: Sendable {
     func prepareDefaults() async throws
     func checkIn(for day: String) async throws -> MorningCheckIn?
+    func checkIns() async throws -> [MorningCheckIn]
     func saveCheckIn(_ checkIn: MorningCheckIn) async throws
     func restrictions() async throws -> [RestrictionProfile]
     func saveRestriction(_ restriction: RestrictionProfile) async throws
@@ -89,6 +90,8 @@ protocol AssessmentRepository: Sendable {
     func sleepSettings() async throws -> SleepScheduleSettings
     func saveSleepSettings(_ settings: SleepScheduleSettings) async throws
     func assessment(for day: String) async throws -> ReadinessAssessment?
+    func assessments() async throws -> [ReadinessAssessment]
+    func injuryTimeline() async throws -> [InjuryTimelineItem]
     func saveAssessment(_ assessment: ReadinessAssessment) async throws
     func saveOverride(
         assessmentID: String,

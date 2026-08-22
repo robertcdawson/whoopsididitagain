@@ -140,3 +140,21 @@ Saved-workout inspection follow-up found August 16, 2026:
 Live acceptance remains: create one personal movement, save a plan, relaunch, and reuse the
 movement. Then import Robert's WOD Lab version 1 export twice and confirm the second import adds no
 duplicates. Review the demand tags for any personal movement before relying on restriction checks.
+
+## Milestone 5: Trends and Weekly Review
+
+- [x] Define versioned, deterministic trend and weekly-review models.
+- [x] Expose historical check-ins, assessments, and injury records without exposing secrets.
+- [x] Add recovery decomposition history with source-specific baselines and data sufficiency.
+- [x] Add sleep trends with WHOOP-first daily observations and Apple Health fallback.
+- [x] Add logged session-RPE load and unit-preserving strength-volume summaries.
+- [x] Add a basic injury timeline and descriptive pain-by-movement analysis.
+- [x] Generate a seven-day weekly review with sample sizes, one action, and one caveat.
+- [x] Keep optional narration downstream of the deterministic report.
+- [x] Export normalized local records and derived summaries as JSON and CSV.
+- [x] Add analytics, missing-data, association-language, export-redaction, and UI tests.
+- [x] Verify backend checks, Swift formatting, iOS builds, unit tests, and UI tests.
+
+Live acceptance remains: review Trends after enough personal history has accumulated, share one
+JSON and one CSV export to a private destination, and confirm that the summaries and wording match
+Robert's judgment. The deterministic calculations remain authoritative if narration is added later.

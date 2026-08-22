@@ -142,6 +142,9 @@ actor PreviewAssessmentRepository: AssessmentRepository {
 
     func prepareDefaults() async throws {}
     func checkIn(for day: String) async throws -> MorningCheckIn? { checkIns[day] }
+    func checkIns() async throws -> [MorningCheckIn] {
+        checkIns.values.sorted { $0.timestamp > $1.timestamp }
+    }
     func saveCheckIn(_ checkIn: MorningCheckIn) async throws { checkIns[checkIn.day] = checkIn }
     func restrictions() async throws -> [RestrictionProfile] { profiles }
     func saveRestriction(_ restriction: RestrictionProfile) async throws {
@@ -154,6 +157,10 @@ actor PreviewAssessmentRepository: AssessmentRepository {
         self.settings = settings
     }
     func assessment(for day: String) async throws -> ReadinessAssessment? { assessments[day] }
+    func assessments() async throws -> [ReadinessAssessment] {
+        assessments.values.sorted { $0.computedAt > $1.computedAt }
+    }
+    func injuryTimeline() async throws -> [InjuryTimelineItem] { [] }
     func saveAssessment(_ assessment: ReadinessAssessment) async throws {
         assessments[assessment.day] = assessment
     }

@@ -1,7 +1,7 @@
 # Architecture
 
-**Status:** Milestone 4.1 personal movement library
-**Last updated:** August 16, 2026
+**Status:** Milestone 5 trends and weekly review implemented
+**Last updated:** August 21, 2026
 
 `PROJECT_PLAN.md` is the product source of truth. This document records the architecture that is
 currently implemented.
@@ -140,8 +140,24 @@ metadata in this increment.
 - `fixtures`: synthetic-only test inputs
 - `docs`: product, architecture, decisions, and execution status
 
-## Still outside Milestone 4.1
+## Trends, weekly review, and export
 
-Longitudinal training-load summaries, pain-by-movement trends, weekly review, experiments, and
-generated explanations remain behind the protocol boundaries established in Milestone 0. Parsing,
-scaling, readiness, and manual workout entry do not depend on an LLM.
+Milestone 5 reads normalized local projections through repository protocols; the analytics engine
+does not query SwiftData or external services directly. It builds source-specific recovery and sleep
+observations, session-RPE load, unit-preserving strength volume, current injury records, and
+descriptive pain-by-movement summaries. Seven-day results compare with the preceding seven days,
+while robust baselines use at most 28 observations.
+
+The structured weekly report is deterministic and versioned. Every claim includes its observation
+count or states that the available data is insufficient, uses association language, and includes one
+action plus one caveat. Optional narration is a presentation adapter over that report and is never a
+calculation or safety authority.
+
+Local export serializes only normalized app-facing records and derived summaries. JSON preserves
+structure; CSV uses one record-type column and stable flattened fields. Raw WHOOP payloads, OAuth
+credentials, app sessions, Keychain contents, backend environment values, and encryption material
+are outside the export boundary.
+
+Experiments, predictive dose-response modeling, free-form historical questions, and generated
+explanations remain outside Milestone 5. Parsing, scaling, readiness, trends, weekly review, and
+export do not depend on an LLM.

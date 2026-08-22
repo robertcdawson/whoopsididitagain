@@ -2357,6 +2357,8 @@ whoops-i-did-it-again/
 
 ## Milestone 5: Trends and Weekly Review
 
+**Implementation status:** Complete as of August 21, 2026. Personal-device acceptance remains.
+
 ### Deliverables
 
 - Recovery decomposition history
@@ -2375,6 +2377,27 @@ whoops-i-did-it-again/
 - The report identifies one action and one caveat.
 - Export excludes secrets and credentials.
 - The feature works without the LLM, using templated text.
+
+### Initial implementation contract
+
+- The primary weekly window is the most recent seven local calendar days; the comparison window is
+  the preceding seven days. Twenty-eight observations remain the maximum baseline input.
+- Recovery decomposition compares WHOOP Recovery, WHOOP HRV RMSSD, resting heart rate, sleep, and
+  available Apple Health physiology only within their own source and metric definitions.
+- Logged training load uses session duration in minutes multiplied by session RPE. Strength volume
+  is reported by load unit and movement rather than combined across unlike units or movement
+  patterns.
+- Pain-by-movement is descriptive: appearance count, average and maximum recorded pain, and most
+  recent occurrence. It never diagnoses an injury or attributes causality.
+- Every weekly statement carries an observation count or an explicit insufficient-data label.
+- The deterministic report is authoritative. Optional narration may rephrase its structured
+  findings but may not add calculations, causal claims, diagnoses, or missing facts.
+- JSON and CSV exports contain normalized, user-visible health, assessment, restriction, and
+  workout records plus versioned derived summaries. They exclude raw WHOOP payloads, Keychain
+  sessions, OAuth material, backend configuration, and encryption keys.
+
+The implemented `trends-1.0.0` engine and native Trends view satisfy this contract without an LLM.
+The existing narration boundary remains optional and downstream of the structured weekly report.
 
 ---
 

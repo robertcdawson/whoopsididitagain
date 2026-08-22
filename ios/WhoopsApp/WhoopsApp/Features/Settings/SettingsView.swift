@@ -134,7 +134,7 @@ struct SettingsView: View {
                 }
 
                 Section("About") {
-                    LabeledContent("Foundation version", value: "0.6.4")
+                    LabeledContent("Foundation version", value: "0.7.0")
                 }
             }
             .navigationTitle("Settings")

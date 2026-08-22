@@ -25,6 +25,20 @@ final class WhoopsAppUITests: XCTestCase {
     }
 
     @MainActor
+    func testTrendsShowsDeterministicWeeklyReview() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        app.tabBars.buttons["Trends"].tap()
+
+        XCTAssertTrue(app.navigationBars["Trends"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Weekly review"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Most important change"].exists)
+        XCTAssertTrue(app.staticTexts["What coincided"].exists)
+        XCTAssertTrue(app.staticTexts["Next action"].exists)
+    }
+
+    @MainActor
     func testWorkoutCanBePastedAndReviewed() throws {
         let app = XCUIApplication()
         app.launch()
