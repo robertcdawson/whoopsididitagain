@@ -37,7 +37,9 @@ struct AppTabView: View {
 
             TrendsView(
                 whoopRepository: whoopRepository,
-                healthKitRepository: healthKitRepository
+                healthKitRepository: healthKitRepository,
+                assessmentRepository: assessmentRepository,
+                workoutRepository: workoutRepository
             )
             .tabItem {
                 Label("Trends", systemImage: "chart.xyaxis.line")

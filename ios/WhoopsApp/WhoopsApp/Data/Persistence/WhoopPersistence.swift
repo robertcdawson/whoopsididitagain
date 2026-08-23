@@ -95,7 +95,7 @@ final class WhoopPersistence: @unchecked Sendable {
         return importedCount
     }
 
-    func history(limit: Int = 30) throws -> WhoopHistorySnapshot {
+    func history(limit: Int = 180) throws -> WhoopHistorySnapshot {
         let records = try context.fetch(
             FetchDescriptor<WhoopSourceRecord>(
                 sortBy: [SortDescriptor(\.lastImportedAt, order: .reverse)]

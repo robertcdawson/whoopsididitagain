@@ -134,7 +134,7 @@ final class HealthKitPersistence: @unchecked Sendable {
         )
     }
 
-    func history(limit: Int = 30) throws -> HealthKitHistorySnapshot {
+    func history(limit: Int = 180) throws -> HealthKitHistorySnapshot {
         let records = try context.fetch(FetchDescriptor<HealthKitSourceRecord>())
         let links = try context.fetch(FetchDescriptor<WorkoutSourceLink>())
         let grouped = Dictionary(grouping: records, by: \.localDay)

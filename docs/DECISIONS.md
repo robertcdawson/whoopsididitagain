@@ -94,6 +94,20 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
   leaking stale loads or repetitions into future workouts, mutating safety-reviewed bundled
   definitions, or creating a continuing dependency on WOD Lab.
 
+## ADR-010: Make longitudinal summaries deterministic and export normalized projections only
+
+- **Date:** August 21, 2026
+- **Status:** Accepted
+- **Decision:** `trends-1.0.0` consumes normalized repository snapshots and produces source-specific
+  trends plus a structured weekly report. The primary window is seven local days, the comparison
+  window is the prior seven, and baselines use at most 28 observations. Every statement carries a
+  sample size or insufficient-data label and uses association language. JSON and CSV exports include
+  normalized projections and derived results, never raw WHOOP payloads or authentication material.
+- **Rationale:** A deterministic analytical boundary keeps charts, summaries, export, and optional
+  narration consistent; prevents source-specific metrics from being blended; makes sparse-data
+  behavior testable; and reduces the chance of exporting credentials or unnecessarily sensitive raw
+  vendor payloads.
+
 ## Open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final

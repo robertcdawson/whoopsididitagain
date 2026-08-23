@@ -176,6 +176,12 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
             .map(Self.checkIn)
     }
 
+    func checkIns() async throws -> [MorningCheckIn] {
+        try context.fetch(FetchDescriptor<SymptomCheckInRecord>())
+            .map(Self.checkIn)
+            .sorted { $0.timestamp > $1.timestamp }
+    }
+
     func saveCheckIn(_ checkIn: MorningCheckIn) async throws {
         let id = "check-in:\(checkIn.day)"
         if let existing = try context.fetch(FetchDescriptor<SymptomCheckInRecord>())
@@ -314,6 +320,28 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
         )
     }
 
+    func assessments() async throws -> [ReadinessAssessment] {
+        try context.fetch(FetchDescriptor<ReadinessAssessmentRecord>())
+            .compactMap(Self.assessment)
+            .sorted { $0.computedAt > $1.computedAt }
+    }
+
+    func injuryTimeline() async throws -> [InjuryTimelineItem] {
+        try context.fetch(FetchDescriptor<InjuryRecord>())
+            .map {
+                InjuryTimelineItem(
+                    id: $0.id,
+                    name: $0.name,
+                    bodyRegion: $0.bodyRegion,
+                    side: $0.side,
+                    status: $0.status,
+                    startedAt: $0.createdAt,
+                    updatedAt: $0.updatedAt
+                )
+            }
+            .sorted { $0.updatedAt > $1.updatedAt }
+    }
+
     func saveAssessment(_ assessment: ReadinessAssessment) async throws {
         let reasonsData = try encoder.encode(assessment.reasons)
         if let record = try context.fetch(FetchDescriptor<ReadinessAssessmentRecord>())
@@ -362,6 +390,30 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
             motivation: record.motivation,
             illnessSymptoms: record.illnessSymptoms,
             notes: record.notes
+        )
+    }
+
+    private static func assessment(_ record: ReadinessAssessmentRecord) -> ReadinessAssessment? {
+        guard
+            let recommendation = ReadinessAssessment.Recommendation(
+                rawValue: record.recommendation),
+            let confidence = ReadinessAssessment.Confidence(rawValue: record.confidence),
+            let reasons = try? JSONDecoder().decode(
+                [ReadinessReason].self, from: record.reasonsData)
+        else { return nil }
+        return ReadinessAssessment(
+            id: record.id,
+            day: record.day,
+            computedAt: record.computedAt,
+            systemicScore: record.systemicScore,
+            sleepScore: record.sleepScore,
+            tissueScore: record.tissueScore,
+            recommendation: recommendation,
+            confidence: confidence,
+            reasons: reasons,
+            rulesetVersion: record.rulesetVersion,
+            userOverride: record.userOverride.flatMap(ReadinessAssessment.Recommendation.init),
+            overrideNote: record.overrideNote
         )
     }
 

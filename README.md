@@ -28,7 +28,7 @@ something more interesting with it than scroll the official app.
 
 ## Status
 
-🚧 **Milestone 4.1 personal movement library.** The Train tab accepts raw
+✅ **Milestone 5 trends and weekly review.** The Train tab accepts raw
 CrossFit, weightlifting, and conditioning text; produces a schema-validated,
 editable plan; reports unresolved ambiguity instead of inventing details; and
 checks canonical movement demands against active restrictions. Candidate
@@ -41,6 +41,13 @@ The app now merges its bundled catalog with a personal, on-device movement
 library. Stable facts such as names, aliases, category, equipment, supported
 measurements, and restriction-demand tags are reusable; reps, load, distance,
 tempo, and other prescriptions remain specific to each workout.
+
+The Trends tab now combines normalized local history into source-specific
+recovery and sleep trends, session-RPE training load, strength volume, injury
+history, and descriptive pain-by-movement summaries. Its versioned weekly
+review always reports sample size or insufficient data, uses association—not
+causal—language, and works without an LLM. JSON and CSV sharing excludes
+credentials and raw API payloads.
 
 ## Architecture
 
