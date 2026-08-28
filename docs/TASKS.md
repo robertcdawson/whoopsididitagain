@@ -204,3 +204,4 @@ until both conditions reach the configured minimum and Robert's judgment support
 - [x] Distinguish logged condition days from usable days with resolved outcomes.
 - [x] Explain when a selected outcome requires direct WHOOP history rather than Apple Health.
 - [x] Keyset-page and cache source-specific history projections instead of scanning unrelated samples.
+- [x] Keep an existing condition day's date fixed while editing so correction cannot add a new day.

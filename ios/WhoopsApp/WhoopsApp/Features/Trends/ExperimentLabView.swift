@@ -904,6 +904,7 @@ private struct ExperimentObservationEditorView: View {
     let analysisInput: ExperimentAnalysisInput?
     let onSave: (ExperimentObservation) async throws -> Void
     let onDelete: (ExperimentObservation) async throws -> Void
+    private let originalDay: String?
 
     @State private var date: Date
     @State private var confounderText: String
@@ -918,14 +919,17 @@ private struct ExperimentObservationEditorView: View {
         onSave: @escaping (ExperimentObservation) async throws -> Void,
         onDelete: @escaping (ExperimentObservation) async throws -> Void
     ) {
-        let initialObservation =
-            existingObservations.first { $0.day == observation.day } ?? observation
+        let existingObservation = existingObservations.first {
+            $0.id == observation.id || $0.day == observation.day
+        }
+        let initialObservation = existingObservation ?? observation
         _observation = State(initialValue: initialObservation)
         self.experiment = experiment
         self.existingObservations = existingObservations
         self.analysisInput = analysisInput
         self.onSave = onSave
         self.onDelete = onDelete
+        originalDay = existingObservation?.day
         _date = State(initialValue: Self.date(initialObservation.day) ?? .now)
         _confounderText = State(
             initialValue: initialObservation.confounders.joined(separator: "\n"))
@@ -939,7 +943,11 @@ private struct ExperimentObservationEditorView: View {
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
-                DatePicker("Local day", selection: $date, displayedComponents: .date)
+                if let originalDay {
+                    LabeledContent("Local day", value: originalDay)
+                } else {
+                    DatePicker("Local day", selection: $date, displayedComponents: .date)
+                }
                 Picker("Condition", selection: $observation.condition) {
                     Text(experiment.intervention).tag(ExperimentCondition.intervention)
                     Text(experiment.comparisonCondition).tag(ExperimentCondition.comparison)
@@ -966,7 +974,7 @@ private struct ExperimentObservationEditorView: View {
                         Text("Not available yet").foregroundStyle(.secondary)
                     }
                 }
-                LabeledContent("Condition day", value: Self.dayKey(date))
+                LabeledContent("Condition day", value: selectedDay)
                 LabeledContent("Outcome day", value: outcomeDay)
                 Text(experiment.outcomeTiming.explanation)
                     .font(.caption)
@@ -983,7 +991,11 @@ private struct ExperimentObservationEditorView: View {
             } header: {
                 Text("Optional context")
             } footer: {
-                Text("Changing the selected date never deletes another date's entry.")
+                if originalDay != nil {
+                    Text(
+                        "This edits the selected logged day. Use Log or update a day to choose a different date."
+                    )
+                }
             }
             if isUpdatingExistingDay {
                 Section {
@@ -1035,9 +1047,13 @@ private struct ExperimentObservationEditorView: View {
 
     private var outcomeDay: String {
         DeterministicExperimentEngine().outcomeDay(
-            for: Self.dayKey(date),
+            for: selectedDay,
             timing: experiment.outcomeTiming
         )
+    }
+
+    private var selectedDay: String {
+        originalDay ?? Self.dayKey(date)
     }
 
     private var resolvedValue: Double? {
@@ -1056,11 +1072,11 @@ private struct ExperimentObservationEditorView: View {
     }
 
     private var isUpdatingExistingDay: Bool {
-        existingObservations.contains { $0.day == Self.dayKey(date) }
+        originalDay != nil || existingObservations.contains { $0.day == selectedDay }
     }
 
     private func loadSelectedDay() {
-        let selectedDay = Self.dayKey(date)
+        guard originalDay == nil else { return }
         if let existing = existingObservations.first(where: { $0.day == selectedDay }) {
             observation = existing
             confounderText = existing.confounders.joined(separator: "\n")
@@ -1072,7 +1088,7 @@ private struct ExperimentObservationEditorView: View {
 
     @MainActor
     private func save() async {
-        observation.day = Self.dayKey(date)
+        observation.day = selectedDay
         observation.id = ExperimentObservation.stableID(
             experimentID: observation.experimentID,
             day: observation.day
@@ -1092,7 +1108,7 @@ private struct ExperimentObservationEditorView: View {
 
     @MainActor
     private func deleteSelectedDay() async {
-        guard let existing = existingObservations.first(where: { $0.day == Self.dayKey(date) })
+        guard let existing = existingObservations.first(where: { $0.day == selectedDay })
         else { return }
         do {
             try await onDelete(existing)
