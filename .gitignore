@@ -17,6 +17,7 @@ __pycache__/
 .venv/
 venv/
 .next/
+.vercel/
 .turbo/
 coverage/
 *.tsbuildinfo

@@ -94,10 +94,8 @@ npm run dev
 The health endpoint does not require credentials. WHOOP connection routes do.
 Open
 `ios/WhoopsApp/WhoopsApp.xcodeproj` in Xcode and run the `WhoopsApp` scheme.
-The Today tab can call a backend running at `http://localhost:3000`. The iOS
-Simulator uses that URL by default. For a physical iPhone, set the
-`WHOOPS_BACKEND_URL` scheme environment variable to an HTTPS URL reachable by
-the phone.
+Installed builds call `https://whoopsididitagain-backend.vercel.app`. Local development can
+override that endpoint with the `WHOOPS_BACKEND_URL` scheme environment variable.
 
 On the iPhone, open Settings in the app and choose **Allow Apple Health read
 access**. Every requested category is optional; importing continues for any

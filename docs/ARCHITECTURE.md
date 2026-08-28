@@ -22,6 +22,10 @@ The backend is the only component that receives the WHOOP client secret, access 
 token. The app receives a separate signed app session and stores it in Keychain. WHOOP health
 payloads pass through the backend response but are persisted only on the phone.
 
+Installed iPhone builds use `https://whoopsididitagain-backend.vercel.app`; local schemes can
+override the backend with `WHOOPS_BACKEND_URL`. Production OAuth state, encrypted credentials, and
+sync checkpoints persist in the Vercel-linked Neon PostgreSQL database.
+
 HealthKit access is read-only and never passes through the backend. The app requests each selected
 sample type independently, so categories the user denies behave as empty sources while allowed
 categories continue synchronizing.

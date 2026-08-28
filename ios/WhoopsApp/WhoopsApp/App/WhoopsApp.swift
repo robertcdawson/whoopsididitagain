@@ -17,7 +17,9 @@ struct WhoopsApp: App {
 
     init() {
         let configuredURL = ProcessInfo.processInfo.environment["WHOOPS_BACKEND_URL"]
-        let baseURL = URL(string: configuredURL ?? "http://localhost:3000")!
+        let baseURL = URL(
+            string: configuredURL ?? "https://whoopsididitagain-backend.vercel.app"
+        )!
         let sessionStore = KeychainSessionStore()
         let container = try! ModelContainer(
             for: WhoopSourceRecord.self,
