@@ -108,6 +108,22 @@ final class AssessmentMilestoneTests: XCTestCase {
         XCTAssertEqual(stored?.overrideNote, "Synthetic coaching context")
     }
 
+    @MainActor
+    func testDeletingCheckInKeepsOtherDays() async throws {
+        let repository = AssessmentPersistence(container: try makeContainer())
+        let first = MorningCheckIn.empty(day: "2026-08-20")
+        let second = MorningCheckIn.empty(day: "2026-08-21")
+        try await repository.saveCheckIn(first)
+        try await repository.saveCheckIn(second)
+
+        try await repository.deleteCheckIn(day: first.day)
+
+        let deleted = try await repository.checkIn(for: first.day)
+        let remaining = try await repository.checkIn(for: second.day)
+        XCTAssertNil(deleted)
+        XCTAssertEqual(remaining, second)
+    }
+
     private func readinessInput(
         recovery: Int?,
         checkIn: MorningCheckIn?,

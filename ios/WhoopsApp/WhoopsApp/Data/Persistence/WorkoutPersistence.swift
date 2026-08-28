@@ -313,6 +313,29 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
         try context.save()
     }
 
+    func deleteCompletedWorkout(id: String) async throws {
+        for movement in try context.fetch(FetchDescriptor<CompletedMovementRecord>())
+        where movement.workoutRecordID == id {
+            context.delete(movement)
+        }
+        let records = try context.fetch(FetchDescriptor<CompletedWorkoutRecord>())
+        guard let workout = records.first(where: { $0.id == id }) else {
+            try context.save()
+            return
+        }
+        let linkedPlanID = workout.plannedWorkoutID
+        context.delete(workout)
+        if let linkedPlanID,
+            !records.contains(where: { $0.id != id && $0.plannedWorkoutID == linkedPlanID }),
+            let plan = try context.fetch(FetchDescriptor<WorkoutPlanRecord>())
+                .first(where: { $0.id == linkedPlanID })
+        {
+            plan.status = WorkoutPlanStatus.planned.rawValue
+            plan.updatedAt = .now
+        }
+        try context.save()
+    }
+
     private static func plan(
         _ record: WorkoutPlanRecord,
         segments: [WorkoutSegmentRecord],

@@ -63,6 +63,12 @@
 		B00000000000000000000036 /* WhoopsApp/Domain/Models/TrendModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003A /* WhoopsApp/Domain/Models/TrendModels.swift */; };
 		B00000000000000000000037 /* WhoopsApp/Domain/Services/DeterministicTrendsEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003B /* WhoopsApp/Domain/Services/DeterministicTrendsEngine.swift */; };
 		B00000000000000000000038 /* WhoopsAppTests/TrendsMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003C /* WhoopsAppTests/TrendsMilestoneTests.swift */; };
+		B00000000000000000000039 /* WhoopsApp/App/FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003D /* WhoopsApp/App/FeatureFlags.swift */; };
+		B0000000000000000000003A /* WhoopsApp/Domain/Models/ExperimentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003E /* WhoopsApp/Domain/Models/ExperimentModels.swift */; };
+		B0000000000000000000003B /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003F /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift */; };
+		B0000000000000000000003C /* WhoopsApp/Data/Persistence/ExperimentPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000040 /* WhoopsApp/Data/Persistence/ExperimentPersistence.swift */; };
+		B0000000000000000000003D /* WhoopsApp/Features/Trends/ExperimentLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000041 /* WhoopsApp/Features/Trends/ExperimentLabView.swift */; };
+		B0000000000000000000003E /* WhoopsAppTests/ExperimentMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000042 /* WhoopsAppTests/ExperimentMilestoneTests.swift */; };
 		CBE5C84A30326AFA001C1E49 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = CBE5C84930326AFA001C1E49 /* AppIcon.icon */; };
 /* End PBXBuildFile section */
 
@@ -145,6 +151,12 @@
 		F0000000000000000000003A /* WhoopsApp/Domain/Models/TrendModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/TrendModels.swift; sourceTree = "<group>"; };
 		F0000000000000000000003B /* WhoopsApp/Domain/Services/DeterministicTrendsEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/DeterministicTrendsEngine.swift; sourceTree = "<group>"; };
 		F0000000000000000000003C /* WhoopsAppTests/TrendsMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/TrendsMilestoneTests.swift; sourceTree = "<group>"; };
+		F0000000000000000000003D /* WhoopsApp/App/FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/FeatureFlags.swift; sourceTree = "<group>"; };
+		F0000000000000000000003E /* WhoopsApp/Domain/Models/ExperimentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/ExperimentModels.swift; sourceTree = "<group>"; };
+		F0000000000000000000003F /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift; sourceTree = "<group>"; };
+		F00000000000000000000040 /* WhoopsApp/Data/Persistence/ExperimentPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Persistence/ExperimentPersistence.swift; sourceTree = "<group>"; };
+		F00000000000000000000041 /* WhoopsApp/Features/Trends/ExperimentLabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Trends/ExperimentLabView.swift; sourceTree = "<group>"; };
+		F00000000000000000000042 /* WhoopsAppTests/ExperimentMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/ExperimentMilestoneTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -236,6 +248,11 @@
 				F00000000000000000000037 /* WhoopsApp/Features/Training/MovementLibraryView.swift */,
 				F0000000000000000000003A /* WhoopsApp/Domain/Models/TrendModels.swift */,
 				F0000000000000000000003B /* WhoopsApp/Domain/Services/DeterministicTrendsEngine.swift */,
+				F0000000000000000000003D /* WhoopsApp/App/FeatureFlags.swift */,
+				F0000000000000000000003E /* WhoopsApp/Domain/Models/ExperimentModels.swift */,
+				F0000000000000000000003F /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift */,
+				F00000000000000000000040 /* WhoopsApp/Data/Persistence/ExperimentPersistence.swift */,
+				F00000000000000000000041 /* WhoopsApp/Features/Trends/ExperimentLabView.swift */,
 			);
 			name = WhoopsApp;
 			sourceTree = "<group>";
@@ -251,6 +268,7 @@
 				F00000000000000000000038 /* WhoopsAppTests/WODLabMovementImporterTests.swift */,
 				F00000000000000000000039 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift */,
 				F0000000000000000000003C /* WhoopsAppTests/TrendsMilestoneTests.swift */,
+				F00000000000000000000042 /* WhoopsAppTests/ExperimentMilestoneTests.swift */,
 			);
 			name = WhoopsAppTests;
 			sourceTree = "<group>";
@@ -460,6 +478,11 @@
 				B00000000000000000000033 /* WhoopsApp/Features/Training/MovementLibraryView.swift in Sources */,
 				B00000000000000000000036 /* WhoopsApp/Domain/Models/TrendModels.swift in Sources */,
 				B00000000000000000000037 /* WhoopsApp/Domain/Services/DeterministicTrendsEngine.swift in Sources */,
+				B00000000000000000000039 /* WhoopsApp/App/FeatureFlags.swift in Sources */,
+				B0000000000000000000003A /* WhoopsApp/Domain/Models/ExperimentModels.swift in Sources */,
+				B0000000000000000000003B /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift in Sources */,
+				B0000000000000000000003C /* WhoopsApp/Data/Persistence/ExperimentPersistence.swift in Sources */,
+				B0000000000000000000003D /* WhoopsApp/Features/Trends/ExperimentLabView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -475,6 +498,7 @@
 				B00000000000000000000034 /* WhoopsAppTests/WODLabMovementImporterTests.swift in Sources */,
 				B00000000000000000000035 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift in Sources */,
 				B00000000000000000000038 /* WhoopsAppTests/TrendsMilestoneTests.swift in Sources */,
+				B0000000000000000000003E /* WhoopsAppTests/ExperimentMilestoneTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -546,6 +570,7 @@
 				CODE_SIGN_ENTITLEMENTS = WhoopsApp/Resources/WhoopsApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 539UZYLF7U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WhoopsApp/Resources/Info.plist;
@@ -553,7 +578,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -572,6 +597,7 @@
 				CODE_SIGN_ENTITLEMENTS = WhoopsApp/Resources/WhoopsApp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 539UZYLF7U;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WhoopsApp/Resources/Info.plist;
@@ -579,7 +605,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 0.8.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

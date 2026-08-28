@@ -2,6 +2,9 @@ import Foundation
 @preconcurrency import HealthKit
 
 final class HealthKitClient: HealthKitReading, @unchecked Sendable {
+    private static let queryBatchSize = 500
+    private static let historyWindowDays = 180
+
     private final class ObserverCompletion: @unchecked Sendable {
         private let completion: () -> Void
 
@@ -42,13 +45,23 @@ final class HealthKitClient: HealthKitReading, @unchecked Sendable {
         let anchor = try anchorData.flatMap {
             try NSKeyedUnarchiver.unarchivedObject(ofClass: HKQueryAnchor.self, from: $0)
         }
+        let historyStart = Calendar.autoupdatingCurrent.date(
+            byAdding: .day,
+            value: -Self.historyWindowDays,
+            to: .now
+        )
+        let predicate = HKQuery.predicateForSamples(
+            withStart: historyStart,
+            end: nil,
+            options: []
+        )
 
         return try await withCheckedThrowingContinuation { continuation in
             let query = HKAnchoredObjectQuery(
                 type: sampleType,
-                predicate: nil,
+                predicate: predicate,
                 anchor: anchor,
-                limit: HKObjectQueryNoLimit
+                limit: Self.queryBatchSize
             ) { _, samples, deletedObjects, newAnchor, error in
                 if let error {
                     continuation.resume(throwing: error)
@@ -68,7 +81,8 @@ final class HealthKitClient: HealthKitReading, @unchecked Sendable {
                         returning: HealthKitChangeBatch(
                             samples: snapshots,
                             deletedSampleIDs: (deletedObjects ?? []).map(\.uuid),
-                            anchorData: archivedAnchor
+                            anchorData: archivedAnchor,
+                            hasMore: (samples ?? []).count == Self.queryBatchSize
                         )
                     )
                 } catch {

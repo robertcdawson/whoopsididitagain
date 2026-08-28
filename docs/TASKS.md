@@ -53,9 +53,19 @@ confirm a real 180-day import. No credential or personal health payload belongs 
 - [x] Add tests for partial access, idempotency, deletion, workout linking, and travel/DST days.
 - [x] Verify the Swift 6 app build and all iOS unit tests.
 
-Live acceptance remains: grant selected Health permissions on Robert's physical iPhone, confirm
-real samples import, and confirm an observer-driven update after the app is backgrounded. Apple
-does not support HealthKit background delivery in Simulator.
+Live acceptance remaining: confirm an observer-driven update after the app is backgrounded. Apple
+does not support HealthKit background delivery in Simulator. Authorization and a real 85,126-record
+import were verified on Robert's iPhone on August 27, 2026.
+
+Physical-device follow-up found August 27, 2026:
+
+- [x] Install and launch the app on Robert's iPhone.
+- [x] Complete Apple Health authorization with selected read categories.
+- [x] Replace the memory-unsafe unlimited first import with 180-day, 500-sample anchored pages.
+- [x] Commit every page before advancing its durable anchor and use fresh persistence contexts.
+- [x] Aggregate recent history in bounded pages and add paged-import regression coverage.
+- [x] Install the corrected build and confirm that real records import without a memory termination.
+- [ ] Confirm an observer-driven update after the app is backgrounded and a new sample arrives.
 
 ## Milestone 3: Daily Assessment and Symptom Logging
 
@@ -158,3 +168,35 @@ duplicates. Review the demand tags for any personal movement before relying on r
 Live acceptance remains: review Trends after enough personal history has accumulated, share one
 JSON and one CSV export to a private destination, and confirm that the summaries and wording match
 Robert's judgment. The deterministic calculations remain authoritative if narration is added later.
+
+## Milestone 6: Personal Experiment Laboratory
+
+- [x] Define the initial feature-flagged experiment contract and defer unsupported advanced models.
+- [x] Add versioned experiment, observation, outcome, and analysis domain models.
+- [x] Persist experiment definitions and one auditable observation per local day.
+- [x] Resolve supported outcomes from normalized local health, workout, and check-in history.
+- [x] Add deterministic, threshold-gated intervention-versus-comparison summaries.
+- [x] Add experiment list, editor, detail, observation, exclusion, and archive flows.
+- [x] Add an off-by-default local feature flag and experimental-data warning.
+- [x] Add persistence, resolution, analysis, missing-data, feature-gating, and UI tests.
+- [x] Update architecture, decision log, README status, and app version.
+- [x] Verify Swift formatting, iOS builds, unit tests, UI tests, and repository checks.
+
+Live acceptance remains: enable **Personal Experiment Lab** in Settings, create a two-condition
+experiment using a metric that already has local history, log days through the single daily check-in,
+and confirm the same-day or following-day outcome matches its source. Exclude one day with a reason
+and confirm it remains visible but leaves the sample count. Keep the feature disabled for decisions
+until both conditions reach the configured minimum and Robert's judgment supports using the result.
+
+### Acceptance simplification
+
+- [x] Add one Today/Lab daily check-in that saves choices across all active experiments.
+- [x] Explain that conditions classify what actually happened rather than schedule future behavior.
+- [x] Add explicit same-day and following-day outcome timing with safe defaults.
+- [x] Move the day-logging action to the top of experiment detail.
+- [x] Show custom condition names and exact remaining-day counts throughout detail and analysis.
+- [x] Preserve intentional same-experiment, same-day updates with an update notice.
+- [x] Cover timing, batch persistence, custom labels, and simplified UI behavior with tests.
+- [x] Let the user delete experiment days and whole experiments with clear confirmation.
+- [x] Audit user-entered records: delete standalone history, clear overrides, and explain why
+      referenced movement definitions are archived instead of deleted.

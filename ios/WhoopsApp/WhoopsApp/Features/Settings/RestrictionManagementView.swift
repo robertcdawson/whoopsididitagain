@@ -5,6 +5,7 @@ struct RestrictionManagementView: View {
 
     @State private var profiles: [RestrictionProfile] = []
     @State private var editingProfile: RestrictionProfile?
+    @State private var profilePendingDeletion: RestrictionProfile?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -34,7 +35,7 @@ struct RestrictionManagementView: View {
                     }
                     .swipeActions {
                         Button("Delete", role: .destructive) {
-                            Task { await delete(profile) }
+                            profilePendingDeletion = profile
                         }
                     }
                 }
@@ -71,12 +72,32 @@ struct RestrictionManagementView: View {
         } message: {
             Text(errorMessage ?? "Unknown error")
         }
+        .confirmationDialog(
+            "Delete this restriction?",
+            isPresented: deletionIsPresented,
+            titleVisibility: .visible,
+            presenting: profilePendingDeletion
+        ) { profile in
+            Button("Delete restriction", role: .destructive) {
+                Task { await delete(profile) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("This removes the restriction and its injury entry. This cannot be undone.")
+        }
     }
 
     private var errorIsPresented: Binding<Bool> {
         Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
+        )
+    }
+
+    private var deletionIsPresented: Binding<Bool> {
+        Binding(
+            get: { profilePendingDeletion != nil },
+            set: { if !$0 { profilePendingDeletion = nil } }
         )
     }
 
@@ -104,6 +125,7 @@ struct RestrictionManagementView: View {
     private func delete(_ profile: RestrictionProfile) async {
         do {
             try await repository.deleteRestriction(id: profile.id)
+            profilePendingDeletion = nil
             profiles = try await repository.restrictions()
         } catch {
             errorMessage = error.localizedDescription

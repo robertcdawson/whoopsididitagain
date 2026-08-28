@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @StateObject private var whoop: WhoopConnectionModel
     @StateObject private var healthKit: HealthKitConnectionModel
+    @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
     let assessmentRepository: any AssessmentRepository
 
     init(
@@ -133,8 +134,18 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
+                Section("Experimental features") {
+                    Toggle("Personal Experiment Lab", isOn: $experimentLabEnabled)
+                        .accessibilityIdentifier("experiment-lab-toggle")
+                    Text(
+                        "When enabled, Trends can compare intervention and comparison days using locally stored outcomes. Results are exploratory and are not medical advice."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+
                 Section("About") {
-                    LabeledContent("Foundation version", value: "0.7.0")
+                    LabeledContent("Foundation version", value: "0.8.0")
                 }
             }
             .navigationTitle("Settings")

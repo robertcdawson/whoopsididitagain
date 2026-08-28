@@ -32,10 +32,26 @@ final class WhoopsAppUITests: XCTestCase {
         app.tabBars.buttons["Trends"].tap()
 
         XCTAssertTrue(app.navigationBars["Trends"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Weekly review"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["WEEKLY REVIEW"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Most important change"].exists)
         XCTAssertTrue(app.staticTexts["What coincided"].exists)
         XCTAssertTrue(app.staticTexts["Next action"].exists)
+    }
+
+    @MainActor
+    func testExperimentLabOpensWhenFeatureFlagIsEnabled() throws {
+        let app = XCUIApplication()
+        app.launchEnvironment["WHOOPS_ENABLE_EXPERIMENT_LAB"] = "1"
+        app.launch()
+        app.tabBars.buttons["Trends"].tap()
+        let lab = app.buttons["experiment-lab-link"]
+        for _ in 0..<8 where !lab.exists { app.swipeUp() }
+        XCTAssertTrue(lab.waitForExistence(timeout: 5))
+        lab.tap()
+        XCTAssertTrue(app.navigationBars["Experiment Lab"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["new-experiment"].exists)
+        XCTAssertTrue(app.staticTexts["ONE DAILY CHECK-IN"].exists)
+        XCTAssertTrue(app.buttons["log-experiment-day"].exists)
     }
 
     @MainActor
@@ -84,9 +100,9 @@ final class WhoopsAppUITests: XCTestCase {
         if !details.isHittable { app.swipeUp() }
         details.tap()
 
-        XCTAssertTrue(app.staticTexts["Workout overview"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["WORKOUT OVERVIEW"].waitForExistence(timeout: 5))
         app.swipeUp()
-        XCTAssertTrue(app.staticTexts["Segment 1 · Work"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["SEGMENT 1 · WORK"].waitForExistence(timeout: 5))
         let prescription = app.descendants(matching: .any).matching(
             NSPredicate(
                 format: "identifier BEGINSWITH %@",

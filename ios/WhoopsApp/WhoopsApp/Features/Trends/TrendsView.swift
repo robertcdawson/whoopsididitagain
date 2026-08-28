@@ -6,7 +6,9 @@ struct TrendsView: View {
     let healthKitRepository: any HealthKitRepository
     let assessmentRepository: any AssessmentRepository
     let workoutRepository: any WorkoutRepository
+    let experimentRepository: any ExperimentRepository
 
+    @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
     @State private var snapshot: TrendsSnapshot?
     @State private var exportFiles: TrendsExportFiles?
     @State private var errorMessage: String?
@@ -23,6 +25,9 @@ struct TrendsView: View {
                         trainingSection(snapshot)
                         painSection(snapshot.painByMovement)
                         injurySection(snapshot.injuries)
+                        if FeatureFlags.experimentLabEnabled(storedValue: experimentLabEnabled) {
+                            experimentSection
+                        }
                         exportSection
                     }
                 } else if isLoading {
@@ -226,6 +231,26 @@ struct TrendsView: View {
         }
     }
 
+    private var experimentSection: some View {
+        Section("Advanced analytics") {
+            NavigationLink {
+                ExperimentLabView(
+                    experimentRepository: experimentRepository,
+                    whoopRepository: whoopRepository,
+                    healthKitRepository: healthKitRepository,
+                    assessmentRepository: assessmentRepository,
+                    workoutRepository: workoutRepository
+                )
+            } label: {
+                Label("Experiment Lab", systemImage: "flask")
+            }
+            .accessibilityIdentifier("experiment-lab-link")
+            Text("Experimental and descriptive. Results do not establish causation.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private var exportSection: some View {
         Section("Export local data") {
             if let exportFiles {
@@ -386,6 +411,7 @@ private struct MetricDetailView: View {
         whoopRepository: PreviewWhoopRepository(),
         healthKitRepository: PreviewHealthKitRepository(),
         assessmentRepository: PreviewAssessmentRepository(),
-        workoutRepository: PreviewWorkoutRepository()
+        workoutRepository: PreviewWorkoutRepository(),
+        experimentRepository: PreviewExperimentRepository()
     )
 }

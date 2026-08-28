@@ -2403,6 +2403,89 @@ The existing narration boundary remains optional and downstream of the structure
 
 ## Milestone 6: Advanced Personal Analytics
 
+**Implementation status:** Initial slice complete as of August 22, 2026, with the acceptance-driven
+logging and outcome-timing simplification defined below. The initial shippable scope is the
+feature-flagged Personal Experiment Laboratory; the remaining candidates stay deferred until their
+data requirements and validation thresholds are met.
+
+### Initial Deliverables
+
+- Local experiment definitions with a question, hypothesis, intervention, comparison condition,
+  primary outcome, secondary outcomes, inclusion and exclusion criteria, minimum observations,
+  potential confounders, analysis method, dates, and status.
+- One daily experiment check-in that can classify the day across every active experiment in one
+  save, while still allowing an individual day to be backfilled or corrected from an experiment.
+- Low-friction condition observations that reuse an outcome already stored by the app rather than
+  requiring the user to transcribe WHOOP or Apple Health values.
+- Deterministic intervention-versus-comparison summaries with separate sample sizes, means, an
+  observed difference, an evidence-status label, and explicit caveats.
+- Editable inclusion state, exclusion reason, confounders, and notes so a day can be corrected or
+  excluded without deleting its audit trail.
+- A local feature flag, disabled by default, with a plain-language experimental-data warning.
+
+### Initial Definition of Done
+
+- An experiment and its observations survive app relaunch.
+- Supported outcomes resolve by local calendar day from normalized WHOOP, Apple Health, completed
+  workout, or morning check-in history, using an explicit same-day or following-day measurement
+  rule; missing values remain visibly missing.
+- The analysis requires the configured minimum included observations in both conditions before
+  showing an observed difference.
+- Results use association language, report both condition counts, identify missing outcomes, and do
+  not calculate or imply causality, treatment efficacy, diagnosis, or medical advice.
+- Excluding an observation retains it with its reason and immediately removes it from analysis.
+- A logged condition day can be permanently deleted and immediately leaves the analysis. Deleting
+  an experiment also deletes the condition days owned by it after explicit confirmation.
+- Feature-disabled installations do not expose the laboratory in normal navigation.
+- Models, persistence, outcome resolution, analysis, feature gating, and the primary UI path have
+  automated coverage.
+- The app explains that a condition classifies what actually happened on the selected day rather
+  than scheduling a future action.
+- Condition-day summaries show the experiment's actual condition text, not generic intervention
+  and comparison labels.
+- The configured minimum is visibly described as a per-condition requirement and the detail view
+  states how many usable days remain in each condition.
+
+### Simplified implementation contract
+
+- `experiments-1.1.0` is a deterministic local calculation. It reports arithmetic means and the
+  intervention mean minus the comparison mean in the selected metric's native unit.
+- `minimumObservations` means the minimum number of included observations with resolved outcomes
+  required **per condition**. Before that threshold, the result is `Insufficient data` and no
+  difference is displayed. The user-selectable minimum begins at two, so the smallest complete
+  comparison contains four usable condition days.
+- A condition assignment is retrospective: it records which condition actually occurred on the
+  selected local day. It is not a promise, reminder, or scheduled assignment.
+- Each experiment explicitly measures its outcome on either the condition day or the following
+  local day. Morning physiology, sleep, and morning check-in outcomes default to the following day;
+  completed-workout session load defaults to the same day. The choice remains visible and editable.
+- One observation represents one experiment, local calendar day, and assigned condition. Saving the
+  same experiment and day intentionally updates that observation instead of creating a duplicate.
+- The primary logging path presents all active experiments in one daily check-in and saves their
+  selected conditions in one action. It is available from Today and Experiment Lab. `Not recorded`
+  leaves that experiment unchanged. Individual day editing remains available for backfill,
+  correction, context, and exclusion.
+- New experiments start active so their conditions immediately appear in the daily check-in; the
+  user may deliberately change the status to draft, completed, or archived.
+- Standalone user-entered history has a plain-language, confirmed delete or clear action. Shared
+  movement definitions remain archivable because saved workouts may refer to them; the app states
+  why it keeps those definitions.
+- The first supported primary outcomes are WHOOP Recovery, WHOOP resting heart rate, WHOOP HRV
+  RMSSD, sleep duration with WHOOP-first Apple Health fallback, Apple HRV SDNN, respiratory rate,
+  oxygen saturation, completed-workout session load, and morning pain with movement.
+- Automatic values are snapshots of normalized local history at analysis time. Experiment records
+  contain the assignment and user context, not copies of raw vendor payloads or credentials.
+- Evidence status is descriptive: `Insufficient data` until the threshold is met, `Exploratory`
+  afterward, and `More observations recommended` when condition counts are materially imbalanced.
+  No p-value or confidence interval is presented in this first version.
+- Other Milestone 6 candidates remain out of scope for this slice: predictive dose-response,
+  interval pacing, anomaly notifications, natural-language queries, webhooks, new equipment,
+  clinical export, and matched-day causal adjustment.
+
+The implemented `experiments-1.1.0` engine, SwiftData repository, Settings flag, and native
+Experiment Lab satisfy this initial contract. Personal-device acceptance remains before the flag
+should be considered for default enablement.
+
 ### Candidate Deliverables
 
 - Experiment laboratory

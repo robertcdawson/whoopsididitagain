@@ -108,6 +108,62 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
   behavior testable; and reduces the chance of exporting credentials or unnecessarily sensitive raw
   vendor payloads.
 
+## ADR-011: Make personal experiments assignment-light and threshold-gated
+
+- **Date:** August 22, 2026
+- **Status:** Accepted
+- **Decision:** `experiments-1.0.0` stores one intervention or comparison assignment per local day
+  and resolves its outcome from normalized local history at analysis time. It reports arithmetic
+  means and intervention-minus-comparison only after both conditions meet the configured minimum.
+  Exclusions remain auditable, and the off-by-default feature never claims causation or treatment
+  efficacy.
+- **Rationale:** Re-entering WHOOP or Apple Health measurements creates needless daily work and
+  inconsistent copies. Threshold gating, source reuse, sample counts, missing-value disclosure, and
+  preserved exclusions make an N-of-1 comparison inspectable without overstating an early personal
+  signal or introducing an immature predictive model.
+
+## ADR-012: Log experiment conditions once and make outcome timing explicit
+
+- **Date:** August 22, 2026
+- **Status:** Accepted
+- **Decision:** `experiments-1.1.0` treats a condition as a retrospective statement about what
+  actually happened on a local day. One daily check-in can update all active experiments in one
+  save. Each experiment explicitly resolves its outcome on either the condition day or the following
+  day, with following-day defaults for morning physiology, sleep, and morning check-ins and a
+  same-day default for completed-workout load. Individual day editing remains available for
+  correction, exclusion, and context.
+- **Rationale:** Separate per-experiment logging creates unnecessary daily work, while same-day-only
+  matching can place a morning outcome before the behavior it is intended to follow. A single daily
+  workflow and visible timing rule reduce interaction cost and make the temporal interpretation
+  auditable without pretending arbitrary condition text can always be inferred from a workout.
+
+## ADR-013: Delete standalone entries and preserve referenced definitions
+
+- **Date:** August 22, 2026
+- **Status:** Accepted
+- **Decision:** User-entered standalone records expose a confirmed delete or clear action from the
+  screen where they are viewed. Parent deletion removes records owned only by that parent, such as
+  an experiment's condition days or a completed workout's actual movements. Stable movement
+  definitions are archived instead of deleted because saved workouts may refer to them; the app
+  explains this exception in plain language. Required singleton configuration, currently the sleep
+  schedule, resets to defaults and explains why it cannot remain absent.
+- **Rationale:** A personal health log should not trap corrections or accidental entries. Explicit
+  ownership rules make deletion predictable, while archiving shared definitions keeps historical
+  workouts readable and avoids dangling references.
+
+## ADR-014: Bound HealthKit imports and advance anchors after durable pages
+
+- **Date:** August 27, 2026
+- **Status:** Accepted
+- **Decision:** HealthKit anchored queries cover the latest 180 days and return at most 500 samples
+  per page. The app persists each page in a fresh SwiftData context before saving that page's anchor
+  and requesting the next page. History projections aggregate recent records in similarly bounded
+  pages, and record counts use store-level counts rather than materializing every source record.
+- **Rationale:** The first physical-device import was terminated while HealthKit attempted to return
+  an unlimited result set, before any row reached SwiftData. Bounded queries and per-page anchors cap
+  peak memory, preserve resumability after interruption, and retain idempotent deletion and upsert
+  behavior without weakening source fidelity.
+
 ## Open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final

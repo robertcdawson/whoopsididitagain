@@ -7,10 +7,16 @@ import XCTest
 final class HealthKitMilestoneTests: XCTestCase {
     private final class FakeReader: HealthKitReading, @unchecked Sendable {
         let isHealthDataAvailable = true
-        let batches: [HealthMetric: HealthKitChangeBatch]
+        private let lock = NSLock()
+        private var batches: [HealthMetric: [HealthKitChangeBatch]]
+        private(set) var anchorsReceived: [HealthMetric: [Data?]] = [:]
 
         init(batches: [HealthMetric: HealthKitChangeBatch]) {
-            self.batches = batches
+            self.batches = batches.mapValues { [$0] }
+        }
+
+        init(pagedBatches: [HealthMetric: [HealthKitChangeBatch]]) {
+            batches = pagedBatches
         }
 
         func requestReadAuthorization() async throws {}
@@ -19,12 +25,20 @@ final class HealthKitMilestoneTests: XCTestCase {
             for metric: HealthMetric,
             anchorData: Data?
         ) async throws -> HealthKitChangeBatch {
-            batches[metric]
-                ?? HealthKitChangeBatch(
-                    samples: [],
-                    deletedSampleIDs: [],
-                    anchorData: Data(metric.rawValue.utf8)
-                )
+            lock.withLock {
+                anchorsReceived[metric, default: []].append(anchorData)
+                guard var pages = batches[metric], !pages.isEmpty else {
+                    return HealthKitChangeBatch(
+                        samples: [],
+                        deletedSampleIDs: [],
+                        anchorData: anchorData ?? Data(metric.rawValue.utf8),
+                        hasMore: false
+                    )
+                }
+                let next = pages.removeFirst()
+                batches[metric] = pages
+                return next
+            }
         }
 
         func startObserving(
@@ -68,7 +82,8 @@ final class HealthKitMilestoneTests: XCTestCase {
             .restingHeartRate: HealthKitChangeBatch(
                 samples: [sample],
                 deletedSampleIDs: [],
-                anchorData: Data("resting-anchor".utf8)
+                anchorData: Data("resting-anchor".utf8),
+                hasMore: false
             )
         ])
         let anchors = TestAnchorStore()
@@ -91,6 +106,62 @@ final class HealthKitMilestoneTests: XCTestCase {
     }
 
     @MainActor
+    func testPagedImportCommitsEachBatchAndAdvancesItsAnchor() async throws {
+        let firstAnchor = Data("page-one".utf8)
+        let finalAnchor = Data("page-two".utf8)
+        let reader = FakeReader(pagedBatches: [
+            .heartRate: [
+                HealthKitChangeBatch(
+                    samples: [
+                        snapshot(
+                            id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!,
+                            metric: .heartRate,
+                            start: "2026-08-16T14:00:00Z",
+                            end: "2026-08-16T14:01:00Z",
+                            value: 75,
+                            localDay: "2026-08-16"
+                        )
+                    ],
+                    deletedSampleIDs: [],
+                    anchorData: firstAnchor,
+                    hasMore: true
+                ),
+                HealthKitChangeBatch(
+                    samples: [
+                        snapshot(
+                            id: UUID(uuidString: "00000000-0000-0000-0000-000000000012")!,
+                            metric: .heartRate,
+                            start: "2026-08-16T14:02:00Z",
+                            end: "2026-08-16T14:03:00Z",
+                            value: 76,
+                            localDay: "2026-08-16"
+                        )
+                    ],
+                    deletedSampleIDs: [],
+                    anchorData: finalAnchor,
+                    hasMore: false
+                ),
+            ]
+        ])
+        let anchors = TestAnchorStore()
+        let persistence = HealthKitPersistence(container: try makeContainer())
+        let repository = LiveHealthKitRepository(
+            client: reader,
+            persistence: persistence,
+            anchors: anchors
+        )
+
+        let summary = try await repository.synchronize()
+
+        XCTAssertEqual(summary.recordCount, 2)
+        XCTAssertEqual(try persistence.history().recordCount, 2)
+        XCTAssertEqual(anchors.anchorData(for: .heartRate), finalAnchor)
+        XCTAssertEqual(reader.anchorsReceived[.heartRate]?.count, 2)
+        XCTAssertNil(reader.anchorsReceived[.heartRate]?[0])
+        XCTAssertEqual(reader.anchorsReceived[.heartRate]?[1], firstAnchor)
+    }
+
+    @MainActor
     func testRepeatedBatchIsIdempotentAndDeletionRemovesTheSourceRecord() throws {
         let container = try makeContainer()
         let persistence = HealthKitPersistence(container: container)
@@ -106,7 +177,8 @@ final class HealthKitMilestoneTests: XCTestCase {
         let batch = HealthKitChangeBatch(
             samples: [sample],
             deletedSampleIDs: [],
-            anchorData: Data("one".utf8)
+            anchorData: Data("one".utf8),
+            hasMore: false
         )
 
         _ = try persistence.apply(batch, importedAt: .now)
@@ -117,7 +189,8 @@ final class HealthKitMilestoneTests: XCTestCase {
             HealthKitChangeBatch(
                 samples: [],
                 deletedSampleIDs: [id],
-                anchorData: Data("two".utf8)
+                anchorData: Data("two".utf8),
+                hasMore: false
             ),
             importedAt: .now
         )
@@ -158,7 +231,8 @@ final class HealthKitMilestoneTests: XCTestCase {
             HealthKitChangeBatch(
                 samples: [healthSample],
                 deletedSampleIDs: [],
-                anchorData: Data("workout".utf8)
+                anchorData: Data("workout".utf8),
+                hasMore: false
             ),
             importedAt: .now
         )

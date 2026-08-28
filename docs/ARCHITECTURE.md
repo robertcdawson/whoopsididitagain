@@ -54,10 +54,12 @@ per-resource checkpoints.
 
 HealthKit synchronization uses one archived `HKQueryAnchor` per sample type. New samples are
 upserted by HealthKit UUID and deleted-object callbacks remove only the matching local source
-record. Observer queries trigger the same anchored path; background delivery is opportunistic.
-Every sample stores its source, source bundle, source-time-zone identifier, UTC offset, and local
-calendar day. This keeps historical day grouping stable when the phone later travels or crosses a
-DST boundary.
+record. The initial query window is 180 days. Each sample type is read in pages of at most 500;
+each page is committed in a fresh SwiftData context before its anchor advances. Daily history is
+also aggregated through bounded pages instead of retaining the full source table. Observer queries
+trigger the same anchored path; background delivery is opportunistic. Every sample stores its
+source, source bundle, source-time-zone identifier, UTC offset, and local calendar day. This keeps
+historical day grouping stable when the phone later travels or crosses a DST boundary.
 
 WHOOP and HealthKit workout records remain independent. A separate link records likely duplicates
 when start time and duration are close. WHOOP HRV RMSSD and Apple Health HRV SDNN are also separate
@@ -158,6 +160,40 @@ structure; CSV uses one record-type column and stable flattened fields. Raw WHOO
 credentials, app sessions, Keychain contents, backend environment values, and encryption material
 are outside the export boundary.
 
-Experiments, predictive dose-response modeling, free-form historical questions, and generated
-explanations remain outside Milestone 5. Parsing, scaling, readiness, trends, weekly review, and
-export do not depend on an LLM.
+## Personal Experiment Laboratory
+
+Milestone 6 introduces a separate local repository for experiment definitions and condition-day
+observations. One observation is upserted per experiment and local calendar day. A single daily
+check-in can save condition choices for every active experiment, avoiding a separate navigation and
+save flow per experiment. Today exposes that check-in when the feature is enabled and at least one
+experiment is active; Experiment Lab retains setup, backfill, correction, and analysis. New
+definitions start active unless the user deliberately chooses another status. Excluding a day
+retains its assignment, reason, confounders, and notes;
+the repository never copies vendor payloads or credentials into experiment records.
+
+User-entered records follow a deletion rule at the repository boundary. Experiment observations,
+experiments, morning check-ins, restrictions, workout plans, completed workouts, and readiness
+overrides can be removed from their owning screen after plain-language confirmation. Deleting an
+experiment cascades only to its condition-day observations. Deleting a completed workout removes
+its actual movement rows and returns its linked plan to planned when no other completion refers to
+that plan. Movement definitions are the exception: saved workouts may refer to their stable IDs, so
+the library archives them and tells the user that past workout details are being preserved.
+The sleep schedule is required to calculate deadlines, so its removal action restores documented
+defaults and explains why an empty state is not supported.
+
+`experiments-1.1.0` consumes the already normalized `TrendsSnapshot` plus morning check-ins. A
+condition records what actually happened on its local day. The experiment explicitly resolves its
+outcome on that same day or the following local day, preventing morning physiology from being
+silently attributed to a later behavior. It then compares included intervention and comparison
+means in the metric's native unit. A difference is withheld until both conditions meet the
+configured per-condition minimum. The output always reports both custom condition names, sample
+sizes, missing outcomes, remaining days, evidence status, and a non-causal caveat.
+
+The laboratory is behind an off-by-default `UserDefaults` feature flag exposed in Settings. A launch
+environment override exists for UI automation. The UI uses native NavigationStack, List, Form,
+Picker, Toggle, DatePicker, and sheet patterns, with Dynamic Type and VoiceOver-compatible labels.
+
+Predictive dose-response modeling, interval pacing, anomaly notifications, natural-language
+historical questions, webhooks, additional equipment integrations, clinical export, and matched-day
+causal adjustment remain deferred. Parsing, scaling, readiness, trends, experiments, weekly review,
+and export do not depend on an LLM.

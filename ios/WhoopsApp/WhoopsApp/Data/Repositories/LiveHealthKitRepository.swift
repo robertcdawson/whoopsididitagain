@@ -71,12 +71,38 @@ actor LiveHealthKitRepository: HealthKitRepository {
         metric: HealthMetric,
         at importedAt: Date
     ) async throws -> HealthKitPersistenceResult {
-        let batch = try await client.anchoredChanges(
-            for: metric,
-            anchorData: anchors.anchorData(for: metric)
+        var anchorData = anchors.anchorData(for: metric)
+        var importedCount = 0
+        var deletedCount = 0
+        var linkedWorkoutCount = 0
+
+        while true {
+            let batch = try await client.anchoredChanges(
+                for: metric,
+                anchorData: anchorData
+            )
+            guard !batch.hasMore || batch.anchorData != anchorData else {
+                throw AppError.invalidHealthKitResponse
+            }
+
+            let result = try await persistence.apply(
+                batch,
+                importedAt: importedAt,
+                linkWorkouts: metric == .workout && !batch.hasMore
+            )
+            anchors.saveAnchorData(batch.anchorData, for: metric)
+            importedCount += result.importedCount
+            deletedCount += result.deletedCount
+            linkedWorkoutCount = result.linkedWorkoutCount
+
+            guard batch.hasMore else { break }
+            anchorData = batch.anchorData
+        }
+
+        return HealthKitPersistenceResult(
+            importedCount: importedCount,
+            deletedCount: deletedCount,
+            linkedWorkoutCount: linkedWorkoutCount
         )
-        let result = try await persistence.apply(batch, importedAt: importedAt)
-        anchors.saveAnchorData(batch.anchorData, for: metric)
-        return result
     }
 }

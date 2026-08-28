@@ -10,6 +10,7 @@ struct AppTabView: View {
     let workoutScalingEngine: any WorkoutScalingEngine
     let workoutRepository: any WorkoutRepository
     let movementLibrary: any MovementLibraryRepository
+    let experimentRepository: any ExperimentRepository
 
     var body: some View {
         TabView {
@@ -18,7 +19,8 @@ struct AppTabView: View {
                 whoopRepository: whoopRepository,
                 healthKitRepository: healthKitRepository,
                 assessmentRepository: assessmentRepository,
-                readinessEngine: readinessEngine
+                readinessEngine: readinessEngine,
+                experimentRepository: experimentRepository
             )
             .tabItem {
                 Label("Today", systemImage: "sun.max")
@@ -39,7 +41,8 @@ struct AppTabView: View {
                 whoopRepository: whoopRepository,
                 healthKitRepository: healthKitRepository,
                 assessmentRepository: assessmentRepository,
-                workoutRepository: workoutRepository
+                workoutRepository: workoutRepository,
+                experimentRepository: experimentRepository
             )
             .tabItem {
                 Label("Trends", systemImage: "chart.xyaxis.line")
@@ -68,6 +71,7 @@ struct AppTabView: View {
         workoutParser: VersionedWorkoutParser(),
         workoutScalingEngine: DeterministicWorkoutScalingEngine(),
         workoutRepository: PreviewWorkoutRepository(),
-        movementLibrary: PreviewMovementLibraryRepository()
+        movementLibrary: PreviewMovementLibraryRepository(),
+        experimentRepository: PreviewExperimentRepository()
     )
 }

@@ -255,6 +255,12 @@ final class WorkoutMilestoneTests: XCTestCase {
         XCTAssertEqual(reloadedActual.movements.first?.actualLoadValue, 35)
         XCTAssertEqual(reloadedActual.sessionRPE, 7)
         XCTAssertEqual(reloadedActual.postSessionPain, 2)
+
+        try await repository.deleteCompletedWorkout(id: actual.id)
+        let remainingActuals = try await repository.completedWorkouts()
+        let restoredPlans = try await repository.plans()
+        XCTAssertTrue(remainingActuals.isEmpty)
+        XCTAssertEqual(restoredPlans.first?.status, .planned)
     }
 
     @MainActor

@@ -14,6 +14,7 @@ struct TrainingView: View {
     @State private var evaluations: [String: WorkoutEvaluation] = [:]
     @State private var editingPlan: WorkoutPlan?
     @State private var completingPlan: WorkoutPlan?
+    @State private var planPendingDeletion: WorkoutPlan?
     @State private var isParsing = false
     @State private var errorMessage: String?
 
@@ -87,9 +88,14 @@ struct TrainingView: View {
 
                     if !completedWorkouts.isEmpty {
                         FoundationCard(title: "Recent Actual Work") {
-                            ForEach(completedWorkouts.prefix(5)) { workout in
+                            ForEach(completedWorkouts) { workout in
                                 NavigationLink {
-                                    CompletedWorkoutDetailView(workout: workout)
+                                    CompletedWorkoutDetailView(workout: workout) {
+                                        try await workoutRepository.deleteCompletedWorkout(
+                                            id: workout.id
+                                        )
+                                        await load()
+                                    }
                                 } label: {
                                     HStack {
                                         VStack(alignment: .leading, spacing: 4) {
@@ -120,7 +126,7 @@ struct TrainingView: View {
                                 .accessibilityLabel(
                                     "View completed workout: \(workout.title)"
                                 )
-                                if workout.id != completedWorkouts.prefix(5).last?.id { Divider() }
+                                if workout.id != completedWorkouts.last?.id { Divider() }
                             }
                         }
                     }
@@ -149,6 +155,19 @@ struct TrainingView: View {
                 Button("OK", role: .cancel) { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "Unknown error")
+            }
+            .confirmationDialog(
+                "Delete this workout plan?",
+                isPresented: planDeletionIsPresented,
+                titleVisibility: .visible,
+                presenting: planPendingDeletion
+            ) { plan in
+                Button("Delete plan", role: .destructive) {
+                    Task { await deletePlan(plan) }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: { _ in
+                Text("This removes the plan. Any completed workout stays in your history.")
             }
         }
     }
@@ -226,7 +245,7 @@ struct TrainingView: View {
                 Spacer()
                 Menu {
                     Button("Delete plan", role: .destructive) {
-                        Task { await deletePlan(plan) }
+                        planPendingDeletion = plan
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -242,6 +261,13 @@ struct TrainingView: View {
         Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
+        )
+    }
+
+    private var planDeletionIsPresented: Binding<Bool> {
+        Binding(
+            get: { planPendingDeletion != nil },
+            set: { if !$0 { planPendingDeletion = nil } }
         )
     }
 
@@ -351,6 +377,7 @@ struct TrainingView: View {
     private func deletePlan(_ plan: WorkoutPlan) async {
         do {
             try await workoutRepository.deletePlan(id: plan.id)
+            planPendingDeletion = nil
             await load()
         } catch {
             errorMessage = error.localizedDescription
@@ -546,7 +573,12 @@ private struct WorkoutPlanDetailView: View {
 }
 
 private struct CompletedWorkoutDetailView: View {
+    @Environment(\.dismiss) private var dismiss
     let workout: CompletedWorkout
+    let onDelete: () async throws -> Void
+
+    @State private var isConfirmingDeletion = false
+    @State private var errorMessage: String?
 
     var body: some View {
         List {
@@ -596,10 +628,35 @@ private struct CompletedWorkoutDetailView: View {
                     }
                 }
             }
+
+            Section {
+                Button("Delete completed workout", role: .destructive) {
+                    isConfirmingDeletion = true
+                }
+            } footer: {
+                Text("Deleting removes this workout from your history and trend calculations.")
+            }
         }
         .accessibilityIdentifier("completed-workout-detail")
         .navigationTitle(workout.title)
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            "Delete this completed workout?",
+            isPresented: $isConfirmingDeletion,
+            titleVisibility: .visible
+        ) {
+            Button("Delete workout", role: .destructive) {
+                Task { await deleteWorkout() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes the workout and its movement results. This cannot be undone.")
+        }
+        .alert("Couldn’t delete workout", isPresented: errorIsPresented) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "Unknown error")
+        }
     }
 
     private var durationDescription: String {
@@ -620,6 +677,20 @@ private struct CompletedWorkoutDetailView: View {
         }
         if let duration = movement.actualDurationSeconds { values.append("\(duration) sec") }
         return values.isEmpty ? "No result entered" : values.joined(separator: " · ")
+    }
+
+    @MainActor
+    private func deleteWorkout() async {
+        do {
+            try await onDelete()
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private var errorIsPresented: Binding<Bool> {
+        Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
     }
 }
 

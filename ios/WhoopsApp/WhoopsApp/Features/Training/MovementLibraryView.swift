@@ -214,6 +214,10 @@ struct MovementLibraryView: View {
         do {
             try await repository.setArchived(archived, movementID: movement.id)
             await load()
+            if archived {
+                resultMessage =
+                    "This movement was archived instead of deleted so saved workouts keep their details. It no longer appears in the active library."
+            }
         } catch {
             errorMessage = error.localizedDescription
         }

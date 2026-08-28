@@ -76,6 +76,9 @@ actor PreviewWorkoutRepository: WorkoutRepository {
         savedWorkouts.removeAll { $0.id == workout.id }
         savedWorkouts.append(workout)
     }
+    func deleteCompletedWorkout(id: String) async throws {
+        savedWorkouts.removeAll { $0.id == id }
+    }
 }
 
 actor PreviewMovementLibraryRepository: MovementLibraryRepository {
@@ -146,6 +149,7 @@ actor PreviewAssessmentRepository: AssessmentRepository {
         checkIns.values.sorted { $0.timestamp > $1.timestamp }
     }
     func saveCheckIn(_ checkIn: MorningCheckIn) async throws { checkIns[checkIn.day] = checkIn }
+    func deleteCheckIn(day: String) async throws { checkIns[day] = nil }
     func restrictions() async throws -> [RestrictionProfile] { profiles }
     func saveRestriction(_ restriction: RestrictionProfile) async throws {
         profiles.removeAll { $0.id == restriction.id }
@@ -175,6 +179,47 @@ actor PreviewAssessmentRepository: AssessmentRepository {
         assessment.userOverride = recommendation
         assessment.overrideNote = note
         assessments[assessment.day] = assessment
+    }
+}
+
+actor PreviewExperimentRepository: ExperimentRepository {
+    private var definitions: [ExperimentDefinition] = []
+    private var savedObservations: [ExperimentObservation] = []
+
+    func experiments(includeArchived: Bool) async throws -> [ExperimentDefinition] {
+        definitions.filter { includeArchived || $0.status != .archived }
+    }
+
+    func saveExperiment(_ experiment: ExperimentDefinition) async throws {
+        definitions.removeAll { $0.id == experiment.id }
+        definitions.append(experiment)
+    }
+
+    func deleteExperiment(id: String) async throws {
+        definitions.removeAll { $0.id == id }
+        savedObservations.removeAll { $0.experimentID == id }
+    }
+
+    func observations(experimentID: String) async throws -> [ExperimentObservation] {
+        savedObservations.filter { $0.experimentID == experimentID }
+    }
+
+    func saveObservation(_ observation: ExperimentObservation) async throws {
+        try await saveObservations([observation])
+    }
+
+    func saveObservations(_ observations: [ExperimentObservation]) async throws {
+        for observation in observations {
+            savedObservations.removeAll {
+                $0.id == observation.id
+                    || ($0.experimentID == observation.experimentID && $0.day == observation.day)
+            }
+            savedObservations.append(observation)
+        }
+    }
+
+    func deleteObservation(id: String) async throws {
+        savedObservations.removeAll { $0.id == id }
     }
 }
 

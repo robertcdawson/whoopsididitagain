@@ -64,6 +64,7 @@ struct HealthKitChangeBatch: Equatable, Sendable {
     let samples: [HealthSampleSnapshot]
     let deletedSampleIDs: [UUID]
     let anchorData: Data
+    let hasMore: Bool
 }
 
 struct HealthKitDailySummary: Identifiable, Equatable, Sendable {
