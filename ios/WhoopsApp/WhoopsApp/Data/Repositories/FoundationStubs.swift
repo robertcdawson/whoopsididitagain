@@ -38,6 +38,8 @@ struct UnavailableHealthKitRepository: HealthKitRepository {
     func history(metrics _: [HealthMetric]) async throws -> HealthKitHistorySnapshot {
         try await history()
     }
+    func includedMetrics() async -> Set<HealthMetric> { Set(HealthMetric.allCases) }
+    func setMetric(_: HealthMetric, included _: Bool) async {}
     func startObserving() async {}
 }
 
@@ -58,6 +60,8 @@ struct PreviewHealthKitRepository: HealthKitRepository {
     func history(metrics _: [HealthMetric]) async throws -> HealthKitHistorySnapshot {
         try await history()
     }
+    func includedMetrics() async -> Set<HealthMetric> { Set(HealthMetric.allCases) }
+    func setMetric(_: HealthMetric, included _: Bool) async {}
     func startObserving() async {}
 }
 

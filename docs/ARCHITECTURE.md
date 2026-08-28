@@ -73,6 +73,13 @@ path; background delivery is opportunistic. Every sample stores its
 source, source bundle, source-time-zone identifier, UTC offset, and local calendar day. This keeps
 historical day grouping stable when the phone later travels or crosses a DST boundary.
 
+Apple Health authorization, local retention, and analytical inclusion are separate concerns.
+Settings stores exclusions as metric identifiers, while new metrics default to included. The live
+repository intersects every requested projection with this preference before returning data, clears
+its projection cache after a preference change, and notifies visible Today and Trends views to
+reload. Synchronization and normalized storage continue for excluded metrics so the choice remains
+instant and reversible.
+
 WHOOP and HealthKit workout records remain independent. A separate link records likely duplicates
 when start time and duration are close. WHOOP HRV RMSSD and Apple Health HRV SDNN are also separate
 metrics rather than a blended series.

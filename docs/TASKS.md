@@ -57,6 +57,7 @@ credential or personal health payload belongs in source control.
 - [x] Link likely WHOOP/HealthKit duplicate workouts without deleting either source record.
 - [x] Keep WHOOP HRV RMSSD and Apple Health HRV SDNN separate.
 - [x] Display a unified daily physiology view with visible source attribution.
+- [x] Add reversible per-metric Apple Health inclusion controls that apply to all projections.
 - [x] Tolerate partially denied read access and keep imported history available offline.
 - [x] Add tests for partial access, idempotency, deletion, workout linking, and travel/DST days.
 - [x] Verify the Swift 6 app build and all iOS unit tests.

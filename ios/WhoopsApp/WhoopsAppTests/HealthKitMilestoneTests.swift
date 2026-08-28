@@ -234,6 +234,62 @@ final class HealthKitMilestoneTests: XCTestCase {
     }
 
     @MainActor
+    func testExcludedMetricIsRetainedButRemovedFromEveryHistoryProjection() async throws {
+        let suiteName = "HealthKitMilestoneTests.metric-inclusion.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let inclusion = HealthMetricInclusionStore(defaults: defaults)
+        inclusion.setMetric(.hrvSDNN, included: false)
+
+        let persistence = HealthKitPersistence(container: try makeContainer())
+        let hrv = snapshot(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000031")!,
+            metric: .hrvSDNN,
+            start: "2026-08-16T14:00:00Z",
+            end: "2026-08-16T14:01:00Z",
+            value: 48,
+            localDay: "2026-08-16"
+        )
+        let restingHeartRate = snapshot(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000032")!,
+            metric: .restingHeartRate,
+            start: "2026-08-16T14:00:00Z",
+            end: "2026-08-16T14:01:00Z",
+            value: 54,
+            localDay: "2026-08-16"
+        )
+        _ = try persistence.apply(
+            HealthKitChangeBatch(
+                samples: [hrv, restingHeartRate],
+                deletedSampleIDs: [],
+                anchorData: Data("selection".utf8),
+                hasMore: false
+            ),
+            importedAt: .now
+        )
+        let repository = LiveHealthKitRepository(
+            client: FakeReader(batches: [:]),
+            persistence: persistence,
+            anchors: TestAnchorStore(),
+            metricInclusion: inclusion
+        )
+
+        let excludedHistory = try await repository.history()
+
+        XCTAssertEqual(excludedHistory.recordCount, 2)
+        XCTAssertEqual(excludedHistory.days.first?.restingHeartRate, 54)
+        XCTAssertNil(excludedHistory.days.first?.hrvSDNNMilliseconds)
+        let includedMetrics = await repository.includedMetrics()
+        XCTAssertFalse(includedMetrics.contains(.hrvSDNN))
+
+        await repository.setMetric(.hrvSDNN, included: true)
+        let restoredHistory = try await repository.history(metrics: [.hrvSDNN])
+
+        XCTAssertEqual(restoredHistory.recordCount, 2)
+        XCTAssertEqual(restoredHistory.days.first?.hrvSDNNMilliseconds, 48)
+    }
+
+    @MainActor
     func testDuplicateWorkoutLinkPreservesBothSourceRecords() throws {
         let container = try makeContainer()
         let whoopContext = ModelContext(container)

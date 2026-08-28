@@ -4,16 +4,19 @@ actor LiveHealthKitRepository: HealthKitRepository {
     private let client: any HealthKitReading
     private let persistence: HealthKitPersistence
     private let anchors: any HealthKitAnchorStoring
+    private let metricInclusion: any HealthMetricInclusionStoring
     private var historyCache: [String: HealthKitHistorySnapshot] = [:]
 
     init(
         client: any HealthKitReading,
         persistence: HealthKitPersistence,
-        anchors: any HealthKitAnchorStoring
+        anchors: any HealthKitAnchorStoring,
+        metricInclusion: any HealthMetricInclusionStoring = HealthMetricInclusionStore()
     ) {
         self.client = client
         self.persistence = persistence
         self.anchors = anchors
+        self.metricInclusion = metricInclusion
     }
 
     func authorizationState() -> HealthKitAuthorizationState {
@@ -61,12 +64,23 @@ actor LiveHealthKitRepository: HealthKitRepository {
     }
 
     func history(metrics: [HealthMetric]) async throws -> HealthKitHistorySnapshot {
-        let normalizedMetrics = Array(Set(metrics)).sorted { $0.rawValue < $1.rawValue }
+        let normalizedMetrics = Array(Set(metrics).intersection(metricInclusion.includedMetrics()))
+            .sorted { $0.rawValue < $1.rawValue }
         let cacheKey = normalizedMetrics.map(\.rawValue).joined(separator: "|")
         if let cached = historyCache[cacheKey] { return cached }
         let snapshot = try persistence.history(metrics: normalizedMetrics)
         historyCache[cacheKey] = snapshot
         return snapshot
+    }
+
+    func includedMetrics() async -> Set<HealthMetric> {
+        metricInclusion.includedMetrics()
+    }
+
+    func setMetric(_ metric: HealthMetric, included: Bool) async {
+        metricInclusion.setMetric(metric, included: included)
+        historyCache.removeAll()
+        NotificationCenter.default.post(name: .healthMetricInclusionDidChange, object: metric)
     }
 
     func startObserving() async {

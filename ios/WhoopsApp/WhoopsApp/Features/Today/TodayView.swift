@@ -21,6 +21,7 @@ struct TodayView: View {
     @State private var healthHistory = HealthKitHistorySnapshot(
         days: [], lastSyncAt: nil, recordCount: 0, linkedWorkoutCount: 0
     )
+    @State private var includedHealthMetrics = Set(HealthMetric.allCases)
     @State private var assessment: ReadinessAssessment?
     @State private var checkIn: MorningCheckIn?
     @State private var sleepSettings = SleepScheduleSettings.standard
@@ -124,14 +125,16 @@ struct TodayView: View {
                             value: latestHealthDay?.hrvSDNNMilliseconds.map {
                                 "\($0.formatted(.number.precision(.fractionLength(1)))) ms"
                             } ?? "—",
-                            source: "Apple Health"
+                            source: includedHealthMetrics.contains(.hrvSDNN)
+                                ? "Apple Health" : "Excluded in Settings"
                         )
                         metricRow(
                             "Respiratory rate",
                             value: latestHealthDay?.respiratoryRate.map {
                                 "\($0.formatted(.number.precision(.fractionLength(1)))) /min"
                             } ?? "—",
-                            source: "Apple Health"
+                            source: includedHealthMetrics.contains(.respiratoryRate)
+                                ? "Apple Health" : "Excluded in Settings"
                         )
                         metricRow(
                             "Sleep",
@@ -217,6 +220,11 @@ struct TodayView: View {
             }
             .navigationTitle("Today")
             .task { await refreshOnLaunch() }
+            .onReceive(
+                NotificationCenter.default.publisher(for: .healthMetricInclusionDidChange)
+            ) { _ in
+                Task { await loadHistory() }
+            }
             .sheet(isPresented: $isShowingCheckIn) {
                 MorningCheckInView(
                     checkIn: checkIn ?? MorningCheckIn.empty(day: currentDay),
@@ -367,6 +375,7 @@ struct TodayView: View {
                 timeZone: .autoupdatingCurrent
             )
             healthHistory = try await healthKitRepository.history()
+            includedHealthMetrics = await healthKitRepository.includedMetrics()
             let lastSyncAt = [history.lastSyncAt, healthHistory.lastSyncAt].compactMap { $0 }.max()
             if let lastSyncAt {
                 syncState =

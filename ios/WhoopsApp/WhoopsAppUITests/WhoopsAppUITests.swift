@@ -32,7 +32,7 @@ final class WhoopsAppUITests: XCTestCase {
         app.tabBars.buttons["Trends"].tap()
 
         XCTAssertTrue(app.navigationBars["Trends"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["WEEKLY REVIEW"].waitForExistence(timeout: 5))
+        XCTAssertTrue(staticText("Weekly review", in: app).waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Most important change"].exists)
         XCTAssertTrue(app.staticTexts["What coincided"].exists)
         XCTAssertTrue(app.staticTexts["Next action"].exists)
@@ -50,7 +50,7 @@ final class WhoopsAppUITests: XCTestCase {
         lab.tap()
         XCTAssertTrue(app.navigationBars["Experiment Lab"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["new-experiment"].exists)
-        XCTAssertTrue(app.staticTexts["ONE DAILY CHECK-IN"].exists)
+        XCTAssertTrue(staticText("One daily check-in", in: app).exists)
         XCTAssertTrue(app.buttons["log-experiment-day"].exists)
     }
 
@@ -100,9 +100,9 @@ final class WhoopsAppUITests: XCTestCase {
         if !details.isHittable { app.swipeUp() }
         details.tap()
 
-        XCTAssertTrue(app.staticTexts["WORKOUT OVERVIEW"].waitForExistence(timeout: 5))
+        XCTAssertTrue(staticText("Workout overview", in: app).waitForExistence(timeout: 5))
         app.swipeUp()
-        XCTAssertTrue(app.staticTexts["SEGMENT 1 · WORK"].waitForExistence(timeout: 5))
+        XCTAssertTrue(staticText("Segment 1 · Work", in: app).waitForExistence(timeout: 5))
         let prescription = app.descendants(matching: .any).matching(
             NSPredicate(
                 format: "identifier BEGINSWITH %@",
@@ -192,5 +192,12 @@ final class WhoopsAppUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["New Movement"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["movement-name"].exists)
         XCTAssertTrue(app.buttons["save-movement"].exists)
+    }
+
+    @MainActor
+    private func staticText(_ label: String, in app: XCUIApplication) -> XCUIElement {
+        app.staticTexts.matching(
+            NSPredicate(format: "label ==[c] %@", label)
+        ).firstMatch
     }
 }

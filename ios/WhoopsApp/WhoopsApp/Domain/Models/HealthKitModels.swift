@@ -29,6 +29,8 @@ enum HealthMetric: String, Codable, CaseIterable, Hashable, Identifiable, Sendab
         .workout,
     ]
 
+    static let userSelectableMetrics: [HealthMetric] = summaryMetrics
+
     var displayName: String {
         switch self {
         case .heartRate: "Heart rate"
@@ -47,6 +49,28 @@ enum HealthMetric: String, Codable, CaseIterable, Hashable, Identifiable, Sendab
         case .sleepingWristTemperature: "Sleeping wrist temperature"
         }
     }
+
+    var inclusionDescription: String {
+        switch self {
+        case .restingHeartRate: "Used for readiness and recovery trends."
+        case .hrvSDNN: "Kept separate from WHOOP HRV RMSSD."
+        case .respiratoryRate: "Used for readiness and recovery trends."
+        case .oxygenSaturation: "Used for recovery trends."
+        case .sleepAnalysis: "Used only when direct WHOOP sleep is unavailable."
+        case .activeEnergy: "Available for daily activity summaries."
+        case .exerciseTime: "Available for daily activity summaries."
+        case .workout: "Used to link likely duplicate WHOOP workouts."
+        case .heartRate, .walkingRunningDistance, .cyclingDistance, .vo2Max, .bodyMass,
+            .sleepingWristTemperature:
+            "Retained for future source-specific analysis."
+        }
+    }
+}
+
+extension Notification.Name {
+    static let healthMetricInclusionDidChange = Notification.Name(
+        "whoops.healthMetricInclusionDidChange"
+    )
 }
 
 enum HealthKitAuthorizationState: String, Equatable, Sendable {

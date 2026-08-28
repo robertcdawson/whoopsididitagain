@@ -29,3 +29,39 @@ final class HealthKitAnchorStore: HealthKitAnchorStoring, @unchecked Sendable {
         lock.withLock { defaults.set(data, forKey: Key.anchorPrefix + metric.rawValue) }
     }
 }
+
+final class HealthMetricInclusionStore: HealthMetricInclusionStoring, @unchecked Sendable {
+    private enum Key {
+        static let excludedMetrics = "healthkit.excluded-metrics.v1"
+    }
+
+    private let defaults: UserDefaults
+    private let lock = NSLock()
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
+
+    func includedMetrics() -> Set<HealthMetric> {
+        lock.withLock {
+            let excluded = Set(
+                (defaults.stringArray(forKey: Key.excludedMetrics) ?? []).compactMap(
+                    HealthMetric.init(rawValue:)
+                )
+            )
+            return Set(HealthMetric.allCases).subtracting(excluded)
+        }
+    }
+
+    func setMetric(_ metric: HealthMetric, included: Bool) {
+        lock.withLock {
+            var excluded = Set(defaults.stringArray(forKey: Key.excludedMetrics) ?? [])
+            if included {
+                excluded.remove(metric.rawValue)
+            } else {
+                excluded.insert(metric.rawValue)
+            }
+            defaults.set(excluded.sorted(), forKey: Key.excludedMetrics)
+        }
+    }
+}

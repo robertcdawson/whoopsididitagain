@@ -13,6 +13,7 @@ struct TrendsView: View {
     @State private var exportFiles: TrendsExportFiles?
     @State private var errorMessage: String?
     @State private var isLoading = false
+    @State private var includedHealthMetrics = Set(HealthMetric.allCases)
 
     var body: some View {
         NavigationStack {
@@ -42,6 +43,11 @@ struct TrendsView: View {
             }
             .navigationTitle("Trends")
             .task { await load() }
+            .onReceive(
+                NotificationCenter.default.publisher(for: .healthMetricInclusionDidChange)
+            ) { _ in
+                Task { await load() }
+            }
             .refreshable { await synchronizeAndLoad() }
             .alert("Couldn’t build trends", isPresented: errorIsPresented) {
                 Button("OK", role: .cancel) { errorMessage = nil }
@@ -90,7 +96,7 @@ struct TrendsView: View {
 
     private func recoverySection(_ snapshot: TrendsSnapshot) -> some View {
         Section("Recovery decomposition") {
-            ForEach(snapshot.recoveryMetrics) { metric in
+            ForEach(snapshot.recoveryMetrics.filter(isIncluded)) { metric in
                 NavigationLink {
                     MetricDetailView(metric: metric)
                 } label: {
@@ -102,6 +108,16 @@ struct TrendsView: View {
             )
             .font(.caption)
             .foregroundStyle(.secondary)
+        }
+    }
+
+    private func isIncluded(_ metric: MetricTrendSummary) -> Bool {
+        switch metric.id {
+        case "apple-hrv-sdnn": includedHealthMetrics.contains(.hrvSDNN)
+        case "apple-resting-heart-rate": includedHealthMetrics.contains(.restingHeartRate)
+        case "apple-respiratory-rate": includedHealthMetrics.contains(.respiratoryRate)
+        case "apple-oxygen-saturation": includedHealthMetrics.contains(.oxygenSaturation)
+        default: true
         }
     }
 
@@ -289,6 +305,7 @@ struct TrendsView: View {
         do {
             async let whoop = whoopRepository.history()
             async let health = healthKitRepository.history()
+            async let includedMetrics = healthKitRepository.includedMetrics()
             async let workouts = workoutRepository.completedWorkouts()
             async let plans = workoutRepository.plans()
             async let checkIns = assessmentRepository.checkIns()
@@ -307,6 +324,7 @@ struct TrendsView: View {
                 injuries: injuries
             )
             let result = DeterministicTrendsEngine().analyze(input)
+            includedHealthMetrics = await includedMetrics
             snapshot = result
             exportFiles = try TrendsExporter.write(input: input, snapshot: result)
         } catch {

@@ -26,7 +26,14 @@ protocol HealthKitRepository: Sendable {
     func synchronize() async throws -> HealthKitSyncSummary
     func history() async throws -> HealthKitHistorySnapshot
     func history(metrics: [HealthMetric]) async throws -> HealthKitHistorySnapshot
+    func includedMetrics() async -> Set<HealthMetric>
+    func setMetric(_ metric: HealthMetric, included: Bool) async
     func startObserving() async
+}
+
+protocol HealthMetricInclusionStoring: Sendable {
+    func includedMetrics() -> Set<HealthMetric>
+    func setMetric(_ metric: HealthMetric, included: Bool)
 }
 
 protocol HealthKitReading: Sendable {

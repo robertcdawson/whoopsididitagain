@@ -11,6 +11,7 @@ final class HealthKitConnectionModel: ObservableObject {
     )
     @Published private(set) var isWorking = false
     @Published private(set) var errorMessage: String?
+    @Published private(set) var includedMetrics = Set(HealthMetric.allCases)
 
     private let repository: any HealthKitRepository
 
@@ -28,10 +29,32 @@ final class HealthKitConnectionModel: ObservableObject {
 
     func refresh() async {
         authorizationState = await repository.authorizationState()
+        includedMetrics = await repository.includedMetrics()
         do {
             history = try await repository.history()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func isIncluded(_ metric: HealthMetric) -> Bool {
+        includedMetrics.contains(metric)
+    }
+
+    func setMetric(_ metric: HealthMetric, included: Bool) {
+        if included {
+            includedMetrics.insert(metric)
+        } else {
+            includedMetrics.remove(metric)
+        }
+        Task {
+            await repository.setMetric(metric, included: included)
+            includedMetrics = await repository.includedMetrics()
+            do {
+                history = try await repository.history()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -55,6 +78,7 @@ final class HealthKitConnectionModel: ObservableObject {
         do {
             try await operation()
             authorizationState = await repository.authorizationState()
+            includedMetrics = await repository.includedMetrics()
             history = try await repository.history()
         } catch {
             errorMessage = error.localizedDescription

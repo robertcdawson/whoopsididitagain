@@ -86,6 +86,11 @@ struct SettingsView: View {
                             Task { await healthKit.synchronize() }
                         }
                         .disabled(healthKit.isWorking)
+                        NavigationLink {
+                            AppleHealthDataInclusionView(model: healthKit)
+                        } label: {
+                            Label("Included Apple Health data", systemImage: "checklist")
+                        }
                     } else if healthKit.authorizationState == .notRequested {
                         Button("Allow Apple Health read access") {
                             Task { await healthKit.requestAccess() }
@@ -154,6 +159,41 @@ struct SettingsView: View {
                 await healthKit.refresh()
             }
         }
+    }
+}
+
+private struct AppleHealthDataInclusionView: View {
+    @ObservedObject var model: HealthKitConnectionModel
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(HealthMetric.userSelectableMetrics) { metric in
+                    Toggle(
+                        isOn: Binding(
+                            get: { model.isIncluded(metric) },
+                            set: { model.setMetric(metric, included: $0) }
+                        )
+                    ) {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(metric.displayName)
+                            Text(metric.inclusionDescription)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .accessibilityIdentifier("include-health-\(metric.rawValue)")
+                }
+            } header: {
+                Text("Use in the app")
+            } footer: {
+                Text(
+                    "Turning an input off excludes it from Today, readiness, trends, and experiment outcomes. Imported records remain on this device and can be used again if you turn it back on."
+                )
+            }
+        }
+        .navigationTitle("Apple Health Data")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

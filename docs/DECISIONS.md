@@ -180,6 +180,20 @@ behavior without weakening source fidelity.
   projections preserve deterministic semantics and source fidelity while making cost proportional
   to the data actually needed.
 
+## ADR-016: Exclude Apple Health inputs at the repository projection boundary
+
+- **Date:** August 27, 2026
+- **Status:** Accepted
+- **Decision:** Settings exposes a reversible inclusion toggle for every Apple Health metric used by
+  the app. Disabled metrics remain imported and auditable but are filtered at the HealthKit
+  repository boundary before Today, readiness, trends, or experiment analysis receives them.
+  Synchronization continues so re-enabling an input is immediate and does not require a destructive
+  re-import. New metric types default to included.
+- **Rationale:** Authorization and local retention are different from analytical inclusion. A stale,
+  partial, or unwanted source such as Apple Health HRV SDNN should be removable from every
+  downstream calculation without disconnecting Apple Health, losing other useful metrics, or
+  deleting recoverable source records.
+
 ## Open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final
