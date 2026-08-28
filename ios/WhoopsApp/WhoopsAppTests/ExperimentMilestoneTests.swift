@@ -242,6 +242,58 @@ final class ExperimentMilestoneTests: XCTestCase {
     }
 
     @MainActor
+    func testReplacingObservationMovesItWithoutLeavingOriginalDay() async throws {
+        let container = try ModelContainer(
+            for: ExperimentRecord.self,
+            ExperimentObservationRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = ExperimentPersistence(container: container)
+        let original = observation("2026-08-20", .intervention)
+        try await repository.saveObservation(original)
+
+        var moved = original
+        moved.day = "2026-08-21"
+        moved.id = ExperimentObservation.stableID(
+            experimentID: moved.experimentID,
+            day: moved.day
+        )
+        moved.condition = .comparison
+        try await repository.replaceObservation(id: original.id, with: moved)
+
+        let observations = try await repository.observations(experimentID: original.experimentID)
+        XCTAssertEqual(observations, [moved])
+    }
+
+    @MainActor
+    func testReplacingObservationRejectsAnOccupiedDestinationDay() async throws {
+        let container = try ModelContainer(
+            for: ExperimentRecord.self,
+            ExperimentObservationRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = ExperimentPersistence(container: container)
+        let original = observation("2026-08-20", .intervention)
+        let destination = observation("2026-08-21", .comparison)
+        try await repository.saveObservations([original, destination])
+
+        var moved = original
+        moved.day = destination.day
+        moved.id = destination.id
+        do {
+            try await repository.replaceObservation(id: original.id, with: moved)
+            XCTFail("Expected an occupied destination to be rejected")
+        } catch let error as ExperimentValidationError {
+            XCTAssertEqual(
+                error.errorDescription,
+                ExperimentValidationError.observationDayConflict.errorDescription)
+        }
+
+        let observations = try await repository.observations(experimentID: original.experimentID)
+        XCTAssertEqual(Set(observations.map(\.day)), Set([original.day, destination.day]))
+    }
+
+    @MainActor
     func testBatchSaveRecordsOneDailyCheckInAcrossExperiments() async throws {
         let container = try ModelContainer(
             for: ExperimentRecord.self,

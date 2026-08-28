@@ -214,6 +214,20 @@ actor PreviewExperimentRepository: ExperimentRepository {
         try await saveObservations([observation])
     }
 
+    func replaceObservation(id originalID: String, with observation: ExperimentObservation)
+        async throws
+    {
+        if savedObservations.contains(where: {
+            $0.id != originalID
+                && $0.experimentID == observation.experimentID
+                && $0.day == observation.day
+        }) {
+            throw ExperimentValidationError.observationDayConflict
+        }
+        savedObservations.removeAll { $0.id == originalID }
+        try await saveObservations([observation])
+    }
+
     func saveObservations(_ observations: [ExperimentObservation]) async throws {
         for observation in observations {
             savedObservations.removeAll {

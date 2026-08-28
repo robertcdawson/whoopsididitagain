@@ -271,6 +271,7 @@ struct ExperimentAnalysisInput: Equatable, Sendable {
 enum ExperimentValidationError: LocalizedError {
     case invalidDefinition
     case invalidObservation
+    case observationDayConflict
 
     var errorDescription: String? {
         switch self {
@@ -278,6 +279,8 @@ enum ExperimentValidationError: LocalizedError {
             "Complete the title, question, intervention, comparison, dates, and minimum observations."
         case .invalidObservation:
             "An excluded observation needs a reason."
+        case .observationDayConflict:
+            "That date already has a condition day. Choose another date or edit the existing entry."
         }
     }
 }

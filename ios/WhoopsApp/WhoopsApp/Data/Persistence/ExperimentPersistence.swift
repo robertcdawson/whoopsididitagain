@@ -163,13 +163,39 @@ final class ExperimentPersistence: ExperimentRepository, @unchecked Sendable {
         try await saveObservations([observation])
     }
 
+    func replaceObservation(id originalID: String, with observation: ExperimentObservation)
+        async throws
+    {
+        try validate(observation)
+        let records = try context.fetch(FetchDescriptor<ExperimentObservationRecord>())
+        if records.contains(where: {
+            $0.id != originalID
+                && $0.experimentID == observation.experimentID
+                && $0.day == observation.day
+        }) {
+            throw ExperimentValidationError.observationDayConflict
+        }
+
+        let confounders = try encoder.encode(observation.confounders)
+        if let original = records.first(where: { $0.id == originalID }) {
+            update(original, from: observation, confoundersData: confounders)
+        } else if let destination = records.first(where: {
+            $0.experimentID == observation.experimentID && $0.day == observation.day
+        }) {
+            update(destination, from: observation, confoundersData: confounders)
+        } else {
+            context.insert(
+                ExperimentObservationRecord(
+                    observation: observation,
+                    confoundersData: confounders
+                )
+            )
+        }
+        try context.save()
+    }
+
     func saveObservations(_ observations: [ExperimentObservation]) async throws {
-        guard
-            observations.allSatisfy({
-                $0.included
-                    || !$0.exclusionReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            })
-        else { throw ExperimentValidationError.invalidObservation }
+        try observations.forEach(validate)
         let records = try context.fetch(FetchDescriptor<ExperimentObservationRecord>())
         for observation in observations {
             let confounders = try encoder.encode(observation.confounders)
@@ -177,18 +203,7 @@ final class ExperimentPersistence: ExperimentRepository, @unchecked Sendable {
                 $0.id == observation.id
                     || ($0.experimentID == observation.experimentID && $0.day == observation.day)
             }) {
-                record.id = ExperimentObservation.stableID(
-                    experimentID: observation.experimentID,
-                    day: observation.day
-                )
-                record.experimentID = observation.experimentID
-                record.day = observation.day
-                record.condition = observation.condition.rawValue
-                record.included = observation.included
-                record.exclusionReason = observation.exclusionReason
-                record.confoundersData = confounders
-                record.notes = observation.notes
-                record.updatedAt = observation.updatedAt
+                update(record, from: observation, confoundersData: confounders)
             } else {
                 context.insert(
                     ExperimentObservationRecord(
@@ -199,6 +214,33 @@ final class ExperimentPersistence: ExperimentRepository, @unchecked Sendable {
             }
         }
         try context.save()
+    }
+
+    private func validate(_ observation: ExperimentObservation) throws {
+        guard
+            observation.included
+                || !observation.exclusionReason.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .isEmpty
+        else { throw ExperimentValidationError.invalidObservation }
+    }
+
+    private func update(
+        _ record: ExperimentObservationRecord,
+        from observation: ExperimentObservation,
+        confoundersData: Data
+    ) {
+        record.id = ExperimentObservation.stableID(
+            experimentID: observation.experimentID,
+            day: observation.day
+        )
+        record.experimentID = observation.experimentID
+        record.day = observation.day
+        record.condition = observation.condition.rawValue
+        record.included = observation.included
+        record.exclusionReason = observation.exclusionReason
+        record.confoundersData = confoundersData
+        record.notes = observation.notes
+        record.updatedAt = observation.updatedAt
     }
 
     func deleteObservation(id: String) async throws {

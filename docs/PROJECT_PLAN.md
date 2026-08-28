@@ -2463,8 +2463,8 @@ data requirements and validation thresholds are met.
   completed-workout session load defaults to the same day. The choice remains visible and editable.
 - One observation represents one experiment, local calendar day, and assigned condition. Saving the
   same experiment and day intentionally updates that observation instead of creating a duplicate.
-- Opening an existing condition day keeps its date fixed so correcting its condition or context
-  cannot accidentally create a second day. The separate log-or-update action selects other dates.
+- Changing an existing condition day's date moves that observation instead of creating a copy. A
+  move to a date that already has an observation is blocked rather than overwriting either entry.
 - The primary logging path presents all active experiments in one daily check-in and saves their
   selected conditions in one action. It is available from Today and Experiment Lab. `Not recorded`
   leaves that experiment unchanged. Individual day editing remains available for backfill,

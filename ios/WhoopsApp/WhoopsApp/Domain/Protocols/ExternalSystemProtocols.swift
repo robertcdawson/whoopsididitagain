@@ -109,6 +109,7 @@ protocol ExperimentRepository: Sendable {
     func deleteExperiment(id: String) async throws
     func observations(experimentID: String) async throws -> [ExperimentObservation]
     func saveObservation(_ observation: ExperimentObservation) async throws
+    func replaceObservation(id: String, with observation: ExperimentObservation) async throws
     func saveObservations(_ observations: [ExperimentObservation]) async throws
     func deleteObservation(id: String) async throws
 }
