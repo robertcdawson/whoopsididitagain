@@ -194,7 +194,7 @@ struct DeterministicTrendsEngine: Sendable {
         }
         for item in input.whoop.sleeps {
             guard !item.isNap, let minutes = item.sleepMinutes else { continue }
-            let localDay = calendar.startOfDay(for: item.start)
+            let localDay = calendar.startOfDay(for: item.end ?? item.start)
             pointsByDay[localDay] = TrendPoint(
                 id: "whoop-sleep:\(item.id)",
                 date: localDay,

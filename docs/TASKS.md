@@ -44,6 +44,7 @@ credential or personal health payload belongs in source control.
 - [x] Configure WHOOP credentials and backend encryption/session keys in Vercel environments.
 - [x] Register the production callback URI in the WHOOP Developer Dashboard.
 - [x] Connect the physical iPhone and confirm the real 180-day import.
+- [x] Use wake-day WHOOP stage totals for Today sleep, readiness, trends, and experiments.
 
 ## Milestone 2: HealthKit and Unified Timeline
 

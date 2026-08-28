@@ -173,7 +173,17 @@ final class WhoopPersistence: @unchecked Sendable {
         let stage = score?["stage_summary"]?.objectValue
         let inBed = stage?["total_in_bed_time_milli"]?.numberValue
         let awake = stage?["total_awake_time_milli"]?.numberValue
-        let sleepMinutes = inBed.map { Int(max(0, $0 - (awake ?? 0)) / 60_000) }
+        let noData = stage?["total_no_data_time_milli"]?.numberValue
+        let light = stage?["total_light_sleep_time_milli"]?.numberValue
+        let slowWave = stage?["total_slow_wave_sleep_time_milli"]?.numberValue
+        let rem = stage?["total_rem_sleep_time_milli"]?.numberValue
+        let sleepMilliseconds: Double?
+        if let light, let slowWave, let rem {
+            sleepMilliseconds = light + slowWave + rem
+        } else {
+            sleepMilliseconds = inBed.map { max(0, $0 - (awake ?? 0) - (noData ?? 0)) }
+        }
+        let sleepMinutes = sleepMilliseconds.map { Int(($0 / 60_000).rounded()) }
         return SleepHistoryItem(
             id: record.id,
             start: start,

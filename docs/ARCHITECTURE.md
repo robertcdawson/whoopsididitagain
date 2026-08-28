@@ -30,6 +30,10 @@ HealthKit access is read-only and never passes through the backend. The app requ
 sample type independently, so categories the user denies behave as empty sources while allowed
 categories continue synchronizing.
 
+Direct WHOOP sleep is authoritative when available. Primary overnight sleep is assigned to its
+wake day, and duration is the rounded sum of light, slow-wave, and REM stages. Apple Health sleep
+is used only as a fallback for a day without a completed primary WHOOP sleep.
+
 ## WHOOP connection
 
 1. The app creates a stable installation UUID in Keychain.

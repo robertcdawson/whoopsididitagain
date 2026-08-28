@@ -135,9 +135,12 @@ struct TodayView: View {
                         )
                         metricRow(
                             "Sleep",
-                            value: latestHealthDay?.sleepMinutes.map(Self.duration)
-                                ?? latestWhoopSleep?.sleepMinutes.map(Self.duration) ?? "—",
-                            source: latestHealthDay?.sleepMinutes == nil ? "WHOOP" : "Apple Health"
+                            value: latestWhoopSleep?.sleepMinutes.map(Self.duration)
+                                ?? latestHealthDay?.sleepMinutes.map(Self.duration) ?? "—",
+                            source: latestWhoopSleep?.sleepMinutes != nil
+                                ? "WHOOP"
+                                : latestHealthDay?.sleepMinutes != nil
+                                    ? "Apple Health" : "WHOOP / Apple Health"
                         )
                         if let sources = latestHealthDay?.sources, !sources.isEmpty {
                             Text("Apple Health sources: \(sources.joined(separator: ", "))")
@@ -358,7 +361,11 @@ struct TodayView: View {
             let history = try await whoopRepository.history()
             whoopHistory = history
             latestRecovery = history.recoveries.first
-            latestWhoopSleep = history.sleeps.first(where: { !$0.isNap })
+            latestWhoopSleep = TodaySleepSelector.primarySleep(
+                for: currentDay,
+                in: history.sleeps,
+                timeZone: .autoupdatingCurrent
+            )
             healthHistory = try await healthKitRepository.history()
             let lastSyncAt = [history.lastSyncAt, healthHistory.lastSyncAt].compactMap { $0 }.max()
             if let lastSyncAt {
@@ -437,7 +444,7 @@ struct TodayView: View {
                             ? appleRestingHeartRates.dropFirst()
                             : whoopRestingHeartRates.dropFirst()).reversed()
                     ),
-                    sleepMinutes: latestHealthDay?.sleepMinutes ?? latestWhoopSleep?.sleepMinutes
+                    sleepMinutes: latestWhoopSleep?.sleepMinutes ?? latestHealthDay?.sleepMinutes
                 ),
                 checkIn: checkIn,
                 activeRestrictions: restrictions,
@@ -493,6 +500,19 @@ struct TodayView: View {
         } catch {
             assessmentError = error.localizedDescription
             return false
+        }
+    }
+}
+
+enum TodaySleepSelector {
+    static func primarySleep(
+        for day: String,
+        in sleeps: [SleepHistoryItem],
+        timeZone: TimeZone
+    ) -> SleepHistoryItem? {
+        sleeps.first {
+            !$0.isNap
+                && HealthDayKey.day(containing: $0.end ?? $0.start, timeZone: timeZone) == day
         }
     }
 }

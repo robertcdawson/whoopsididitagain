@@ -73,8 +73,8 @@ final class TrendsMilestoneTests: XCTestCase {
         ]
         let whoopSleep = SleepHistoryItem(
             id: "whoop-19",
-            start: date("2026-08-19T06:00:00Z"),
-            end: date("2026-08-19T14:20:00Z"),
+            start: date("2026-08-18T22:00:00Z"),
+            end: date("2026-08-19T06:20:00Z"),
             isNap: false,
             sleepPerformance: 88,
             sleepMinutes: 500
