@@ -2444,7 +2444,9 @@ data requirements and validation thresholds are met.
 - Condition-day summaries show the experiment's actual condition text, not generic intervention
   and comparison labels.
 - The configured minimum is visibly described as a per-condition requirement and the detail view
-  states how many usable days remain in each condition.
+  states how many usable days remain in each condition. Logged assignments remain visibly distinct
+  from assignments with a resolved outcome, including a source-specific explanation when an
+  outcome is unavailable.
 
 ### Simplified implementation contract
 
@@ -2475,6 +2477,8 @@ data requirements and validation thresholds are met.
   oxygen saturation, completed-workout session load, and morning pain with movement.
 - Automatic values are snapshots of normalized local history at analysis time. Experiment records
   contain the assignment and user context, not copies of raw vendor payloads or credentials.
+- Condition days load and save independently from outcome analysis. Analysis reads only the local
+  repository source required by the selected outcome and does not scan unrelated health samples.
 - Evidence status is descriptive: `Insufficient data` until the threshold is met, `Exploratory`
   afterward, and `More observations recommended` when condition counts are materially imbalanced.
   No p-value or confidence interval is presented in this first version.

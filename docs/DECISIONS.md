@@ -162,7 +162,23 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
 - **Rationale:** The first physical-device import was terminated while HealthKit attempted to return
   an unlimited result set, before any row reached SwiftData. Bounded queries and per-page anchors cap
   peak memory, preserve resumability after interruption, and retain idempotent deletion and upsert
-  behavior without weakening source fidelity.
+behavior without weakening source fidelity.
+
+## ADR-015: Build projections from source-specific, keyset-paged history
+
+- **Date:** August 27, 2026
+- **Status:** Accepted
+- **Decision:** Keep normalized source records as the local source of truth, but build UI projections
+  only from the metrics and repositories they require. HealthKit history uses metric-filtered,
+  stable-ID keyset pages over the existing unique index and a cache invalidated by every committed
+  sync page. Experiment
+  condition days load independently from analysis, and condition-day saves do not wait for analysis
+  refresh. Experiment results display logged counts separately from counts with resolved outcomes.
+- **Rationale:** A physical-device import produced 85,126 HealthKit records, of which 66,724 were
+  raw heart-rate samples not used by the current daily projection. Repeatedly scanning and sorting
+  that full table on the main actor made experiment loading and saving appear stalled. Source-specific
+  projections preserve deterministic semantics and source fidelity while making cost proportional
+  to the data actually needed.
 
 ## Open decisions
 

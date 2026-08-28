@@ -89,7 +89,6 @@ struct HealthKitPersistenceResult: Sendable {
     let linkedWorkoutCount: Int
 }
 
-@MainActor
 final class HealthKitPersistence: @unchecked Sendable {
     private struct DailyAccumulator {
         var restingHeartRateTotal = 0.0
@@ -210,10 +209,22 @@ final class HealthKitPersistence: @unchecked Sendable {
         let context = ModelContext(container)
         context.autosaveEnabled = false
         var deletedCount = 0
+        let requestedRecordIDs = Array(
+            Set(
+                batch.samples.map { HealthKitSourceRecord.recordID(for: $0.id) }
+                    + batch.deletedSampleIDs.map(HealthKitSourceRecord.recordID(for:))
+            )
+        )
+        let existingRecords = try context.fetch(
+            FetchDescriptor<HealthKitSourceRecord>(
+                predicate: #Predicate { requestedRecordIDs.contains($0.id) }
+            )
+        )
+        var recordsByID = Dictionary(uniqueKeysWithValues: existingRecords.map { ($0.id, $0) })
 
         for sampleID in batch.deletedSampleIDs {
             let recordID = HealthKitSourceRecord.recordID(for: sampleID)
-            if let record = try healthRecord(id: recordID, in: context) {
+            if let record = recordsByID.removeValue(forKey: recordID) {
                 context.delete(record)
                 deletedCount += 1
             }
@@ -221,7 +232,7 @@ final class HealthKitPersistence: @unchecked Sendable {
 
         for snapshot in batch.samples {
             let recordID = HealthKitSourceRecord.recordID(for: snapshot.id)
-            if let record = try healthRecord(id: recordID, in: context) {
+            if let record = recordsByID[recordID] {
                 record.update(from: snapshot, importedAt: importedAt)
             } else {
                 context.insert(HealthKitSourceRecord(snapshot: snapshot, importedAt: importedAt))
@@ -240,34 +251,36 @@ final class HealthKitPersistence: @unchecked Sendable {
         )
     }
 
-    func history(limit: Int = 180) throws -> HealthKitHistorySnapshot {
+    func history(
+        limit: Int = 180,
+        metrics: [HealthMetric] = HealthMetric.summaryMetrics
+    ) throws -> HealthKitHistorySnapshot {
         let metadataContext = ModelContext(container)
-        var latestDescriptor = FetchDescriptor<HealthKitSourceRecord>(
-            sortBy: [SortDescriptor(\.startAt, order: .reverse)]
-        )
-        latestDescriptor.fetchLimit = 1
-        let latestStartAt = try metadataContext.fetch(latestDescriptor).first?.startAt
         let cutoff =
-            latestStartAt.flatMap {
-                Calendar.autoupdatingCurrent.date(byAdding: .day, value: -limit, to: $0)
-            } ?? .distantFuture
+            Calendar.autoupdatingCurrent.date(byAdding: .day, value: -limit, to: .now)
+            ?? .distantFuture
 
         var grouped: [String: DailyAccumulator] = [:]
-        var offset = 0
+        let metricNames = Array(Set(metrics)).map(\.rawValue)
+        var lastRecordID = ""
         while true {
             let context = ModelContext(container)
             var descriptor = FetchDescriptor<HealthKitSourceRecord>(
-                predicate: #Predicate { $0.startAt >= cutoff },
-                sortBy: [SortDescriptor(\.startAt, order: .reverse)]
+                predicate: #Predicate {
+                    $0.startAt >= cutoff && metricNames.contains($0.metric)
+                        && $0.id > lastRecordID
+                },
+                sortBy: [SortDescriptor(\.id)]
             )
             descriptor.fetchLimit = Self.historyPageSize
-            descriptor.fetchOffset = offset
             let records = try context.fetch(descriptor)
             for record in records {
                 grouped[record.localDay, default: DailyAccumulator()].add(record)
             }
-            guard records.count == Self.historyPageSize else { break }
-            offset += records.count
+            guard records.count == Self.historyPageSize, let finalID = records.last?.id else {
+                break
+            }
+            lastRecordID = finalID
         }
         let days = grouped.keys.sorted(by: >).prefix(limit).map {
             grouped[$0, default: DailyAccumulator()].summary(day: $0)
@@ -284,17 +297,6 @@ final class HealthKitPersistence: @unchecked Sendable {
             recordCount: try metadataContext.fetchCount(FetchDescriptor<HealthKitSourceRecord>()),
             linkedWorkoutCount: try metadataContext.fetchCount(FetchDescriptor<WorkoutSourceLink>())
         )
-    }
-
-    private func healthRecord(
-        id: String,
-        in context: ModelContext
-    ) throws -> HealthKitSourceRecord? {
-        var descriptor = FetchDescriptor<HealthKitSourceRecord>(
-            predicate: #Predicate { $0.id == id }
-        )
-        descriptor.fetchLimit = 1
-        return try context.fetch(descriptor).first
     }
 
     private func linkLikelyDuplicateWorkouts(

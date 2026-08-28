@@ -131,23 +131,32 @@ final class ExperimentPersistence: ExperimentRepository, @unchecked Sendable {
     }
 
     func deleteExperiment(id: String) async throws {
-        for observation in try context.fetch(FetchDescriptor<ExperimentObservationRecord>())
-        where observation.experimentID == id {
+        let experimentID = id
+        for observation in try context.fetch(
+            FetchDescriptor<ExperimentObservationRecord>(
+                predicate: #Predicate { $0.experimentID == experimentID }
+            )
+        ) {
             context.delete(observation)
         }
-        if let experiment = try context.fetch(FetchDescriptor<ExperimentRecord>())
-            .first(where: { $0.id == id })
-        {
+        var experimentDescriptor = FetchDescriptor<ExperimentRecord>(
+            predicate: #Predicate { $0.id == experimentID }
+        )
+        experimentDescriptor.fetchLimit = 1
+        if let experiment = try context.fetch(experimentDescriptor).first {
             context.delete(experiment)
         }
         try context.save()
     }
 
     func observations(experimentID: String) async throws -> [ExperimentObservation] {
-        try context.fetch(FetchDescriptor<ExperimentObservationRecord>())
-            .filter { $0.experimentID == experimentID }
-            .compactMap(observation)
-            .sorted { $0.day > $1.day }
+        try context.fetch(
+            FetchDescriptor<ExperimentObservationRecord>(
+                predicate: #Predicate { $0.experimentID == experimentID },
+                sortBy: [SortDescriptor(\.day, order: .reverse)]
+            )
+        )
+        .compactMap(observation)
     }
 
     func saveObservation(_ observation: ExperimentObservation) async throws {
@@ -193,9 +202,12 @@ final class ExperimentPersistence: ExperimentRepository, @unchecked Sendable {
     }
 
     func deleteObservation(id: String) async throws {
-        if let observation = try context.fetch(FetchDescriptor<ExperimentObservationRecord>())
-            .first(where: { $0.id == id })
-        {
+        let observationID = id
+        var descriptor = FetchDescriptor<ExperimentObservationRecord>(
+            predicate: #Predicate { $0.id == observationID }
+        )
+        descriptor.fetchLimit = 1
+        if let observation = try context.fetch(descriptor).first {
             context.delete(observation)
         }
         try context.save()

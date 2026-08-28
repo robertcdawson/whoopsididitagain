@@ -3,6 +3,7 @@ import Foundation
 actor LiveWhoopRepository: WhoopRepository {
     private let client: BackendClient
     private let persistence: WhoopPersistence
+    private var cachedHistory: WhoopHistorySnapshot?
 
     init(client: BackendClient, persistence: WhoopPersistence) {
         self.client = client
@@ -32,7 +33,8 @@ actor LiveWhoopRepository: WhoopRepository {
 
     func synchronize() async throws -> WhoopSyncSummary {
         let response = try await client.synchronize()
-        let count = try await persistence.upsert(response)
+        let count = try persistence.upsert(response)
+        cachedHistory = nil
         return WhoopSyncSummary(
             syncedAt: response.completedAt,
             recordCount: count,
@@ -41,13 +43,17 @@ actor LiveWhoopRepository: WhoopRepository {
     }
 
     func history() async throws -> WhoopHistorySnapshot {
-        try await persistence.history()
+        if let cachedHistory { return cachedHistory }
+        let history = try persistence.history()
+        cachedHistory = history
+        return history
     }
 
     func disconnect(deleteLocalHistory: Bool) async throws {
         try await client.disconnect()
         if deleteLocalHistory {
-            try await persistence.deleteAllWhoopRecords()
+            try persistence.deleteAllWhoopRecords()
+            cachedHistory = nil
         }
     }
 }

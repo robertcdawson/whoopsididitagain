@@ -31,6 +31,12 @@ struct DeterministicExperimentEngine: Sendable {
                 )
             }
         let included = resolved.filter { $0.observation.included && $0.outcomeValue != nil }
+        let loggedInterventionCount = resolved.filter {
+            $0.observation.included && $0.observation.condition == .intervention
+        }.count
+        let loggedComparisonCount = resolved.filter {
+            $0.observation.included && $0.observation.condition == .comparison
+        }.count
         let interventionValues = included.compactMap {
             $0.observation.condition == .intervention ? $0.outcomeValue : nil
         }
@@ -65,7 +71,7 @@ struct DeterministicExperimentEngine: Sendable {
                 "\(experiment.intervention): mean \(format(interventionMean)) \(experiment.primaryOutcome.unit) across \(interventionValues.count) days. \(experiment.comparisonCondition): mean \(format(comparisonMean)) \(experiment.primaryOutcome.unit) across \(comparisonValues.count) days. The observed association was \(signed(difference)) \(experiment.primaryOutcome.unit) (first condition minus second condition)."
         } else {
             summary =
-                "Not enough usable days yet. \(experiment.intervention): \(interventionValues.count) of \(experiment.minimumObservations). \(experiment.comparisonCondition): \(comparisonValues.count) of \(experiment.minimumObservations). A difference appears only after both conditions reach the minimum."
+                "Not enough usable outcome days yet. \(experiment.intervention): \(interventionValues.count) usable of \(experiment.minimumObservations) required (\(loggedInterventionCount) logged). \(experiment.comparisonCondition): \(comparisonValues.count) usable of \(experiment.minimumObservations) required (\(loggedComparisonCount) logged). A difference appears only after both conditions reach the minimum."
         }
         let missingText =
             missingCount == 0
@@ -75,6 +81,8 @@ struct DeterministicExperimentEngine: Sendable {
             version: Self.version,
             outcome: experiment.primaryOutcome,
             observations: resolved,
+            interventionLoggedCount: loggedInterventionCount,
+            comparisonLoggedCount: loggedComparisonCount,
             interventionCount: interventionValues.count,
             comparisonCount: comparisonValues.count,
             missingOutcomeCount: missingCount,
@@ -151,5 +159,59 @@ struct DeterministicExperimentEngine: Sendable {
 
     private func signed(_ value: Double) -> String {
         "\(value >= 0 ? "+" : "")\(value.formatted(.number.precision(.fractionLength(1))))"
+    }
+}
+
+struct ExperimentAnalysisInputLoader: Sendable {
+    let whoopRepository: any WhoopRepository
+    let healthKitRepository: any HealthKitRepository
+    let assessmentRepository: any AssessmentRepository
+    let workoutRepository: any WorkoutRepository
+
+    func load(for outcome: ExperimentOutcome) async throws -> ExperimentAnalysisInput {
+        var whoop = WhoopHistorySnapshot(recoveries: [], sleeps: [], lastSyncAt: nil)
+        var healthKit = HealthKitHistorySnapshot(
+            days: [],
+            lastSyncAt: nil,
+            recordCount: 0,
+            linkedWorkoutCount: 0
+        )
+        var workouts: [CompletedWorkout] = []
+        var checkIns: [MorningCheckIn] = []
+
+        switch outcome {
+        case .whoopRecovery, .whoopRestingHeartRate, .whoopHRVRMSSD:
+            whoop = try await whoopRepository.history()
+        case .sleepDuration:
+            async let whoopHistory = whoopRepository.history()
+            async let healthHistory = healthKitRepository.history(metrics: [.sleepAnalysis])
+            (whoop, healthKit) = try await (whoopHistory, healthHistory)
+        case .appleHRVSDNN:
+            healthKit = try await healthKitRepository.history(metrics: [.hrvSDNN])
+        case .respiratoryRate:
+            healthKit = try await healthKitRepository.history(metrics: [.respiratoryRate])
+        case .oxygenSaturation:
+            healthKit = try await healthKitRepository.history(metrics: [.oxygenSaturation])
+        case .trainingLoad:
+            workouts = try await workoutRepository.completedWorkouts()
+        case .morningPainWithMovement:
+            checkIns = try await assessmentRepository.checkIns()
+        }
+
+        let input = TrendsInput(
+            generatedAt: .now,
+            whoop: whoop,
+            healthKit: healthKit,
+            workouts: workouts,
+            plans: [],
+            checkIns: checkIns,
+            assessments: [],
+            restrictions: [],
+            injuries: []
+        )
+        return ExperimentAnalysisInput(
+            trends: DeterministicTrendsEngine().analyze(input),
+            checkIns: checkIns
+        )
     }
 }

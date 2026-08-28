@@ -200,3 +200,7 @@ until both conditions reach the configured minimum and Robert's judgment support
 - [x] Let the user delete experiment days and whole experiments with clear confirmation.
 - [x] Audit user-entered records: delete standalone history, clear overrides, and explain why
       referenced movement definitions are archived instead of deleted.
+- [x] Load and save condition days independently from deterministic outcome refresh.
+- [x] Distinguish logged condition days from usable days with resolved outcomes.
+- [x] Explain when a selected outcome requires direct WHOOP history rather than Apple Health.
+- [x] Keyset-page and cache source-specific history projections instead of scanning unrelated samples.

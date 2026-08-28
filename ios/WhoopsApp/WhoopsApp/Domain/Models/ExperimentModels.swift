@@ -100,6 +100,38 @@ enum ExperimentOutcome: String, Codable, CaseIterable, Identifiable, Sendable {
             .followingDay
         }
     }
+
+    var dataSourceExplanation: String {
+        switch self {
+        case .whoopRecovery, .whoopRestingHeartRate:
+            "This outcome requires a direct WHOOP connection and matching WHOOP history."
+        case .whoopHRVRMSSD:
+            "WHOOP HRV RMSSD requires a direct WHOOP connection. WHOOP does not export RMSSD to Apple Health; Apple Health HRV uses SDNN."
+        case .sleepDuration:
+            "Uses WHOOP sleep when available, with Apple Health sleep as the fallback."
+        case .appleHRVSDNN, .respiratoryRate, .oxygenSaturation:
+            "Uses the matching daily value from Apple Health."
+        case .trainingLoad:
+            "Uses completed workouts that have both duration and session RPE."
+        case .morningPainWithMovement:
+            "Uses the pain-with-movement value from the morning check-in."
+        }
+    }
+
+    var missingOutcomeExplanation: String {
+        switch self {
+        case .whoopRecovery, .whoopRestingHeartRate, .whoopHRVRMSSD:
+            dataSourceExplanation
+        case .sleepDuration:
+            "No WHOOP or Apple Health sleep value was found for the selected outcome day."
+        case .appleHRVSDNN, .respiratoryRate, .oxygenSaturation:
+            "No matching Apple Health value was found for the selected outcome day."
+        case .trainingLoad:
+            "No completed workout with duration and session RPE was found for the selected outcome day."
+        case .morningPainWithMovement:
+            "No morning check-in was found for the selected outcome day."
+        }
+    }
 }
 
 struct ExperimentDefinition: Codable, Equatable, Identifiable, Sendable {
@@ -218,6 +250,8 @@ struct ExperimentAnalysis: Equatable, Sendable {
     let version: String
     let outcome: ExperimentOutcome
     let observations: [ExperimentResolvedObservation]
+    let interventionLoggedCount: Int
+    let comparisonLoggedCount: Int
     let interventionCount: Int
     let comparisonCount: Int
     let missingOutcomeCount: Int

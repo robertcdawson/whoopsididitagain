@@ -35,6 +35,9 @@ struct UnavailableHealthKitRepository: HealthKitRepository {
     func history() async throws -> HealthKitHistorySnapshot {
         HealthKitHistorySnapshot(days: [], lastSyncAt: nil, recordCount: 0, linkedWorkoutCount: 0)
     }
+    func history(metrics _: [HealthMetric]) async throws -> HealthKitHistorySnapshot {
+        try await history()
+    }
     func startObserving() async {}
 }
 
@@ -51,6 +54,9 @@ struct PreviewHealthKitRepository: HealthKitRepository {
     }
     func history() async throws -> HealthKitHistorySnapshot {
         HealthKitHistorySnapshot(days: [], lastSyncAt: nil, recordCount: 0, linkedWorkoutCount: 0)
+    }
+    func history(metrics _: [HealthMetric]) async throws -> HealthKitHistorySnapshot {
+        try await history()
     }
     func startObserving() async {}
 }

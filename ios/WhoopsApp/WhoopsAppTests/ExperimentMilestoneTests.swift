@@ -44,8 +44,12 @@ final class ExperimentMilestoneTests: XCTestCase {
         )
         XCTAssertEqual(insufficient.evidenceStatus, .insufficientData)
         XCTAssertNil(insufficient.observedDifference)
-        XCTAssertTrue(insufficient.summary.contains("Bed by 10:30 PM: 2 of 2"))
-        XCTAssertTrue(insufficient.summary.contains("Usual bedtime: 1 of 2"))
+        XCTAssertTrue(
+            insufficient.summary.contains("Bed by 10:30 PM: 2 usable of 2 required (2 logged)")
+        )
+        XCTAssertTrue(
+            insufficient.summary.contains("Usual bedtime: 1 usable of 2 required (1 logged)")
+        )
 
         let sufficient = DeterministicExperimentEngine().analyze(
             experiment: experiment,
@@ -100,6 +104,8 @@ final class ExperimentMilestoneTests: XCTestCase {
         XCTAssertEqual(analysis.observations.count, 6)
         XCTAssertEqual(analysis.interventionCount, 2)
         XCTAssertEqual(analysis.comparisonCount, 2)
+        XCTAssertEqual(analysis.interventionLoggedCount, 2)
+        XCTAssertEqual(analysis.comparisonLoggedCount, 3)
         XCTAssertEqual(analysis.missingOutcomeCount, 1)
         XCTAssertEqual(analysis.observedDifference, 80)
         XCTAssertTrue(analysis.caveat.contains("1 included observations"))
@@ -137,6 +143,30 @@ final class ExperimentMilestoneTests: XCTestCase {
         XCTAssertEqual(analysis.interventionMean, 75)
         XCTAssertEqual(analysis.comparisonMean, 55)
         XCTAssertEqual(analysis.observedDifference, 20)
+    }
+
+    func testLoggedDaysStayVisibleWhenSelectedOutcomeIsUnavailable() {
+        var experiment = makeExperiment(outcome: .whoopHRVRMSSD)
+        experiment.minimumObservations = 2
+        let analysis = DeterministicExperimentEngine().analyze(
+            experiment: experiment,
+            observations: [
+                observation("2026-08-18", .intervention),
+                observation("2026-08-19", .intervention),
+                observation("2026-08-20", .comparison),
+                observation("2026-08-21", .comparison),
+            ],
+            input: makeInput(),
+            calendar: utcCalendar
+        )
+
+        XCTAssertEqual(analysis.interventionLoggedCount, 2)
+        XCTAssertEqual(analysis.comparisonLoggedCount, 2)
+        XCTAssertEqual(analysis.interventionCount, 0)
+        XCTAssertEqual(analysis.comparisonCount, 0)
+        XCTAssertEqual(analysis.missingOutcomeCount, 4)
+        XCTAssertTrue(analysis.summary.contains("2 logged"))
+        XCTAssertTrue(ExperimentOutcome.whoopHRVRMSSD.dataSourceExplanation.contains("SDNN"))
     }
 
     func testOutcomesHaveSimpleRecommendedTimingDefaults() {

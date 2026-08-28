@@ -25,6 +25,7 @@ protocol HealthKitRepository: Sendable {
     func requestReadAuthorization() async throws
     func synchronize() async throws -> HealthKitSyncSummary
     func history() async throws -> HealthKitHistorySnapshot
+    func history(metrics: [HealthMetric]) async throws -> HealthKitHistorySnapshot
     func startObserving() async
 }
 

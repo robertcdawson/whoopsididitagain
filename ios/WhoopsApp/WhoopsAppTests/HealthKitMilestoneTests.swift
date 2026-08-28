@@ -198,6 +198,42 @@ final class HealthKitMilestoneTests: XCTestCase {
     }
 
     @MainActor
+    func testTargetedHistorySkipsUnrequestedMetricsButKeepsStoreMetadata() throws {
+        let persistence = HealthKitPersistence(container: try makeContainer())
+        let hrv = snapshot(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000021")!,
+            metric: .hrvSDNN,
+            start: "2026-08-16T14:00:00Z",
+            end: "2026-08-16T14:01:00Z",
+            value: 48,
+            localDay: "2026-08-16"
+        )
+        let restingHeartRate = snapshot(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000022")!,
+            metric: .restingHeartRate,
+            start: "2026-08-16T14:00:00Z",
+            end: "2026-08-16T14:01:00Z",
+            value: 54,
+            localDay: "2026-08-16"
+        )
+        _ = try persistence.apply(
+            HealthKitChangeBatch(
+                samples: [hrv, restingHeartRate],
+                deletedSampleIDs: [],
+                anchorData: Data("targeted".utf8),
+                hasMore: false
+            ),
+            importedAt: .now
+        )
+
+        let history = try persistence.history(metrics: [.hrvSDNN])
+
+        XCTAssertEqual(history.recordCount, 2)
+        XCTAssertEqual(history.days.first?.hrvSDNNMilliseconds, 48)
+        XCTAssertNil(history.days.first?.restingHeartRate)
+    }
+
+    @MainActor
     func testDuplicateWorkoutLinkPreservesBothSourceRecords() throws {
         let container = try makeContainer()
         let whoopContext = ModelContext(container)

@@ -33,18 +33,18 @@ final class WhoopSourceRecord {
     }
 }
 
-@MainActor
 final class WhoopPersistence: @unchecked Sendable {
-    private let context: ModelContext
+    private let container: ModelContainer
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
     init(container: ModelContainer) {
-        context = ModelContext(container)
-        context.autosaveEnabled = false
+        self.container = container
     }
 
     func upsert(_ response: WhoopSyncResponse) throws -> Int {
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
         let existing = try context.fetch(FetchDescriptor<WhoopSourceRecord>())
         var recordsById = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
         var importedCount = 0
@@ -96,20 +96,30 @@ final class WhoopPersistence: @unchecked Sendable {
     }
 
     func history(limit: Int = 180) throws -> WhoopHistorySnapshot {
-        let records = try context.fetch(
-            FetchDescriptor<WhoopSourceRecord>(
-                sortBy: [SortDescriptor(\.lastImportedAt, order: .reverse)]
-            )
+        let context = ModelContext(container)
+        let recoveryType = WhoopResourceType.recovery.rawValue
+        var recoveryDescriptor = FetchDescriptor<WhoopSourceRecord>(
+            predicate: #Predicate { $0.resourceType == recoveryType },
+            sortBy: [SortDescriptor(\.sourceUpdatedAt, order: .reverse)]
         )
+        recoveryDescriptor.fetchLimit = limit
+        let sleepType = WhoopResourceType.sleep.rawValue
+        var sleepDescriptor = FetchDescriptor<WhoopSourceRecord>(
+            predicate: #Predicate { $0.resourceType == sleepType },
+            sortBy: [SortDescriptor(\.startAt, order: .reverse)]
+        )
+        sleepDescriptor.fetchLimit = limit
+        var lastSyncDescriptor = FetchDescriptor<WhoopSourceRecord>(
+            sortBy: [SortDescriptor(\.lastImportedAt, order: .reverse)]
+        )
+        lastSyncDescriptor.fetchLimit = 1
         let recoveries =
-            records
-            .filter { $0.resourceType == WhoopResourceType.recovery.rawValue }
+            try context.fetch(recoveryDescriptor)
             .compactMap(Self.recoveryItem)
             .sorted { $0.timestamp > $1.timestamp }
             .prefix(limit)
         let sleeps =
-            records
-            .filter { $0.resourceType == WhoopResourceType.sleep.rawValue }
+            try context.fetch(sleepDescriptor)
             .compactMap(Self.sleepItem)
             .sorted { $0.start > $1.start }
             .prefix(limit)
@@ -117,11 +127,13 @@ final class WhoopPersistence: @unchecked Sendable {
         return WhoopHistorySnapshot(
             recoveries: Array(recoveries),
             sleeps: Array(sleeps),
-            lastSyncAt: records.map(\.lastImportedAt).max()
+            lastSyncAt: try context.fetch(lastSyncDescriptor).first?.lastImportedAt
         )
     }
 
     func deleteAllWhoopRecords() throws {
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
         try context.delete(model: WhoopSourceRecord.self)
         try context.save()
     }

@@ -4,6 +4,7 @@ actor LiveHealthKitRepository: HealthKitRepository {
     private let client: any HealthKitReading
     private let persistence: HealthKitPersistence
     private let anchors: any HealthKitAnchorStoring
+    private var historyCache: [String: HealthKitHistorySnapshot] = [:]
 
     init(
         client: any HealthKitReading,
@@ -56,7 +57,16 @@ actor LiveHealthKitRepository: HealthKitRepository {
     }
 
     func history() async throws -> HealthKitHistorySnapshot {
-        try await persistence.history()
+        try await history(metrics: HealthMetric.summaryMetrics)
+    }
+
+    func history(metrics: [HealthMetric]) async throws -> HealthKitHistorySnapshot {
+        let normalizedMetrics = Array(Set(metrics)).sorted { $0.rawValue < $1.rawValue }
+        let cacheKey = normalizedMetrics.map(\.rawValue).joined(separator: "|")
+        if let cached = historyCache[cacheKey] { return cached }
+        let snapshot = try persistence.history(metrics: normalizedMetrics)
+        historyCache[cacheKey] = snapshot
+        return snapshot
     }
 
     func startObserving() async {
@@ -85,11 +95,12 @@ actor LiveHealthKitRepository: HealthKitRepository {
                 throw AppError.invalidHealthKitResponse
             }
 
-            let result = try await persistence.apply(
+            let result = try persistence.apply(
                 batch,
                 importedAt: importedAt,
                 linkWorkouts: metric == .workout && !batch.hasMore
             )
+            historyCache.removeAll()
             anchors.saveAnchorData(batch.anchorData, for: metric)
             importedCount += result.importedCount
             deletedCount += result.deletedCount

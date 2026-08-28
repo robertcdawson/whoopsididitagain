@@ -159,6 +159,9 @@ private struct ExperimentDetailView: View {
     @State private var observations: [ExperimentObservation] = []
     @State private var analysis: ExperimentAnalysis?
     @State private var analysisInput: ExperimentAnalysisInput?
+    @State private var analysisTask: Task<Void, Never>?
+    @State private var analysisGeneration = 0
+    @State private var isAnalyzing = false
     @State private var editingObservation: ExperimentObservation?
     @State private var isEditingExperiment = false
     @State private var isConfirmingExperimentDeletion = false
@@ -183,7 +186,7 @@ private struct ExperimentDetailView: View {
                 ExperimentEditorView(experiment: experiment) { updated in
                     try await experimentRepository.saveExperiment(updated)
                     experiment = updated
-                    await load()
+                    scheduleAnalysisRefresh(for: observations)
                 }
             }
         }
@@ -196,14 +199,17 @@ private struct ExperimentDetailView: View {
                     analysisInput: analysisInput
                 ) { updated in
                     try await experimentRepository.saveObservation(updated)
-                    await load()
+                    upsertObservation(updated)
+                    scheduleAnalysisRefresh(for: observations)
                 } onDelete: { deleted in
                     try await experimentRepository.deleteObservation(id: deleted.id)
-                    await load()
+                    observations.removeAll { $0.id == deleted.id }
+                    scheduleAnalysisRefresh(for: observations)
                 }
             }
         }
         .task { await load() }
+        .onDisappear { analysisTask?.cancel() }
         .alert("Experiment issue", isPresented: errorIsPresented) {
             Button("OK", role: .cancel) { errorMessage = nil }
         } message: {
@@ -285,11 +291,13 @@ private struct ExperimentDetailView: View {
                 LabeledContent("Evidence status", value: analysis.evidenceStatus.rawValue)
                 LabeledContent(
                     experiment.intervention,
-                    value: "\(analysis.interventionCount) of \(experiment.minimumObservations) days"
+                    value:
+                        "\(analysis.interventionCount) usable of \(experiment.minimumObservations) · \(analysis.interventionLoggedCount) logged"
                 )
                 LabeledContent(
                     experiment.comparisonCondition,
-                    value: "\(analysis.comparisonCount) of \(experiment.minimumObservations) days"
+                    value:
+                        "\(analysis.comparisonCount) usable of \(experiment.minimumObservations) · \(analysis.comparisonLoggedCount) logged"
                 )
                 if analysis.evidenceStatus == .insufficientData {
                     Text(remainingText(analysis))
@@ -299,10 +307,13 @@ private struct ExperimentDetailView: View {
                 Text(analysis.summary)
                 if analysis.missingOutcomeCount > 0 {
                     Label(
-                        "\(analysis.missingOutcomeCount) included days are missing the selected outcome",
+                        "\(analysis.missingOutcomeCount) logged days have no \(experiment.primaryOutcome.displayName) value",
                         systemImage: "questionmark.circle"
                     )
                     .foregroundStyle(.orange)
+                    Text(experiment.primaryOutcome.missingOutcomeExplanation)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Text(analysis.caveat)
                     .font(.caption)
@@ -310,8 +321,10 @@ private struct ExperimentDetailView: View {
                 Text(analysis.version)
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
-            } else {
+            } else if isAnalyzing {
                 ProgressView("Resolving local outcomes…")
+            } else {
+                Text("Analysis is unavailable.").foregroundStyle(.secondary)
             }
         }
     }
@@ -352,7 +365,7 @@ private struct ExperimentDetailView: View {
             experiment.minimumObservations - analysis.comparisonCount
         )
         return
-            "Still needed: \(interventionRemaining) \(experiment.intervention) days and \(comparisonRemaining) \(experiment.comparisonCondition) days."
+            "Still needed with matching outcomes: \(interventionRemaining) \(experiment.intervention) days and \(comparisonRemaining) \(experiment.comparisonCondition) days."
     }
 
     private var lifecycleSection: some View {
@@ -384,44 +397,71 @@ private struct ExperimentDetailView: View {
     @MainActor
     private func load() async {
         do {
-            async let savedObservations = experimentRepository.observations(
+            let savedObservations = try await experimentRepository.observations(
                 experimentID: experiment.id
             )
-            async let whoop = whoopRepository.history()
-            async let health = healthKitRepository.history()
-            async let workouts = workoutRepository.completedWorkouts()
-            async let plans = workoutRepository.plans()
-            async let checkIns = assessmentRepository.checkIns()
-            async let assessments = assessmentRepository.assessments()
-            async let restrictions = assessmentRepository.restrictions()
-            async let injuries = assessmentRepository.injuryTimeline()
-            let input = try await TrendsInput(
-                generatedAt: .now,
-                whoop: whoop,
-                healthKit: health,
-                workouts: workouts,
-                plans: plans,
-                checkIns: checkIns,
-                assessments: assessments,
-                restrictions: restrictions,
-                injuries: injuries
-            )
-            let currentObservations = try await savedObservations
-            let trends = DeterministicTrendsEngine().analyze(input)
-            let currentAnalysisInput = ExperimentAnalysisInput(
-                trends: trends,
-                checkIns: input.checkIns
-            )
-            observations = currentObservations
-            analysisInput = currentAnalysisInput
-            analysis = DeterministicExperimentEngine().analyze(
-                experiment: experiment,
-                observations: currentObservations,
-                input: currentAnalysisInput
-            )
+            observations = savedObservations
+            scheduleAnalysisRefresh(for: savedObservations)
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    @MainActor
+    private func scheduleAnalysisRefresh(for observations: [ExperimentObservation]) {
+        analysisTask?.cancel()
+        analysisGeneration += 1
+        let generation = analysisGeneration
+        let currentExperiment = experiment
+        analysisTask = Task {
+            await loadAnalysis(
+                experiment: currentExperiment,
+                observations: observations,
+                generation: generation
+            )
+        }
+    }
+
+    @MainActor
+    private func loadAnalysis(
+        experiment: ExperimentDefinition,
+        observations: [ExperimentObservation],
+        generation: Int
+    ) async {
+        isAnalyzing = true
+        do {
+            let input = try await ExperimentAnalysisInputLoader(
+                whoopRepository: whoopRepository,
+                healthKitRepository: healthKitRepository,
+                assessmentRepository: assessmentRepository,
+                workoutRepository: workoutRepository
+            ).load(for: experiment.primaryOutcome)
+            try Task.checkCancellation()
+            guard generation == analysisGeneration else { return }
+            analysisInput = input
+            analysis = DeterministicExperimentEngine().analyze(
+                experiment: experiment,
+                observations: observations,
+                input: input
+            )
+            isAnalyzing = false
+        } catch is CancellationError {
+            return
+        } catch {
+            guard generation == analysisGeneration else { return }
+            isAnalyzing = false
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func upsertObservation(_ observation: ExperimentObservation) {
+        observations.removeAll {
+            $0.id == observation.id
+                || ($0.experimentID == observation.experimentID && $0.day == observation.day)
+        }
+        observations.append(observation)
+        observations.sort { $0.day > $1.day }
     }
 
     @MainActor
@@ -554,6 +594,9 @@ private struct ExperimentEditorView: View {
                 Picker("Primary outcome", selection: $experiment.primaryOutcome) {
                     ForEach(ExperimentOutcome.allCases) { Text($0.displayName).tag($0) }
                 }
+                Text(experiment.primaryOutcome.dataSourceExplanation)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Picker("Measure outcome", selection: $experiment.outcomeTiming) {
                     ForEach(ExperimentOutcomeTiming.allCases) {
                         Text($0.displayName).tag($0)

@@ -55,9 +55,13 @@ per-resource checkpoints.
 HealthKit synchronization uses one archived `HKQueryAnchor` per sample type. New samples are
 upserted by HealthKit UUID and deleted-object callbacks remove only the matching local source
 record. The initial query window is 180 days. Each sample type is read in pages of at most 500;
-each page is committed in a fresh SwiftData context before its anchor advances. Daily history is
-also aggregated through bounded pages instead of retaining the full source table. Observer queries
-trigger the same anchored path; background delivery is opportunistic. Every sample stores its
+each page is committed in a fresh SwiftData context before its anchor advances. A page prefetches
+its stable record IDs in one bounded query rather than issuing one lookup per sample. Daily history
+aggregates only the metrics used by the requested projection, using bounded stable-ID keyset pages
+over the existing unique record index outside the main UI actor. Repository caches are keyed by
+the requested metric set and are
+invalidated whenever an anchored page is committed. Observer queries trigger the same anchored
+path; background delivery is opportunistic. Every sample stores its
 source, source bundle, source-time-zone identifier, UTC offset, and local calendar day. This keeps
 historical day grouping stable when the phone later travels or crosses a DST boundary.
 
@@ -170,6 +174,14 @@ experiment is active; Experiment Lab retains setup, backfill, correction, and an
 definitions start active unless the user deliberately chooses another status. Excluding a day
 retains its assignment, reason, confounders, and notes;
 the repository never copies vendor payloads or credentials into experiment records.
+
+Experiment detail loads saved condition days before starting outcome analysis. Analysis requests
+only the repository source required by the selected outcome: WHOOP history for WHOOP metrics,
+the matching Apple Health metric for Apple outcomes, completed workouts for session load, or
+morning check-ins for pain. Saving updates the visible condition-day list immediately after the
+durable write and refreshes analysis independently. The UI reports both logged assignments and
+usable assignments with resolved outcomes; the configured minimum continues to apply only to
+usable values in each condition.
 
 User-entered records follow a deletion rule at the repository boundary. Experiment observations,
 experiments, morning check-ins, restrictions, workout plans, completed workouts, and readiness

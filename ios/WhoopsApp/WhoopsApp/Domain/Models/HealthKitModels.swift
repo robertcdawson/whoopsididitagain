@@ -1,6 +1,6 @@
 import Foundation
 
-enum HealthMetric: String, Codable, CaseIterable, Identifiable, Sendable {
+enum HealthMetric: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
     case heartRate
     case restingHeartRate
     case hrvSDNN
@@ -17,6 +17,17 @@ enum HealthMetric: String, Codable, CaseIterable, Identifiable, Sendable {
     case sleepingWristTemperature
 
     var id: String { rawValue }
+
+    static let summaryMetrics: [HealthMetric] = [
+        .restingHeartRate,
+        .hrvSDNN,
+        .respiratoryRate,
+        .oxygenSaturation,
+        .sleepAnalysis,
+        .activeEnergy,
+        .exerciseTime,
+        .workout,
+    ]
 
     var displayName: String {
         switch self {
