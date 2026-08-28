@@ -35,14 +35,15 @@ Milestone 0 completed on August 15, 2026.
 - [x] Add backend security, OAuth, refresh-race, pagination, and failure tests.
 - [x] Verify the backend suite and Swift 6 iOS build.
 
-Live acceptance remains: connect Robert's WHOOP account using local developer credentials and
-confirm a real 180-day import. No credential or personal health payload belongs in source control.
+Live acceptance completed on August 27, 2026: Robert connected the physical iPhone through the
+production OAuth callback, and the app imported 693 WHOOP records spanning roughly 180 days. No
+credential or personal health payload belongs in source control.
 
 - [x] Deploy the backend to its production HTTPS Vercel domain.
 - [x] Provision and migrate persistent Neon PostgreSQL storage for OAuth credentials and checkpoints.
 - [x] Configure WHOOP credentials and backend encryption/session keys in Vercel environments.
-- [ ] Register the production callback URI in the WHOOP Developer Dashboard.
-- [ ] Connect the physical iPhone and confirm the real 180-day import.
+- [x] Register the production callback URI in the WHOOP Developer Dashboard.
+- [x] Connect the physical iPhone and confirm the real 180-day import.
 
 ## Milestone 2: HealthKit and Unified Timeline
 

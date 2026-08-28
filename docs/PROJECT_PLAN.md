@@ -2597,14 +2597,14 @@ Simulator success is not sufficient.
 
 The MVP is complete when all of the following are true:
 
-- [ ] The app builds and runs on the owner’s iPhone.
-- [ ] WHOOP can be connected through OAuth.
-- [ ] The WHOOP client secret never appears in the iOS binary or repository.
-- [ ] WHOOP token rotation is handled securely and atomically.
-- [ ] At least 180 days of available WHOOP history can be imported.
-- [ ] WHOOP synchronization is paginated, incremental, and idempotent.
-- [ ] Selected Apple Health data can be imported with partial permissions.
-- [ ] WHOOP HRV and Apple Health SDNN remain distinct.
+- [x] The app builds and runs on the owner’s iPhone.
+- [x] WHOOP can be connected through OAuth.
+- [x] The WHOOP client secret never appears in the iOS binary or repository.
+- [x] WHOOP token rotation is handled securely and atomically.
+- [x] At least 180 days of available WHOOP history can be imported.
+- [x] WHOOP synchronization is paginated, incremental, and idempotent.
+- [x] Selected Apple Health data can be imported with partial permissions.
+- [x] WHOOP HRV and Apple Health SDNN remain distinct.
 - [ ] Imported data remains available offline.
 - [ ] The user can record morning pain, energy, stiffness, and motivation.
 - [ ] The app calculates personal baselines.
