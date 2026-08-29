@@ -92,16 +92,19 @@ assessment. A calculation record retains its ruleset version, component scores, 
 codes, and strongest signals. A user override and annotation are stored alongside, rather than
 replacing, the calculated recommendation.
 
-`readiness-1.0.0` uses robust 28-day medians and median absolute deviations for source-specific
+`readiness-1.0.1` uses robust 28-day medians and median absolute deviations for source-specific
 physiology trends. WHOOP HRV RMSSD and Apple Health HRV SDNN never share a baseline. Fewer than 14
 observations suppress strong baseline claims and reduce confidence. Missing current physiology,
 sleep, check-in, or restriction context likewise reduces confidence and produces an explicit reason
 code.
 
 The engine calculates systemic, sleep, and tissue components before selecting a recommendation.
-An active `avoid` restriction is a hard constraint and forces `Modify` even when recovery is high.
-The Today screen presents the strongest reasons and the effective recommendation. Sleep deadlines
-are derived locally from wake time, sleep target, expected latency, and wind-down duration.
+An active `avoid` restriction caps a completed check-in's tissue score at 39, the upper bound of the
+existing low-tissue band, and remains a hard constraint that forces `Modify` even when recovery is
+high. The cap never raises a lower symptom-derived score, and a missing check-in still produces no
+tissue score. The Today screen presents the strongest reasons and the effective recommendation.
+Sleep deadlines are derived locally from wake time, sleep target, expected latency, and wind-down
+duration.
 
 ## Workout planning and completion
 
@@ -130,8 +133,9 @@ specificity that may be lost.
 
 SwiftData stores workout plans, segments, and prescriptions independently from completed workouts
 and completed movements. Completion starts as an editable copy of the plan, then saves actual
-repetitions, distance, load, duration, modifications, movement pain, session RPE, and post-session
-pain without rewriting the planned values.
+repetitions, distance, calories, load, duration, modifications, movement pain, session RPE, and
+post-session pain without rewriting the planned values. Completion fields retain visible labels
+after values are populated, matching the review flow.
 
 The Train screen treats saved cards as navigable records. A planned-workout detail view reads the
 stored overview, stimulus, restriction evaluation, segment structure, prescriptions, and original

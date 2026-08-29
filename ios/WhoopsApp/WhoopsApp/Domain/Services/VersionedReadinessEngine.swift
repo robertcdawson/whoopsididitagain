@@ -1,7 +1,8 @@
 import Foundation
 
 struct VersionedReadinessEngine: ReadinessEngine {
-    static let rulesetVersion = "readiness-1.0.0"
+    static let rulesetVersion = "readiness-1.0.1"
+    private static let hardRestrictionTissueScoreCeiling = 39
 
     func assess(_ input: ReadinessInput) async throws -> ReadinessAssessment {
         var reasons: [ReadinessReason] = []
@@ -19,7 +20,10 @@ struct VersionedReadinessEngine: ReadinessEngine {
                         (Double($0) / Double(input.sleepSettings.targetSleepMinutes) * 100)
                             .rounded())))
         }
-        let tissueScore = Self.tissueScore(input.checkIn)
+        let tissueScore = Self.tissueScore(
+            input.checkIn,
+            restrictions: input.activeRestrictions
+        )
         var systemicScore = Self.initialSystemicScore(input)
 
         if let recovery = input.physiology.whoopRecovery {
@@ -168,7 +172,10 @@ struct VersionedReadinessEngine: ReadinessEngine {
         return nil
     }
 
-    private static func tissueScore(_ checkIn: MorningCheckIn?) -> Int? {
+    private static func tissueScore(
+        _ checkIn: MorningCheckIn?,
+        restrictions: [RestrictionProfile]
+    ) -> Int? {
         guard let checkIn else { return nil }
         var score = 100
         score -= checkIn.painAtRest * 4
@@ -176,7 +183,11 @@ struct VersionedReadinessEngine: ReadinessEngine {
         if checkIn.stiffness { score -= 10 }
         if checkIn.swelling { score -= 20 }
         if checkIn.perceivedWeakness { score -= 15 }
-        return max(0, score)
+        let symptomScore = max(0, score)
+        guard restrictions.contains(where: { $0.level.isHard }) else {
+            return symptomScore
+        }
+        return min(symptomScore, hardRestrictionTissueScoreCeiling)
     }
 
     private static func applyHRVSignal(

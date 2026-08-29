@@ -670,6 +670,7 @@ private struct CompletedWorkoutDetailView: View {
         var values: [String] = []
         if let repetitions = movement.actualRepetitions { values.append("\(repetitions) reps") }
         if let distance = movement.actualDistanceMeters { values.append("\(distance) m") }
+        if let calories = movement.actualCalories { values.append("\(calories) cal") }
         if let load = movement.actualLoadValue {
             values.append(
                 [load.formatted(), movement.actualLoadUnit].compactMap { $0 }.joined(separator: " ")

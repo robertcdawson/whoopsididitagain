@@ -17,26 +17,46 @@ final class AssessmentMilestoneTests: XCTestCase {
         let input = readinessInput(
             recovery: 95,
             checkIn: MorningCheckIn.empty(day: "2026-08-16"),
-            restrictions: [
-                RestrictionProfile(
-                    id: "test-hard-restriction",
-                    injuryName: "Test injury",
-                    bodyRegion: "Arm",
-                    side: "Right",
-                    movementTag: "ballistic elbow extension",
-                    level: .avoid,
-                    painThreshold: 2,
-                    rationale: "Synthetic test restriction",
-                    isActive: true
-                )
-            ]
+            restrictions: [hardRestriction()]
         )
 
         let assessment = try await VersionedReadinessEngine().assess(input)
 
         XCTAssertEqual(assessment.recommendation, .modify)
+        XCTAssertEqual(assessment.tissueScore, 39)
         XCTAssertTrue(assessment.reasonCodes.contains { $0.hasPrefix("restriction.avoid") })
         XCTAssertGreaterThanOrEqual(assessment.systemicScore ?? 0, 80)
+        XCTAssertEqual(assessment.rulesetVersion, "readiness-1.0.1")
+    }
+
+    func testHardRestrictionDoesNotInventTissueScoreWithoutCheckIn() async throws {
+        let assessment = try await VersionedReadinessEngine().assess(
+            readinessInput(
+                recovery: 95,
+                checkIn: nil,
+                restrictions: [hardRestriction()]
+            )
+        )
+
+        XCTAssertNil(assessment.tissueScore)
+        XCTAssertEqual(assessment.recommendation, .modify)
+        XCTAssertTrue(assessment.reasonCodes.contains("check-in.missing"))
+    }
+
+    func testHardRestrictionDoesNotRaiseLowerSymptomScore() async throws {
+        var checkIn = MorningCheckIn.empty(day: "2026-08-16")
+        checkIn.painWithMovement = 10
+
+        let assessment = try await VersionedReadinessEngine().assess(
+            readinessInput(
+                recovery: 95,
+                checkIn: checkIn,
+                restrictions: [hardRestriction()]
+            )
+        )
+
+        XCTAssertEqual(assessment.tissueScore, 30)
+        XCTAssertEqual(assessment.recommendation, .modify)
     }
 
     func testMissingDataLowersConfidenceAndExposesReasonCodes() async throws {
@@ -145,6 +165,20 @@ final class AssessmentMilestoneTests: XCTestCase {
             checkIn: checkIn,
             activeRestrictions: restrictions,
             sleepSettings: .standard
+        )
+    }
+
+    private func hardRestriction() -> RestrictionProfile {
+        RestrictionProfile(
+            id: "test-hard-restriction",
+            injuryName: "Test injury",
+            bodyRegion: "Arm",
+            side: "Right",
+            movementTag: "ballistic elbow extension",
+            level: .avoid,
+            painThreshold: 2,
+            rationale: "Synthetic test restriction",
+            isActive: true
         )
     }
 

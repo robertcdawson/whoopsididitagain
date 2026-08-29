@@ -198,6 +198,36 @@ final class WorkoutMilestoneTests: XCTestCase {
     }
 
     @MainActor
+    func testCompletionDraftCopiesAndPersistsActualCalories() async throws {
+        let container = try ModelContainer(
+            for: WorkoutPlanRecord.self,
+            WorkoutSegmentRecord.self,
+            MovementPrescriptionRecord.self,
+            CompletedWorkoutRecord.self,
+            CompletedMovementRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = WorkoutPersistence(container: container)
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(
+                rawText: "20 Cal Echo Bike"
+            )
+        )
+        var completion = CompletedWorkout(
+            plan: plan,
+            now: Date(timeIntervalSince1970: 3_600)
+        )
+
+        XCTAssertEqual(completion.movements.first?.actualCalories, 20)
+        completion.movements[0].actualCalories = 18
+        try await repository.saveCompletedWorkout(completion)
+
+        let completed = try await repository.completedWorkouts()
+        let reloaded = try XCTUnwrap(completed.first)
+        XCTAssertEqual(reloaded.movements.first?.actualCalories, 18)
+    }
+
+    @MainActor
     func testPersistenceKeepsPlannedAndActualWorkSeparate() async throws {
         let container = try ModelContainer(
             for: WorkoutPlanRecord.self,
@@ -233,6 +263,7 @@ final class WorkoutMilestoneTests: XCTestCase {
                     displayName: plannedMovement.displayName,
                     actualRepetitions: 8,
                     actualDistanceMeters: nil,
+                    actualCalories: nil,
                     actualLoadValue: 35,
                     actualLoadUnit: "lb",
                     actualDurationSeconds: nil,

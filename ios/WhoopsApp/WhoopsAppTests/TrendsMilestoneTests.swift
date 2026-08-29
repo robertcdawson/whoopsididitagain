@@ -226,6 +226,7 @@ final class TrendsMilestoneTests: XCTestCase {
                     displayName: "Air bike",
                     actualRepetitions: nil,
                     actualDistanceMeters: nil,
+                    actualCalories: nil,
                     actualLoadValue: nil,
                     actualLoadUnit: nil,
                     actualDurationSeconds: minutes * 60,

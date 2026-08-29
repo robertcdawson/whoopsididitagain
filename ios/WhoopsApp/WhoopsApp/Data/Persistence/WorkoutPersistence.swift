@@ -126,6 +126,7 @@ final class CompletedMovementRecord {
     var displayName: String
     var actualRepetitions: Int?
     var actualDistanceMeters: Int?
+    var actualCalories: Int?
     var actualLoadValue: Double?
     var actualLoadUnit: String?
     var actualDurationSeconds: Int?
@@ -141,6 +142,7 @@ final class CompletedMovementRecord {
         displayName = movement.displayName
         actualRepetitions = movement.actualRepetitions
         actualDistanceMeters = movement.actualDistanceMeters
+        actualCalories = movement.actualCalories
         actualLoadValue = movement.actualLoadValue
         actualLoadUnit = movement.actualLoadUnit
         actualDurationSeconds = movement.actualDurationSeconds
@@ -410,6 +412,7 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
             displayName: record.displayName,
             actualRepetitions: record.actualRepetitions,
             actualDistanceMeters: record.actualDistanceMeters,
+            actualCalories: record.actualCalories,
             actualLoadValue: record.actualLoadValue,
             actualLoadUnit: record.actualLoadUnit,
             actualDurationSeconds: record.actualDurationSeconds,
@@ -464,6 +467,7 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
         record.displayName = movement.displayName
         record.actualRepetitions = movement.actualRepetitions
         record.actualDistanceMeters = movement.actualDistanceMeters
+        record.actualCalories = movement.actualCalories
         record.actualLoadValue = movement.actualLoadValue
         record.actualLoadUnit = movement.actualLoadUnit
         record.actualDurationSeconds = movement.actualDurationSeconds

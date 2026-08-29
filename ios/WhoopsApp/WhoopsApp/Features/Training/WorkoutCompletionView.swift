@@ -13,35 +13,7 @@ struct WorkoutCompletionView: View {
     ) {
         self.plan = plan
         self.onSave = onSave
-        let movements = plan.movements.map { movement in
-            CompletedMovement(
-                id: UUID().uuidString.lowercased(),
-                canonicalMovementID: movement.canonicalMovementID,
-                plannedPrescriptionID: movement.id,
-                displayName: movement.displayName,
-                actualRepetitions: movement.repetitions,
-                actualDistanceMeters: movement.distanceMeters,
-                actualLoadValue: movement.loadValue,
-                actualLoadUnit: movement.loadUnit,
-                actualDurationSeconds: movement.durationSeconds,
-                modification: "",
-                painDuring: 0,
-                notes: ""
-            )
-        }
-        _workout = State(
-            initialValue: CompletedWorkout(
-                id: UUID().uuidString.lowercased(),
-                plannedWorkoutID: plan.id,
-                title: plan.title,
-                startedAt: .now.addingTimeInterval(-3_600),
-                endedAt: .now,
-                sessionRPE: 5,
-                postSessionPain: 0,
-                notes: "",
-                movements: movements
-            )
-        )
+        _workout = State(initialValue: CompletedWorkout(plan: plan))
     }
 
     var body: some View {
@@ -70,7 +42,7 @@ struct WorkoutCompletionView: View {
                         value: $workout.postSessionPain,
                         in: 0...10
                     )
-                    TextField("Session notes", text: $workout.notes, axis: .vertical)
+                    multilineField("Session notes", text: $workout.notes)
                 }
 
                 ForEach(workout.movements.indices, id: \.self) { index in
@@ -81,10 +53,12 @@ struct WorkoutCompletionView: View {
                         numberField(
                             "Actual distance in meters",
                             value: $workout.movements[index].actualDistanceMeters)
+                        numberField(
+                            "Actual calories", value: $workout.movements[index].actualCalories)
                         decimalField(
                             "Actual load", value: $workout.movements[index].actualLoadValue)
-                        TextField(
-                            "Load unit",
+                        textField(
+                            "Actual load unit",
                             text: optionalString($workout.movements[index].actualLoadUnit)
                         )
                         numberField(
@@ -95,12 +69,11 @@ struct WorkoutCompletionView: View {
                             value: $workout.movements[index].painDuring,
                             in: 0...10
                         )
-                        TextField(
+                        multilineField(
                             "Modification from plan",
-                            text: $workout.movements[index].modification,
-                            axis: .vertical
+                            text: $workout.movements[index].modification
                         )
-                        TextField("Notes", text: $workout.movements[index].notes, axis: .vertical)
+                        multilineField("Movement notes", text: $workout.movements[index].notes)
                     }
                 }
             }
@@ -126,14 +99,44 @@ struct WorkoutCompletionView: View {
 
     @ViewBuilder
     private func numberField(_ title: String, value: Binding<Int?>) -> some View {
-        TextField(title, text: optionalInteger(value))
-            .keyboardType(.numberPad)
+        LabeledContent(title) {
+            TextField("", text: optionalInteger(value), prompt: Text("Optional"))
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .accessibilityLabel(title)
+        }
     }
 
     @ViewBuilder
     private func decimalField(_ title: String, value: Binding<Double?>) -> some View {
-        TextField(title, text: optionalDouble(value))
-            .keyboardType(.decimalPad)
+        LabeledContent(title) {
+            TextField("", text: optionalDouble(value), prompt: Text("Optional"))
+                .keyboardType(.decimalPad)
+                .multilineTextAlignment(.trailing)
+                .accessibilityLabel(title)
+        }
+    }
+
+    @ViewBuilder
+    private func textField(_ title: String, text: Binding<String>) -> some View {
+        LabeledContent(title) {
+            TextField("", text: text, prompt: Text("Optional"))
+                .multilineTextAlignment(.trailing)
+                .accessibilityLabel(title)
+        }
+    }
+
+    @ViewBuilder
+    private func multilineField(_ title: String, text: Binding<String>) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            TextField("", text: text, prompt: Text("Optional"), axis: .vertical)
+                .lineLimit(1...4)
+                .accessibilityLabel(title)
+        }
+        .padding(.vertical, 2)
     }
 
     private func optionalInteger(_ value: Binding<Int?>) -> Binding<String> {

@@ -54,7 +54,7 @@ struct TodayView: View {
 
                             assessmentRow("Systemic readiness", score: assessment.systemicScore)
                             assessmentRow("Sleep sufficiency", score: assessment.sleepScore)
-                            assessmentRow("Tissue readiness", score: assessment.tissueScore)
+                            tissueReadinessRow(assessment)
                             LabeledContent("Confidence", value: assessment.confidence.displayName)
 
                             Divider()
@@ -275,6 +275,24 @@ struct TodayView: View {
 
     private func assessmentRow(_ title: String, score: Int?) -> some View {
         LabeledContent(title, value: score.map { "\($0)/100" } ?? "Unavailable")
+    }
+
+    @ViewBuilder
+    private func tissueReadinessRow(_ assessment: ReadinessAssessment) -> some View {
+        if assessment.reasons.contains(where: { reason in
+            if case .restriction = reason.direction { return true }
+            return false
+        }) {
+            LabeledContent("Tissue readiness") {
+                Label("Restricted", systemImage: "hand.raised.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Tissue readiness")
+            .accessibilityValue("Restricted because an active Avoid restriction applies")
+        } else {
+            assessmentRow("Tissue readiness", score: assessment.tissueScore)
+        }
     }
 
     private func statusRow(_ title: String, value: String) -> some View {

@@ -280,6 +280,7 @@ struct CompletedMovement: Codable, Equatable, Identifiable, Sendable {
     var displayName: String
     var actualRepetitions: Int?
     var actualDistanceMeters: Int?
+    var actualCalories: Int?
     var actualLoadValue: Double?
     var actualLoadUnit: String?
     var actualDurationSeconds: Int?
@@ -298,6 +299,39 @@ struct CompletedWorkout: Equatable, Identifiable, Sendable {
     var postSessionPain: Int
     var notes: String
     var movements: [CompletedMovement]
+}
+
+extension CompletedWorkout {
+    init(plan: WorkoutPlan, now: Date = .now) {
+        let movements = plan.movements.map { movement in
+            CompletedMovement(
+                id: UUID().uuidString.lowercased(),
+                canonicalMovementID: movement.canonicalMovementID,
+                plannedPrescriptionID: movement.id,
+                displayName: movement.displayName,
+                actualRepetitions: movement.repetitions,
+                actualDistanceMeters: movement.distanceMeters,
+                actualCalories: movement.calories,
+                actualLoadValue: movement.loadValue,
+                actualLoadUnit: movement.loadUnit,
+                actualDurationSeconds: movement.durationSeconds,
+                modification: "",
+                painDuring: 0,
+                notes: ""
+            )
+        }
+        self.init(
+            id: UUID().uuidString.lowercased(),
+            plannedWorkoutID: plan.id,
+            title: plan.title,
+            startedAt: now.addingTimeInterval(-3_600),
+            endedAt: now,
+            sessionRPE: 5,
+            postSessionPain: 0,
+            notes: "",
+            movements: movements
+        )
+    }
 }
 
 enum WorkoutValidationError: Error, Equatable, LocalizedError, Sendable {

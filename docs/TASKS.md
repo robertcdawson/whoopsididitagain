@@ -84,6 +84,7 @@ Physical-device follow-up found August 27, 2026:
 - [x] Keep WHOOP HRV RMSSD and Apple Health HRV SDNN in separate readiness components.
 - [x] Add a versioned deterministic readiness rules engine that does not require an LLM.
 - [x] Make hard movement restrictions override otherwise strong systemic readiness.
+- [x] Keep the tissue score consistent with an active hard restriction without inventing missing check-in data.
 - [x] Lower confidence and expose reason codes when source data or baselines are incomplete.
 - [x] Display the recommendation, component scores, confidence, and strongest signals on Today.
 - [x] Persist assessments and preserve user overrides and annotations separately.
@@ -142,6 +143,11 @@ Saved-workout inspection follow-up found August 16, 2026:
 - [x] Show full segment, recovery, movement prescription, context, evaluation, and source details.
 - [x] Make recent completed-workout rows open their recorded actual values.
 - [x] Keep Edit and Record actual as separate actions and cover detail navigation in UI tests.
+
+Workout-completion acceptance follow-up found August 28, 2026:
+
+- [x] Preserve calorie prescriptions through Record actual, persistence, and read-only details.
+- [x] Give populated actual-workout fields persistent visible labels instead of placeholder-only labels.
 
 ## Milestone 4.1: Personal Movement Library and WOD Lab Migration
 

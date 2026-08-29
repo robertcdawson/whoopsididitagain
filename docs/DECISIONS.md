@@ -60,6 +60,9 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
 - **Rationale:** The daily recommendation must remain available without an LLM, must never let a high
   recovery score erase a local injury constraint, and must be auditable when data is sparse or the
   user disagrees.
+- **Amended August 28, 2026:** `readiness-1.0.1` caps a completed check-in's tissue score at 39 when
+  an active `avoid` restriction exists. It preserves lower symptom-derived scores and leaves the
+  tissue score missing when the check-in is missing; the independent hard override remains intact.
 
 ## ADR-007: Keep workout parsing local-first and schema-gated
 
