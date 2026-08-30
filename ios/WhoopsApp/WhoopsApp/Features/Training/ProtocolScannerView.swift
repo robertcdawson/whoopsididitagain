@@ -24,8 +24,11 @@ struct ProtocolScannerView: UIViewControllerRepresentable {
         Coordinator(onCompletion: onCompletion, onCancel: onCancel)
     }
 
+    // VisionKit calls its delegate on the main thread, but the iOS 18 SDK does not
+    // annotate the protocol as main-actor-isolated; @preconcurrency moves that
+    // check to runtime so the coordinator can stay main-actor-isolated.
     @MainActor
-    final class Coordinator: NSObject, VNDocumentCameraViewControllerDelegate {
+    final class Coordinator: NSObject, @preconcurrency VNDocumentCameraViewControllerDelegate {
         let onCompletion: ([Data]) -> Void
         let onCancel: () -> Void
 
