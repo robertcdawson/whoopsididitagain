@@ -6,14 +6,18 @@ struct TrainingView: View {
     let workoutRepository: any WorkoutRepository
     let assessmentRepository: any AssessmentRepository
     let movementLibrary: any MovementLibraryRepository
+    let protocolParser: any ProtocolParser
+    let protocolRepository: any ProtocolRepository
 
     @State private var rawText = ""
     @State private var plans: [WorkoutPlan] = []
     @State private var completedWorkouts: [CompletedWorkout] = []
+    @State private var therapyProtocols: [TherapyProtocol] = []
     @State private var restrictions: [RestrictionProfile] = []
     @State private var evaluations: [String: WorkoutEvaluation] = [:]
     @State private var editingPlan: WorkoutPlan?
     @State private var completingPlan: WorkoutPlan?
+    @State private var isCapturingProtocol = false
     @State private var isParsing = false
     @State private var errorMessage: String?
 
@@ -21,6 +25,26 @@ struct TrainingView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    FoundationCard(title: "PT Protocol") {
+                        Text(
+                            "Bring in the PT sheet — photo, paste, or read it aloud. Every item is checked against your restrictions."
+                        )
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        Button {
+                            isCapturingProtocol = true
+                        } label: {
+                            Label("New protocol from PT sheet", systemImage: "camera.viewfinder")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .accessibilityIdentifier("new-protocol")
+                        ForEach(therapyProtocols) { therapyProtocol in
+                            Divider()
+                            protocolRow(therapyProtocol)
+                        }
+                    }
+
                     FoundationCard(title: "Plan a Workout") {
                         Text(
                             "Paste CrossFit, weightlifting, or conditioning text. You’ll review every parsed field before it is saved."
@@ -145,12 +169,76 @@ struct TrainingView: View {
                     await saveCompleted(workout)
                 }
             }
+            .fullScreenCover(isPresented: $isCapturingProtocol) {
+                ProtocolCaptureView(
+                    parser: protocolParser,
+                    scalingEngine: scalingEngine,
+                    movementLibrary: movementLibrary,
+                    protocolRepository: protocolRepository,
+                    restrictions: restrictions
+                ) {
+                    await load()
+                }
+            }
             .alert("Couldn’t update the workout", isPresented: errorIsPresented) {
                 Button("OK", role: .cancel) { errorMessage = nil }
             } message: {
                 Text(errorMessage ?? "Unknown error")
             }
         }
+    }
+
+    @ViewBuilder
+    private func protocolRow(_ therapyProtocol: TherapyProtocol) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(therapyProtocol.title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer(minLength: 12)
+                Menu {
+                    Button("Delete protocol", role: .destructive) {
+                        Task { await deleteProtocol(therapyProtocol) }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityLabel("Protocol actions: \(therapyProtocol.title)")
+            }
+            Text(protocolSummary(therapyProtocol))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ForEach(therapyProtocol.items.prefix(4)) { item in
+                HStack {
+                    Text(item.displayName)
+                    Spacer()
+                    Text(
+                        [item.prescriptionSummary, item.cadence.displayName]
+                            .compactMap { $0 }
+                            .joined(separator: " · ")
+                    )
+                    .foregroundStyle(.secondary)
+                }
+                .font(.subheadline)
+            }
+            if therapyProtocol.items.count > 4 {
+                Text("+ \(therapyProtocol.items.count - 4) more")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .accessibilityIdentifier("therapy-protocol-\(therapyProtocol.id)")
+    }
+
+    private func protocolSummary(_ therapyProtocol: TherapyProtocol) -> String {
+        var parts: [String] = []
+        if let phase = therapyProtocol.phaseSummary { parts.append(phase) }
+        let count = therapyProtocol.items.count
+        parts.append("\(count) item\(count == 1 ? "" : "s")")
+        if let milestone = therapyProtocol.unlockMilestone {
+            parts.append("until \(milestone)")
+        }
+        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
@@ -308,6 +396,7 @@ struct TrainingView: View {
             restrictions = try await assessmentRepository.restrictions()
             plans = try await workoutRepository.plans()
             completedWorkouts = try await workoutRepository.completedWorkouts()
+            therapyProtocols = try await protocolRepository.protocols(includeArchived: false)
             var nextEvaluations: [String: WorkoutEvaluation] = [:]
             for plan in plans where plan.status != .completed {
                 nextEvaluations[plan.id] = await scalingEngine.evaluate(
@@ -351,6 +440,16 @@ struct TrainingView: View {
     private func deletePlan(_ plan: WorkoutPlan) async {
         do {
             try await workoutRepository.deletePlan(id: plan.id)
+            await load()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func deleteProtocol(_ therapyProtocol: TherapyProtocol) async {
+        do {
+            try await protocolRepository.deleteProtocol(id: therapyProtocol.id)
             await load()
         } catch {
             errorMessage = error.localizedDescription
@@ -629,6 +728,8 @@ private struct CompletedWorkoutDetailView: View {
         scalingEngine: DeterministicWorkoutScalingEngine(),
         workoutRepository: PreviewWorkoutRepository(),
         assessmentRepository: PreviewAssessmentRepository(),
-        movementLibrary: PreviewMovementLibraryRepository()
+        movementLibrary: PreviewMovementLibraryRepository(),
+        protocolParser: DeterministicProtocolParser(),
+        protocolRepository: PreviewProtocolRepository()
     )
 }

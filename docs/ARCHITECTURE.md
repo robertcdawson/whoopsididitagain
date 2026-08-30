@@ -1,7 +1,8 @@
 # Architecture
 
-**Status:** Milestone 5 trends and weekly review implemented
-**Last updated:** August 21, 2026
+**Status:** Milestone 5 trends and weekly review implemented; redesign phase 1 (protocol intake
+and tap-chip review) implemented
+**Last updated:** August 30, 2026
 
 `PROJECT_PLAN.md` is the product source of truth. This document records the architecture that is
 currently implemented.
@@ -131,6 +132,27 @@ WOD Lab migration is local-only and idempotent. The version 1 adapter reads `sto
 validates records, maps supported stable fields, previews additions and matches, and commits only
 after confirmation. It does not import workout history, prescriptions, technique notes, or coaching
 metadata in this increment.
+
+## PT protocol intake
+
+Protocol intake (`docs/DESIGN.md` phase 1) offers three equal paths into one deterministic
+parser: a VisionKit document scan whose pages run through on-device Vision text recognition,
+paste, and dictation. Recognition and dictation never leave the phone; dictation requires
+on-device speech support and otherwise declines with a pointer to paste. `protocol-1.0.0`
+normalizes compatibility Unicode, preserves every line as an item, extracts only explicit
+quantities (sets, repetitions, hold durations, load) and cadence phrases, and reads optional
+phase and unlock-milestone metadata. Movement resolution reuses the merged movement catalog:
+an exact name or alias match resolves; word-overlap partial matches surface as candidate
+choices the user must tap; everything else is marked new and can be added to the personal
+movement library with one tap. The parser never picks a movement on its own.
+
+The parse review presents items as cards with preset cadence chips (daily, n-per-week, custom
+weekdays), candidate chips for ambiguities, swipe-to-drop rows with transient undo, and a
+restriction line computed by the existing scaling engine over a transient plan built from the
+resolved items, so protocol items and workouts share one restriction evaluation. Saving
+validates the protocol (all items resolved to known movements, cadences valid) and stores it in
+SwiftData as protocol and item records, with per-item cadence retained for the upcoming docket
+generation phase. Recurrence, docket entries, and adherence remain later phases.
 
 ## Repository
 

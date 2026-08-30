@@ -42,8 +42,14 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>WHOOPs uses the camera to scan your PT protocol sheet. Text recognition runs on this device; the photo never leaves your phone.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>WHOOPs reads selected Apple Health data to combine physiology, sleep, and workout history on this device.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>WHOOPs uses the microphone so you can read your PT protocol aloud instead of typing.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>WHOOPs transcribes dictated protocol text on this device when on-device recognition is available.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

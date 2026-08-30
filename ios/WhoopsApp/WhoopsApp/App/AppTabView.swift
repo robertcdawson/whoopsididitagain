@@ -10,6 +10,8 @@ struct AppTabView: View {
     let workoutScalingEngine: any WorkoutScalingEngine
     let workoutRepository: any WorkoutRepository
     let movementLibrary: any MovementLibraryRepository
+    let protocolParser: any ProtocolParser
+    let protocolRepository: any ProtocolRepository
 
     var body: some View {
         TabView {
@@ -29,7 +31,9 @@ struct AppTabView: View {
                 scalingEngine: workoutScalingEngine,
                 workoutRepository: workoutRepository,
                 assessmentRepository: assessmentRepository,
-                movementLibrary: movementLibrary
+                movementLibrary: movementLibrary,
+                protocolParser: protocolParser,
+                protocolRepository: protocolRepository
             )
             .tabItem {
                 Label("Train", systemImage: "figure.cross.training")
@@ -68,6 +72,8 @@ struct AppTabView: View {
         workoutParser: VersionedWorkoutParser(),
         workoutScalingEngine: DeterministicWorkoutScalingEngine(),
         workoutRepository: PreviewWorkoutRepository(),
-        movementLibrary: PreviewMovementLibraryRepository()
+        movementLibrary: PreviewMovementLibraryRepository(),
+        protocolParser: DeterministicProtocolParser(),
+        protocolRepository: PreviewProtocolRepository()
     )
 }

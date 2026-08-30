@@ -75,6 +75,16 @@ protocol MovementLibraryRepository: Sendable {
     func importWODLab(_ data: Data) async throws -> MovementLibraryImportResult
 }
 
+protocol ProtocolParser: Sendable {
+    func parse(rawText: String, source: ProtocolSource) async throws -> ParsedProtocol
+}
+
+protocol ProtocolRepository: Sendable {
+    func protocols(includeArchived: Bool) async throws -> [TherapyProtocol]
+    func saveProtocol(_ therapyProtocol: TherapyProtocol) async throws
+    func deleteProtocol(id: String) async throws
+}
+
 protocol ReadinessEngine: Sendable {
     func assess(_ input: ReadinessInput) async throws -> ReadinessAssessment
 }
