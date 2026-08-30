@@ -20,7 +20,16 @@
     "format": {
       "enum": ["for_time", "amrap", "emom", "rounds", "strength", "intervals", "manual"]
     },
-    "timeCapSeconds": { "type": ["integer", "null"], "minimum": 1 },
+    "timeCapSeconds": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+    "reportedResult": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["completedRounds", "additionalRepetitions"],
+      "properties": {
+        "completedRounds": { "type": "integer", "minimum": 0, "maximum": 100000 },
+        "additionalRepetitions": { "type": "integer", "minimum": 0, "maximum": 100000 }
+      }
+    },
     "intendedStimulus": { "$ref": "#/$defs/stimulus" },
     "segments": {
       "type": "array",
@@ -46,8 +55,8 @@
       "properties": {
         "primary": { "type": "string", "minLength": 1 },
         "secondary": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "estimatedDurationMinimumMinutes": { "type": ["integer", "null"], "minimum": 1 },
-        "estimatedDurationMaximumMinutes": { "type": ["integer", "null"], "minimum": 1 }
+        "estimatedDurationMinimumMinutes": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "estimatedDurationMaximumMinutes": { "type": ["number", "null"], "exclusiveMinimum": 0 }
       }
     },
     "ambiguity": {
@@ -76,8 +85,8 @@
         "sequence": { "type": "integer", "minimum": 1 },
         "type": { "enum": ["work", "rest", "warmup", "cooldown"] },
         "rounds": { "type": ["integer", "null"], "minimum": 1 },
-        "durationSeconds": { "type": ["integer", "null"], "minimum": 1 },
-        "restSeconds": { "type": ["integer", "null"], "minimum": 1 },
+        "durationSeconds": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "restSeconds": { "type": ["number", "null"], "exclusiveMinimum": 0 },
         "notes": { "type": "string" },
         "movements": {
           "type": "array",
@@ -93,7 +102,7 @@
           "then": {
             "required": ["durationSeconds"],
             "properties": {
-              "durationSeconds": { "type": "integer", "minimum": 1 },
+              "durationSeconds": { "type": "number", "exclusiveMinimum": 0 },
               "rounds": { "type": "null" },
               "restSeconds": { "type": "null" },
               "movements": { "maxItems": 0 }
@@ -127,7 +136,7 @@
         "loadValue": { "type": ["number", "null"], "exclusiveMinimum": 0 },
         "loadUnit": { "type": ["string", "null"], "minLength": 1 },
         "percentageOfOneRepMax": { "type": ["number", "null"], "exclusiveMinimum": 0 },
-        "durationSeconds": { "type": ["integer", "null"], "minimum": 1 },
+        "durationSeconds": { "type": ["number", "null"], "exclusiveMinimum": 0 },
         "tempo": { "type": ["string", "null"], "minLength": 1 },
         "notes": { "type": "string" }
       }

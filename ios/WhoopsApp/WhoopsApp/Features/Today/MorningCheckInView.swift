@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MorningCheckInView: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State private var checkIn: MorningCheckIn
     @State private var isSaving = false
     @State private var isConfirmingDeletion = false
@@ -44,12 +45,15 @@ struct MorningCheckInView: View {
 
                 Section("Optional context") {
                     TextField("Notes", text: $checkIn.notes, axis: .vertical)
+                        .formKeyboardField(dismissOnSubmit: false)
+                        .accessibilityIdentifier("check-in-notes")
                         .lineLimit(2...5)
                 }
 
                 if isExisting {
                     Section {
                         Button("Delete this check-in", role: .destructive) {
+                            focusedField = nil
                             isConfirmingDeletion = true
                         }
                     } footer: {
@@ -58,12 +62,17 @@ struct MorningCheckInView: View {
                 }
             }
             .navigationTitle("Morning Check-In")
+            .formKeyboardScope($focusedField)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        focusedField = nil
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        focusedField = nil
                         Task {
                             isSaving = true
                             checkIn.timestamp = .now
@@ -112,6 +121,7 @@ struct MorningCheckInView: View {
 
 struct AssessmentOverrideView: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State private var recommendation: ReadinessAssessment.Recommendation
     @State private var note: String
     @State private var isSaving = false
@@ -141,11 +151,13 @@ struct AssessmentOverrideView: View {
                         }
                     }
                     TextField("Why are you overriding it?", text: $note, axis: .vertical)
+                        .formKeyboardField(dismissOnSubmit: false)
                         .lineLimit(2...5)
                 }
                 if hasSavedOverride {
                     Section {
                         Button("Remove override", role: .destructive) {
+                            focusedField = nil
                             isConfirmingRemoval = true
                         }
                     } footer: {
@@ -154,12 +166,17 @@ struct AssessmentOverrideView: View {
                 }
             }
             .navigationTitle("Override Recommendation")
+            .formKeyboardScope($focusedField)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        focusedField = nil
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        focusedField = nil
                         Task {
                             isSaving = true
                             if await onSave(recommendation, note) { dismiss() }

@@ -17,14 +17,14 @@ struct EvaluateAppleWorkoutParser {
 
     struct Projection: Codable, Equatable {
         let format: String
-        let timeCap: Int?
+        let timeCap: Double?
         let segments: [Segment]
 
         struct Segment: Codable, Equatable {
             let kind: String
             let rounds: Int?
-            let duration: Int?
-            let rest: Int?
+            let duration: Double?
+            let rest: Double?
             let movements: [Movement]
         }
         struct Movement: Codable, Equatable {
@@ -34,7 +34,7 @@ struct EvaluateAppleWorkoutParser {
             let calories: Int?
             let load: Double?
             let unit: String?
-            let duration: Int?
+            let duration: Double?
             let percentage: Double?
         }
 

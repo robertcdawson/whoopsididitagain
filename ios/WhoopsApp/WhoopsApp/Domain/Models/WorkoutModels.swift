@@ -76,8 +76,21 @@ struct MovementCatalogItem: Codable, Equatable, Identifiable, Sendable {
 struct WorkoutStimulus: Codable, Equatable, Sendable {
     var primary: String
     var secondary: [String]
-    var estimatedDurationMinimumMinutes: Int?
-    var estimatedDurationMaximumMinutes: Int?
+    var estimatedDurationMinimumMinutes: Double?
+    var estimatedDurationMaximumMinutes: Double?
+
+    var hasValidDurationRange: Bool {
+        guard
+            [estimatedDurationMinimumMinutes, estimatedDurationMaximumMinutes]
+                .compactMap({ $0 }).allSatisfy({ $0.isFinite && $0 > 0 })
+        else { return false }
+        if let minimum = estimatedDurationMinimumMinutes,
+            let maximum = estimatedDurationMaximumMinutes
+        {
+            return minimum <= maximum
+        }
+        return true
+    }
 
     static let unknown = WorkoutStimulus(
         primary: "Needs review",
@@ -105,9 +118,21 @@ struct MovementPrescription: Codable, Equatable, Identifiable, Sendable {
     var loadValue: Double?
     var loadUnit: String?
     var percentageOfOneRepMax: Double?
-    var durationSeconds: Int?
+    var durationSeconds: Double?
     var tempo: String?
     var notes: String
+
+    func duplicated() -> MovementPrescription {
+        var copy = self
+        copy.id = UUID().uuidString.lowercased()
+        return copy
+    }
+
+    var hasValidQuantities: Bool {
+        [repetitions, distanceMeters, calories].compactMap { $0 }.allSatisfy { $0 > 0 }
+            && [loadValue, durationSeconds].compactMap { $0 }.allSatisfy { $0.isFinite && $0 > 0 }
+            && (percentageOfOneRepMax.map { $0.isFinite && $0 > 0 && $0 <= 100 } ?? true)
+    }
 }
 
 struct WorkoutSegment: Codable, Equatable, Identifiable, Sendable {
@@ -115,21 +140,22 @@ struct WorkoutSegment: Codable, Equatable, Identifiable, Sendable {
     var sequence: Int
     var type: WorkoutSegmentType
     var rounds: Int?
-    var durationSeconds: Int?
-    var restSeconds: Int?
+    var durationSeconds: Double?
+    var restSeconds: Double?
     var notes: String
     var movements: [MovementPrescription]
 
     var hasValidStructure: Bool {
         guard sequence > 0 else { return false }
         if type == .rest {
-            return durationSeconds.map { $0 > 0 } == true
+            return durationSeconds.map { $0.isFinite && $0 > 0 } == true
                 && rounds == nil
                 && restSeconds == nil
                 && movements.isEmpty
         }
-        let values = [rounds, durationSeconds, restSeconds].compactMap { $0 }
-        return !movements.isEmpty && values.allSatisfy { $0 > 0 }
+        let values = [durationSeconds, restSeconds].compactMap { $0 }
+        return !movements.isEmpty && (rounds == nil || rounds! > 0)
+            && values.allSatisfy { $0.isFinite && $0 > 0 }
     }
 }
 
@@ -137,13 +163,14 @@ struct ParsedWorkout: Codable, Equatable, Sendable {
     var title: String
     let rawText: String
     var format: WorkoutFormat
-    var timeCapSeconds: Int?
+    var timeCapSeconds: Double?
     var intendedStimulus: WorkoutStimulus
     var segments: [WorkoutSegment]
     var ambiguities: [WorkoutAmbiguity]
     var parserConfidence: Double
     let parserVersion: String
     let modelVersion: String?
+    var reportedResult: WorkoutReportedResult? = nil
 
     func validated(catalog: MovementCatalog = .standard) throws -> ParsedWorkout {
         guard !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -152,6 +179,9 @@ struct ParsedWorkout: Codable, Equatable, Sendable {
         guard (0...1).contains(parserConfidence) else {
             throw WorkoutValidationError.invalidConfidence
         }
+        guard timeCapSeconds.map({ $0.isFinite && $0 > 0 }) ?? true,
+            reportedResult?.isValid ?? true
+        else { throw WorkoutValidationError.invalidSegment }
         guard !segments.isEmpty else { throw WorkoutValidationError.missingSegments }
         let knownMovementIDs = Set(catalog.items.map(\.id))
         for segment in segments {
@@ -159,6 +189,9 @@ struct ParsedWorkout: Codable, Equatable, Sendable {
                 throw WorkoutValidationError.invalidSegment
             }
             for movement in segment.movements {
+                guard movement.hasValidQuantities else {
+                    throw WorkoutValidationError.invalidMovement
+                }
                 guard !movement.displayName.trimmingCharacters(in: .whitespaces).isEmpty else {
                     throw WorkoutValidationError.invalidMovement
                 }
@@ -169,9 +202,11 @@ struct ParsedWorkout: Codable, Equatable, Sendable {
                 }
                 let integers = [
                     movement.repetitions, movement.distanceMeters, movement.calories,
-                    movement.durationSeconds,
                 ].compactMap { $0 }
                 guard integers.allSatisfy({ $0 > 0 }) else {
+                    throw WorkoutValidationError.invalidMovement
+                }
+                if let duration = movement.durationSeconds, !duration.isFinite || duration <= 0 {
                     throw WorkoutValidationError.invalidMovement
                 }
                 if let load = movement.loadValue, load <= 0 {
@@ -192,12 +227,15 @@ struct WorkoutPlan: Equatable, Identifiable, Sendable {
     var status: WorkoutPlanStatus
     var format: WorkoutFormat
     var intendedStimulus: WorkoutStimulus
-    var timeCapSeconds: Int?
+    var timeCapSeconds: Double?
     var parserVersion: String
     var modelVersion: String?
     var confidence: Double
     var ambiguities: [WorkoutAmbiguity]
     var segments: [WorkoutSegment]
+    var reportedResult: WorkoutReportedResult?
+    // User corrections belong to the reviewed plan, never to parser-generated prescriptions.
+    var reportedRepetitionOverrides: [String: Int]
 
     init(
         id: String,
@@ -208,12 +246,14 @@ struct WorkoutPlan: Equatable, Identifiable, Sendable {
         status: WorkoutPlanStatus,
         format: WorkoutFormat,
         intendedStimulus: WorkoutStimulus,
-        timeCapSeconds: Int?,
+        timeCapSeconds: Double?,
         parserVersion: String,
         modelVersion: String?,
         confidence: Double,
         ambiguities: [WorkoutAmbiguity],
-        segments: [WorkoutSegment]
+        segments: [WorkoutSegment],
+        reportedResult: WorkoutReportedResult? = nil,
+        reportedRepetitionOverrides: [String: Int] = [:]
     ) {
         self.id = id
         self.title = title
@@ -229,6 +269,8 @@ struct WorkoutPlan: Equatable, Identifiable, Sendable {
         self.confidence = confidence
         self.ambiguities = ambiguities
         self.segments = segments
+        self.reportedResult = reportedResult
+        self.reportedRepetitionOverrides = reportedRepetitionOverrides
     }
 
     init(parsed: ParsedWorkout, id: String = UUID().uuidString.lowercased(), now: Date = .now) {
@@ -246,6 +288,8 @@ struct WorkoutPlan: Equatable, Identifiable, Sendable {
         confidence = parsed.parserConfidence
         ambiguities = parsed.ambiguities
         segments = parsed.segments
+        reportedResult = parsed.reportedResult
+        reportedRepetitionOverrides = [:]
     }
 
     var movements: [MovementPrescription] { segments.flatMap(\.movements) }
@@ -283,10 +327,25 @@ struct CompletedMovement: Codable, Equatable, Identifiable, Sendable {
     var actualCalories: Int?
     var actualLoadValue: Double?
     var actualLoadUnit: String?
-    var actualDurationSeconds: Int?
+    var actualDurationSeconds: Double?
     var modification: String
     var painDuring: Int
     var notes: String
+
+    func duplicated() -> CompletedMovement {
+        var copy = self
+        copy.id = UUID().uuidString.lowercased()
+        return copy
+    }
+
+    var hasValidValues: Bool {
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (0...10).contains(painDuring)
+            && [actualRepetitions, actualDistanceMeters, actualCalories]
+                .compactMap { $0 }.allSatisfy { $0 >= 0 }
+            && [actualLoadValue, actualDurationSeconds]
+                .compactMap { $0 }.allSatisfy { $0.isFinite && $0 >= 0 }
+    }
 }
 
 struct CompletedWorkout: Equatable, Identifiable, Sendable {
@@ -299,22 +358,63 @@ struct CompletedWorkout: Equatable, Identifiable, Sendable {
     var postSessionPain: Int
     var notes: String
     var movements: [CompletedMovement]
+    var reportedResult: WorkoutReportedResult? = nil
 }
 
 extension CompletedWorkout {
+    var durationSeconds: Double { endedAt.timeIntervalSince(startedAt) }
+
+    /// Moving a session preserves elapsed time, including fractional seconds and midnight crossings.
+    mutating func reschedule(startingAt date: Date) {
+        let duration = max(0, durationSeconds)
+        startedAt = date
+        endedAt = date.addingTimeInterval(duration)
+    }
+
+    mutating func setDuration(seconds: Double) {
+        guard seconds.isFinite, seconds >= 0 else { return }
+        endedAt = startedAt.addingTimeInterval(seconds)
+    }
+
+    var validationMessage: String? {
+        if title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Enter a workout title."
+        }
+        if !startedAt.timeIntervalSinceReferenceDate.isFinite
+            || !endedAt.timeIntervalSinceReferenceDate.isFinite || !durationSeconds.isFinite
+            || durationSeconds <= 0
+        {
+            return "The workout must end after it starts."
+        }
+        if !(1...10).contains(sessionRPE) || !(0...10).contains(postSessionPain) {
+            return "Session RPE must be 1–10 and post-session pain must be 0–10."
+        }
+        if reportedResult?.isValid == false {
+            return "Review the completed rounds and additional reps."
+        }
+        if Set(movements.map(\.id)).count != movements.count
+            || !movements.allSatisfy(\.hasValidValues)
+        {
+            return "Each movement needs a name, nonnegative quantities, and pain from 0–10."
+        }
+        return nil
+    }
+
     init(plan: WorkoutPlan, now: Date = .now) {
+        let totals = plan.effectiveReportedRepetitionTotals
         let movements = plan.movements.map { movement in
             CompletedMovement(
                 id: UUID().uuidString.lowercased(),
                 canonicalMovementID: movement.canonicalMovementID,
                 plannedPrescriptionID: movement.id,
                 displayName: movement.displayName,
-                actualRepetitions: movement.repetitions,
-                actualDistanceMeters: movement.distanceMeters,
-                actualCalories: movement.calories,
+                actualRepetitions: totals[movement.id]
+                    ?? (plan.hasReportedRepetitions ? nil : movement.repetitions),
+                actualDistanceMeters: plan.hasReportedRepetitions ? nil : movement.distanceMeters,
+                actualCalories: plan.hasReportedRepetitions ? nil : movement.calories,
                 actualLoadValue: movement.loadValue,
                 actualLoadUnit: movement.loadUnit,
-                actualDurationSeconds: movement.durationSeconds,
+                actualDurationSeconds: plan.hasReportedRepetitions ? nil : movement.durationSeconds,
                 modification: "",
                 painDuring: 0,
                 notes: ""
@@ -329,8 +429,178 @@ extension CompletedWorkout {
             sessionRPE: 5,
             postSessionPain: 0,
             notes: "",
-            movements: movements
+            movements: movements,
+            reportedResult: plan.reportedResult
         )
+    }
+}
+
+struct WorkoutReportedResult: Codable, Equatable, Sendable {
+    var completedRounds: Int
+    var additionalRepetitions: Int
+
+    var isValid: Bool {
+        (0...100_000).contains(completedRounds) && (0...100_000).contains(additionalRepetitions)
+    }
+
+    var summary: String { "\(completedRounds) rounds + \(additionalRepetitions) reps" }
+
+    static func parse(_ source: String) -> WorkoutReportedResult? {
+        let lines = source.precomposedStringWithCompatibilityMapping.components(
+            separatedBy: .newlines
+        )
+        .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        .filter {
+            $0.range(of: #"(?i)^(score|result|completed)\s*:"#, options: .regularExpression) != nil
+        }
+        // Multiple scores may refer to different segments; never guess which one applies.
+        guard lines.count == 1, let line = lines.first,
+            let regex = try? NSRegularExpression(
+                pattern:
+                    #"(?i)^(?:score|result|completed)\s*:\s*(\d+)\s+rounds?(?:\s*(?:,|and|\+)\s*(\d+)\s+(?:reps?|repetitions?))?\s*\.?$"#
+            ),
+            let match = regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+            let roundsRange = Range(match.range(at: 1), in: line),
+            let rounds = Int(line[roundsRange])
+        else { return nil }
+        var reps = 0
+        if let range = Range(match.range(at: 2), in: line) {
+            guard let value = Int(line[range]) else { return nil }
+            reps = value
+        }
+        let result = WorkoutReportedResult(completedRounds: rounds, additionalRepetitions: reps)
+        return result.isValid ? result : nil
+    }
+}
+
+extension WorkoutPlan {
+    var hasReportedRepetitions: Bool {
+        reportedResult != nil || !reportedRepetitionOverrides.isEmpty
+    }
+
+    var hasValidReportedRepetitionOverrides: Bool {
+        let movementIDs = Set(movements.map(\.id))
+        return reportedRepetitionOverrides.allSatisfy {
+            movementIDs.contains($0.key) && (0...100_000).contains($0.value)
+        }
+    }
+
+    /// Corrected counts take precedence without changing the score or per-round prescription.
+    var effectiveReportedRepetitionTotals: [String: Int] {
+        var totals = reportedRepetitionTotals ?? [:]
+        for movement in movements {
+            if let correction = reportedRepetitionOverrides[movement.id],
+                (0...100_000).contains(correction)
+            {
+                totals[movement.id] = correction
+            }
+        }
+        return totals
+    }
+
+    mutating func discardOrphanedReportedRepetitionOverrides() {
+        let movementIDs = Set(movements.map(\.id))
+        reportedRepetitionOverrides = reportedRepetitionOverrides.filter {
+            movementIDs.contains($0.key)
+        }
+    }
+
+    func visibleNotes(_ notes: String) -> String {
+        guard reportedResult != nil else { return notes }
+        return notes.components(separatedBy: .newlines)
+            .filter { !$0.hasPrefix("Reported result (not a prescription):") }
+            .joined(separator: "\n")
+    }
+
+    /// Extra reps follow the written movement order; mixed-unit or multi-segment scores need review.
+    var reportedRepetitionTotals: [String: Int]? {
+        guard let result = reportedResult, result.isValid,
+            format == .amrap || format == .rounds,
+            segments.count == 1, let segment = segments.first, segment.type == .work,
+            !segment.movements.isEmpty,
+            segment.movements.allSatisfy({
+                ($0.repetitions ?? 0) > 0 && $0.distanceMeters == nil && $0.calories == nil
+                    && $0.durationSeconds == nil
+            })
+        else { return nil }
+        let counts = segment.movements.compactMap(\.repetitions)
+        guard counts.allSatisfy({ $0 <= 100_000 }) else { return nil }
+        let perRound = counts.reduce(0, +)
+        guard result.additionalRepetitions < perRound else { return nil }
+        var remaining = result.additionalRepetitions
+        var totals: [String: Int] = [:]
+        for movement in segment.movements {
+            let reps = movement.repetitions ?? 0
+            let extra = min(remaining, reps)
+            totals[movement.id] = result.completedRounds * reps + extra
+            remaining -= extra
+        }
+        return totals
+    }
+}
+
+enum WorkoutDurationInput {
+    static func minutesText(seconds: Double, locale: Locale = .current) -> String {
+        (seconds / 60).formatted(
+            .number.locale(locale).grouping(.never).precision(.fractionLength(0...2)))
+    }
+
+    static func summary(seconds: Double) -> String { "\(minutesText(seconds: seconds)) min" }
+
+    static func accepts(_ text: String, locale: Locale = .current) -> Bool {
+        let normalized = text.replacingOccurrences(of: locale.decimalSeparator ?? ".", with: ".")
+        return normalized.range(of: #"^\d{0,4}(?:\.\d{0,2})?$"#, options: .regularExpression) != nil
+    }
+
+    static func seconds(_ text: String, locale: Locale = .current) -> Double? {
+        guard accepts(text, locale: locale),
+            let minutes = Double(
+                text.replacingOccurrences(of: locale.decimalSeparator ?? ".", with: ".")),
+            minutes.isFinite, (0...1_440).contains(minutes)
+        else { return nil }
+        return (minutes * 6_000).rounded() / 100
+    }
+
+    static func legacySeconds(_ seconds: Double?) -> Int? {
+        seconds.flatMap { $0.isFinite && $0 >= 0 && $0 <= 86_400 ? Int($0.rounded()) : nil }
+    }
+}
+
+enum WorkoutDecimalInput {
+    static func text(_ value: Double, locale: Locale = .current) -> String {
+        value.formatted(.number.locale(locale).grouping(.never).precision(.fractionLength(0...12)))
+    }
+
+    static func accepts(_ text: String, locale: Locale = .current) -> Bool {
+        let normalized = text.replacingOccurrences(of: locale.decimalSeparator ?? ".", with: ".")
+        guard normalized.range(of: #"^\d*(?:\.\d*)?$"#, options: .regularExpression) != nil else {
+            return false
+        }
+        return normalized.isEmpty || normalized == "." || number(text, locale: locale) != nil
+    }
+
+    static func number(_ text: String, locale: Locale = .current) -> Double? {
+        guard
+            let value = Double(
+                text.replacingOccurrences(of: locale.decimalSeparator ?? ".", with: ".")),
+            value.isFinite, value >= 0
+        else { return nil }
+        return value
+    }
+}
+
+enum WorkoutLoadUnit: String, CaseIterable, Identifiable {
+    case pounds = "lb"
+    case kilograms = "kg"
+    var id: String { rawValue }
+    var displayName: String { self == .pounds ? "lbs" : "kg" }
+
+    static func normalized(_ value: String?) -> WorkoutLoadUnit? {
+        switch value?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "lb", "lbs", "pound", "pounds", "#": .pounds
+        case "kg", "kgs", "kilogram", "kilograms": .kilograms
+        default: nil
+        }
     }
 }
 
@@ -341,6 +611,7 @@ enum WorkoutValidationError: Error, Equatable, LocalizedError, Sendable {
     case invalidSegment
     case invalidMovement
     case unknownMovement(String)
+    case invalidCompletedWorkout(String)
 
     var errorDescription: String? {
         switch self {
@@ -350,6 +621,7 @@ enum WorkoutValidationError: Error, Equatable, LocalizedError, Sendable {
         case .invalidSegment: "The parser returned an invalid workout segment."
         case .invalidMovement: "The parser returned an invalid movement prescription."
         case .unknownMovement(let id): "The parser returned an unknown movement: \(id)."
+        case .invalidCompletedWorkout(let message): message
         }
     }
 }

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B00000000000000000000046 /* FormKeyboardFocus.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000046; };
 		B00000000000000000000043 /* OnDeviceWorkoutParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000043; };
 		B00000000000000000000044 /* AppleWorkoutModelClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000044; };
 		B00000000000000000000045 /* OnDeviceWorkoutParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000045; };
@@ -93,6 +94,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		F00000000000000000000046 /* FormKeyboardFocus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/DesignSystem/FormKeyboardFocus.swift; sourceTree = "<group>"; };
 		F00000000000000000000043 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/OnDeviceWorkoutParser.swift; sourceTree = "<group>"; };
 		F00000000000000000000044 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/AppleWorkoutModelClient.swift; sourceTree = "<group>"; };
 		F00000000000000000000045 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/OnDeviceWorkoutParserTests.swift; sourceTree = "<group>"; };
@@ -216,6 +218,7 @@
 				F00000000000000000000007 /* WhoopsApp/Data/Networking/BackendClient.swift */,
 				F00000000000000000000008 /* WhoopsApp/Data/Repositories/FoundationStubs.swift */,
 				F00000000000000000000009 /* WhoopsApp/DesignSystem/FoundationCard.swift */,
+				F00000000000000000000046 /* FormKeyboardFocus.swift */,
 				F0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift */,
 				F0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift */,
 				F0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift */,
@@ -452,6 +455,7 @@
 				B00000000000000000000007 /* WhoopsApp/Data/Networking/BackendClient.swift in Sources */,
 				B00000000000000000000008 /* WhoopsApp/Data/Repositories/FoundationStubs.swift in Sources */,
 				B00000000000000000000009 /* WhoopsApp/DesignSystem/FoundationCard.swift in Sources */,
+				B00000000000000000000046 /* FormKeyboardFocus.swift in Sources */,
 				B0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift in Sources */,
 				B0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift in Sources */,
 				B0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift in Sources */,

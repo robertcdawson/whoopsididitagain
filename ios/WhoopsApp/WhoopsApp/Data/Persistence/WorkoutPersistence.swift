@@ -12,6 +12,10 @@ final class WorkoutPlanRecord {
     var format: String
     var intendedStimulusData: Data
     var timeCapSeconds: Int?
+    // Additive columns preserve existing stores and keep fractional minutes lossless.
+    var preciseTimeCapSeconds: Double?
+    var reportedResultData: Data?
+    var reportedRepetitionOverridesData: Data?
     var parserVersion: String
     var modelVersion: String?
     var confidence: Double
@@ -27,7 +31,11 @@ final class WorkoutPlanRecord {
         status = plan.status.rawValue
         format = plan.format.rawValue
         intendedStimulusData = stimulusData
-        timeCapSeconds = plan.timeCapSeconds
+        timeCapSeconds = WorkoutDurationInput.legacySeconds(plan.timeCapSeconds)
+        preciseTimeCapSeconds = plan.timeCapSeconds
+        reportedResultData = try? JSONEncoder().encode(plan.reportedResult)
+        reportedRepetitionOverridesData = try? JSONEncoder().encode(
+            plan.reportedRepetitionOverrides)
         parserVersion = plan.parserVersion
         modelVersion = plan.modelVersion
         confidence = plan.confidence
@@ -45,6 +53,8 @@ final class WorkoutSegmentRecord {
     var rounds: Int?
     var durationSeconds: Int?
     var restSeconds: Int?
+    var preciseDurationSeconds: Double?
+    var preciseRestSeconds: Double?
     var notes: String
 
     init(segment: WorkoutSegment, workoutPlanID: String) {
@@ -53,8 +63,10 @@ final class WorkoutSegmentRecord {
         sequence = segment.sequence
         type = segment.type.rawValue
         rounds = segment.rounds
-        durationSeconds = segment.durationSeconds
-        restSeconds = segment.restSeconds
+        durationSeconds = WorkoutDurationInput.legacySeconds(segment.durationSeconds)
+        restSeconds = WorkoutDurationInput.legacySeconds(segment.restSeconds)
+        preciseDurationSeconds = segment.durationSeconds
+        preciseRestSeconds = segment.restSeconds
         notes = segment.notes
     }
 }
@@ -63,6 +75,7 @@ final class WorkoutSegmentRecord {
 final class MovementPrescriptionRecord {
     @Attribute(.unique) var id: String
     var segmentID: String
+    var sequence: Int?
     var canonicalMovementID: String?
     var displayName: String
     var originalText: String
@@ -73,6 +86,7 @@ final class MovementPrescriptionRecord {
     var loadUnit: String?
     var percentageOfOneRepMax: Double?
     var durationSeconds: Int?
+    var preciseDurationSeconds: Double?
     var tempo: String?
     var notes: String
 
@@ -88,7 +102,8 @@ final class MovementPrescriptionRecord {
         loadValue = movement.loadValue
         loadUnit = movement.loadUnit
         percentageOfOneRepMax = movement.percentageOfOneRepMax
-        durationSeconds = movement.durationSeconds
+        durationSeconds = WorkoutDurationInput.legacySeconds(movement.durationSeconds)
+        preciseDurationSeconds = movement.durationSeconds
         tempo = movement.tempo
         notes = movement.notes
     }
@@ -104,6 +119,7 @@ final class CompletedWorkoutRecord {
     var sessionRPE: Int
     var postSessionPain: Int
     var notes: String
+    var reportedResultData: Data?
 
     init(workout: CompletedWorkout) {
         id = workout.id
@@ -114,6 +130,7 @@ final class CompletedWorkoutRecord {
         sessionRPE = workout.sessionRPE
         postSessionPain = workout.postSessionPain
         notes = workout.notes
+        reportedResultData = try? JSONEncoder().encode(workout.reportedResult)
     }
 }
 
@@ -121,6 +138,7 @@ final class CompletedWorkoutRecord {
 final class CompletedMovementRecord {
     @Attribute(.unique) var id: String
     var workoutRecordID: String
+    var sequence: Int?
     var canonicalMovementID: String?
     var plannedPrescriptionID: String?
     var displayName: String
@@ -130,6 +148,7 @@ final class CompletedMovementRecord {
     var actualLoadValue: Double?
     var actualLoadUnit: String?
     var actualDurationSeconds: Int?
+    var preciseActualDurationSeconds: Double?
     var modification: String
     var painDuring: Int
     var notes: String
@@ -145,7 +164,8 @@ final class CompletedMovementRecord {
         actualCalories = movement.actualCalories
         actualLoadValue = movement.actualLoadValue
         actualLoadUnit = movement.actualLoadUnit
-        actualDurationSeconds = movement.actualDurationSeconds
+        actualDurationSeconds = WorkoutDurationInput.legacySeconds(movement.actualDurationSeconds)
+        preciseActualDurationSeconds = movement.actualDurationSeconds
         modification = movement.modification
         painDuring = movement.painDuring
         notes = movement.notes
@@ -181,6 +201,11 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
         guard !plan.segments.isEmpty, plan.segments.allSatisfy(\.hasValidStructure) else {
             throw WorkoutValidationError.invalidSegment
         }
+        guard plan.movements.allSatisfy(\.hasValidQuantities), plan.reportedResult?.isValid ?? true,
+            plan.intendedStimulus.hasValidDurationRange,
+            plan.hasValidReportedRepetitionOverrides,
+            plan.timeCapSeconds.map({ $0.isFinite && $0 > 0 }) ?? true
+        else { throw WorkoutValidationError.invalidMovement }
         let stimulusData = try encoder.encode(plan.intendedStimulus)
         let ambiguitiesData = try encoder.encode(plan.ambiguities)
         let now = Date.now
@@ -193,7 +218,11 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
             record.status = plan.status.rawValue
             record.format = plan.format.rawValue
             record.intendedStimulusData = stimulusData
-            record.timeCapSeconds = plan.timeCapSeconds
+            record.timeCapSeconds = WorkoutDurationInput.legacySeconds(plan.timeCapSeconds)
+            record.preciseTimeCapSeconds = plan.timeCapSeconds
+            record.reportedResultData = try encoder.encode(plan.reportedResult)
+            record.reportedRepetitionOverridesData = try encoder.encode(
+                plan.reportedRepetitionOverrides)
             record.parserVersion = plan.parserVersion
             record.modelVersion = plan.modelVersion
             record.confidence = plan.confidence
@@ -230,13 +259,15 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
             } else {
                 context.insert(WorkoutSegmentRecord(segment: segment, workoutPlanID: plan.id))
             }
-            for movement in segment.movements {
+            for (index, movement) in segment.movements.enumerated() {
                 if let record = movementRecords.first(where: { $0.id == movement.id }) {
                     Self.update(record, from: movement, segmentID: segment.id)
+                    record.sequence = index
                 } else {
-                    context.insert(
-                        MovementPrescriptionRecord(movement: movement, segmentID: segment.id)
-                    )
+                    let record = MovementPrescriptionRecord(
+                        movement: movement, segmentID: segment.id)
+                    record.sequence = index
+                    context.insert(record)
                 }
             }
         }
@@ -273,12 +304,34 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
                 sessionRPE: record.sessionRPE,
                 postSessionPain: record.postSessionPain,
                 notes: record.notes,
-                movements: movements.filter { $0.workoutRecordID == record.id }.map(Self.movement)
+                movements: movements.filter { $0.workoutRecordID == record.id }
+                    .enumerated().sorted {
+                        ($0.element.sequence ?? $0.offset) < ($1.element.sequence ?? $1.offset)
+                    }
+                    .map { Self.movement($0.element) },
+                reportedResult: record.reportedResultData.flatMap {
+                    try? decoder.decode(WorkoutReportedResult.self, from: $0)
+                }
             )
         }.sorted { $0.startedAt > $1.startedAt }
     }
 
     func saveCompletedWorkout(_ workout: CompletedWorkout) async throws {
+        if let message = workout.validationMessage {
+            throw WorkoutValidationError.invalidCompletedWorkout(message)
+        }
+        // Validate and encode before changing any existing rows. Editing keeps the same identity.
+        let resultData = try encoder.encode(workout.reportedResult)
+        let movementRecords = try context.fetch(FetchDescriptor<CompletedMovementRecord>())
+        let newIDs = Set(workout.movements.map(\.id))
+        guard
+            !movementRecords.contains(where: {
+                newIDs.contains($0.id) && $0.workoutRecordID != workout.id
+            })
+        else {
+            throw WorkoutValidationError.invalidCompletedWorkout(
+                "A movement result cannot belong to two workouts. Duplicate it instead.")
+        }
         let workoutRecords = try context.fetch(FetchDescriptor<CompletedWorkoutRecord>())
         if let record = workoutRecords.first(where: { $0.id == workout.id }) {
             record.plannedWorkoutID = workout.plannedWorkoutID
@@ -288,21 +341,22 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
             record.sessionRPE = workout.sessionRPE
             record.postSessionPain = workout.postSessionPain
             record.notes = workout.notes
+            record.reportedResultData = resultData
         } else {
             context.insert(CompletedWorkoutRecord(workout: workout))
         }
 
-        let movementRecords = try context.fetch(FetchDescriptor<CompletedMovementRecord>())
         let existing = movementRecords.filter { $0.workoutRecordID == workout.id }
-        let newIDs = Set(workout.movements.map(\.id))
         for record in existing where !newIDs.contains(record.id) { context.delete(record) }
-        for movement in workout.movements {
+        for (index, movement) in workout.movements.enumerated() {
             if let record = movementRecords.first(where: { $0.id == movement.id }) {
                 Self.update(record, from: movement, workoutRecordID: workout.id)
+                record.sequence = index
             } else {
-                context.insert(
-                    CompletedMovementRecord(movement: movement, workoutRecordID: workout.id)
-                )
+                let record = CompletedMovementRecord(
+                    movement: movement, workoutRecordID: workout.id)
+                record.sequence = index
+                context.insert(record)
             }
         }
         if let planID = workout.plannedWorkoutID,
@@ -364,7 +418,7 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
             status: status,
             format: format,
             intendedStimulus: stimulus,
-            timeCapSeconds: record.timeCapSeconds,
+            timeCapSeconds: record.preciseTimeCapSeconds ?? record.timeCapSeconds.map(Double.init),
             parserVersion: record.parserVersion,
             modelVersion: record.modelVersion,
             confidence: record.confidence,
@@ -376,13 +430,23 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
                     sequence: segment.sequence,
                     type: type,
                     rounds: segment.rounds,
-                    durationSeconds: segment.durationSeconds,
-                    restSeconds: segment.restSeconds,
+                    durationSeconds: segment.preciseDurationSeconds
+                        ?? segment.durationSeconds.map(Double.init),
+                    restSeconds: segment.preciseRestSeconds ?? segment.restSeconds.map(Double.init),
                     notes: segment.notes,
                     movements: movements.filter { $0.segmentID == segment.id }
-                        .map(Self.movement)
+                        .enumerated().sorted {
+                            ($0.element.sequence ?? $0.offset) < ($1.element.sequence ?? $1.offset)
+                        }
+                        .map { Self.movement($0.element) }
                 )
-            }.sorted { $0.sequence < $1.sequence }
+            }.sorted { $0.sequence < $1.sequence },
+            reportedResult: record.reportedResultData.flatMap {
+                try? decoder.decode(WorkoutReportedResult.self, from: $0)
+            },
+            reportedRepetitionOverrides: record.reportedRepetitionOverridesData.flatMap {
+                try? decoder.decode([String: Int].self, from: $0)
+            } ?? [:]
         )
     }
 
@@ -398,7 +462,8 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
             loadValue: record.loadValue,
             loadUnit: record.loadUnit,
             percentageOfOneRepMax: record.percentageOfOneRepMax,
-            durationSeconds: record.durationSeconds,
+            durationSeconds: record.preciseDurationSeconds
+                ?? record.durationSeconds.map(Double.init),
             tempo: record.tempo,
             notes: record.notes
         )
@@ -415,7 +480,8 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
             actualCalories: record.actualCalories,
             actualLoadValue: record.actualLoadValue,
             actualLoadUnit: record.actualLoadUnit,
-            actualDurationSeconds: record.actualDurationSeconds,
+            actualDurationSeconds: record.preciseActualDurationSeconds
+                ?? record.actualDurationSeconds.map(Double.init),
             modification: record.modification,
             painDuring: record.painDuring,
             notes: record.notes
@@ -431,8 +497,10 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
         record.sequence = segment.sequence
         record.type = segment.type.rawValue
         record.rounds = segment.rounds
-        record.durationSeconds = segment.durationSeconds
-        record.restSeconds = segment.restSeconds
+        record.durationSeconds = WorkoutDurationInput.legacySeconds(segment.durationSeconds)
+        record.restSeconds = WorkoutDurationInput.legacySeconds(segment.restSeconds)
+        record.preciseDurationSeconds = segment.durationSeconds
+        record.preciseRestSeconds = segment.restSeconds
         record.notes = segment.notes
     }
 
@@ -451,7 +519,8 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
         record.loadValue = movement.loadValue
         record.loadUnit = movement.loadUnit
         record.percentageOfOneRepMax = movement.percentageOfOneRepMax
-        record.durationSeconds = movement.durationSeconds
+        record.durationSeconds = WorkoutDurationInput.legacySeconds(movement.durationSeconds)
+        record.preciseDurationSeconds = movement.durationSeconds
         record.tempo = movement.tempo
         record.notes = movement.notes
     }
@@ -470,7 +539,9 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
         record.actualCalories = movement.actualCalories
         record.actualLoadValue = movement.actualLoadValue
         record.actualLoadUnit = movement.actualLoadUnit
-        record.actualDurationSeconds = movement.actualDurationSeconds
+        record.actualDurationSeconds = WorkoutDurationInput.legacySeconds(
+            movement.actualDurationSeconds)
+        record.preciseActualDurationSeconds = movement.actualDurationSeconds
         record.modification = movement.modification
         record.painDuring = movement.painDuring
         record.notes = movement.notes

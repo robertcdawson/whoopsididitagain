@@ -161,7 +161,104 @@ Pasted-workout acceptance follow-up found August 29, 2026:
 
 Verification follow-up from August 29, 2026:
 
-- [ ] Investigate the background-thread publication warning emitted by the HealthKit metric-toggle unit test; its assertions passed, and HealthKit code was not changed by the parser fix.
+- [x] Investigate the background-thread publication warning emitted by the HealthKit metric-toggle
+  unit test. Metric-inclusion notifications now publish on `MainActor`, with a regression that
+  failed before the fix and passes afterward; see the HealthKit stability follow-up below.
+
+Workout-editor acceptance follow-up (August 30, 2026):
+
+- [x] Populate editable completed rounds and additional reps from unambiguous reported scores.
+- [x] Show deterministic movement totals and prefill actual repetitions without overwriting the plan.
+- [x] Use minutes with up to two decimal places for all workout duration editors and summaries.
+- [x] Preserve fractional seconds in additive storage columns and keep older whole-second records readable.
+- [x] Add independent movement duplication and persist movement order through save/reopen.
+- [x] Replace free-text load units with lbs/kg options in planned and actual-work editors.
+- [x] Add synthetic calculation, persistence, locale/precision, and editor-flow regressions.
+- [x] Pass the final full unit/UI suites after editor changes: 106 unit + 15 UI, zero failures.
+  Result: `/tmp/whoops-apple-parser-derived/Logs/Test/Test-WhoopsApp-2026.08.30_02-13-53--0700.xcresult`.
+  All 42 parser fixtures, backend lint/typecheck/10 tests, unsigned iPhone build, Swift formatting,
+  schema JSON syntax, and diff checks also passed. No phone installation was performed.
+- [ ] Confirm the updated editor on the physical iPhone without deleting the existing app.
+
+Reported-total correction follow-up (August 30, 2026):
+
+- [x] Add a discoverable editable total to each movement, separate from prescribed reps and score.
+- [x] Preserve explicitly edited totals (including zero) through score changes and save/reopen;
+  offer Use calculated total to reset and label manual corrections in the summary.
+- [x] Keep corrections local to reviewed plans, use them in completion prefill, and leave existing
+  completion records unchanged. Do not copy corrections to duplicated prescriptions.
+- [x] Add synthetic calculation, reset, persistence, validation, and editor-flow regressions.
+- [x] Pass targeted checks and the full unit/UI suites for the reported-total correction change:
+  110 iOS unit tests, 16 UI tests, 10 backend tests, and 42 built-in parser fixtures, zero failures.
+  Result: `/tmp/whoops-apple-parser-derived/Logs/Test/Test-WhoopsApp-2026.08.30_13-18-26--0700.xcresult`.
+  Unsigned iPhone build, strict Swift formatting, and diff checks also passed. The new UI regression
+  covers correction, score changes, reset, zero, and save/relaunch persistence. No phone installation,
+  commit, or push was performed.
+- [ ] Confirm editable reported totals on the physical iPhone.
+
+Keyboard-focus follow-up (August 30, 2026):
+
+- [x] Replace the global keyboard-dismiss action with screen-scoped SwiftUI focus management.
+- [x] Clear Train's source-field focus before presenting review and on sheet dismissal.
+- [x] Apply consistent Done, single-line submit, scroll, navigation, save/cancel, and background
+  behavior across text-entry forms; retain multiline input and independent focus for repeated rows.
+- [x] Include movement search focus and explicit dismissal before opening movement editors.
+- [x] Add UI regressions for the reported keyboard-return issue and multiline notes.
+- [x] Pass targeted UI checks, full unit/UI suites, formatting, and an unsigned iPhone build.
+  Validation: 110 iOS unit tests, 18 UI tests, and 10 backend tests, zero failures. Backend lint
+  and type checking, strict Swift formatting, project-file validation, and diff checks passed.
+  Result: `/tmp/whoops-apple-parser-derived/Logs/Test/Test-WhoopsApp-2026.08.30_13-51-16--0700.xcresult`.
+  UI coverage includes submit/Done, scrolling, multiline notes, background/foreground, nested
+  editors, cancel/save, reopening a plan, and recording actual work. No phone installation,
+  commit, or push was performed.
+- [ ] Confirm keyboard behavior on the physical iPhone after updating from Xcode.
+
+Workout editing follow-up (August 30, 2026):
+
+- [x] Audit planned/completed fields and document editable fields versus system-managed provenance.
+- [x] Add explicit Edit entry points to both detail screens; preserve saved actual values on reopen.
+- [x] Edit completed title, start/end/date, decimal duration, RPE, pain, notes, and score.
+- [x] Edit all actual movement values/mapping; add, duplicate, remove with confirmation, and reorder.
+- [x] Expose planned estimates/order/type corrections and keep timing inputs consistent.
+- [x] Validate upserts before mutation and cover stable identity, optional clearing, and plan separation.
+- [x] Run full unit/UI suites, targeted reruns, formatting, backend checks, and unsigned iPhone build.
+  Final code passed all 118 iOS unit tests and 19/20 UI tests in
+  `Test-WhoopsApp-2026.08.30_14-27-26--0700.xcresult`. The remaining startup/provenance UI test
+  crashed before editor interaction during HealthKit query activation; all three targeted repeats
+  passed in `Test-WhoopsApp-2026.08.30_14-40-48--0700.xcresult`. Both new edit flows passed,
+  including save/cancel/relaunch, decimal load/duration, RPE/pain, and multiline targets.
+  All 42 parser fixtures, backend lint/typecheck/10 tests/build, unsigned iPhone build, strict Swift
+  formatting, schema JSON, project-file validation, and diff checks passed. No phone installation,
+  commit, or push was performed.
+- [x] Investigate the intermittent simulator startup crash separately: the captured stack is in
+  HealthKit predicate/date formatting (`HKAnchoredObjectQuery.activation`, `EXC_BAD_ACCESS`), not
+  workout editor frames. Confirmed application races and mitigation are documented below; the
+  precise framework failure remains unproven.
+- [x] Confirm editing a previously saved workout on the physical iPhone (Robert, August 30).
+
+HealthKit stability follow-up (August 30, 2026):
+
+- [x] Inspect the original crash and repeat baseline launches (10/10 passed; intermittent crash).
+- [x] Reproduce overlapping queries/stale anchors, duplicate observer registration, and off-main
+  notifications with three failing synthetic tests before changing production code.
+- [x] Serialize query/import/anchor advancement with a cancellation-aware FIFO permit shared by
+  manual refreshes and observers; leave history reads responsive during suspended queries.
+- [x] Claim observer startup before suspension and publish metric changes on the main actor.
+- [x] Cover failure recovery, observer/manual overlap, queued and active cancellation, and history
+  reads during a suspended query. All 125 unit tests pass, including seven new regressions.
+- [x] Pass 20 post-fix repeated simulator launches with no failures.
+- [x] Pass all 42 built-in parser fixtures, backend lint/typecheck/10 tests/build, and an unsigned
+  iPhone build. Strict Swift formatting, project-file validation, and diff checks pass.
+- [x] Complete the full UI suite before committing and pushing the verified source checkpoint:
+  20/20 UI tests passed with no crashes or failures, including the previously affected startup test.
+  Final unit result: `Test-WhoopsApp-2026.08.30_15-01-12--0700.xcresult` (125/125).
+  Repeated-launch result: `Test-WhoopsApp-2026.08.30_15-02-35--0700.xcresult` (20/20).
+  Full UI result: `Test-WhoopsApp-2026.08.30_15-06-07--0700.xcresult` (20/20).
+  Bundles are in `/tmp/whoops-apple-parser-derived/Logs/Test/`. No phone installation or data reset
+  was performed. The exact intermittent framework failure remains unproven; phone acceptance follows.
+- [ ] Confirm repeated phone launches and Apple Health synchronization without resetting data.
+
+See `HEALTHKIT_STABILITY.md` for evidence, implementation boundaries, and phone acceptance steps.
 
 Apple on-device parser prototype (August 30, 2026):
 

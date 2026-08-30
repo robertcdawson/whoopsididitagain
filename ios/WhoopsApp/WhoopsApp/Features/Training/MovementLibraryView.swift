@@ -2,6 +2,8 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct MovementLibraryView: View {
+    @FocusState private var focusedField: UUID?
+    @State private var searchFieldID = UUID()
     let repository: any MovementLibraryRepository
 
     @State private var summaries: [MovementUsageSummary] = []
@@ -38,13 +40,18 @@ struct MovementLibraryView: View {
         }
         .navigationTitle("Your Movements")
         .searchable(text: $searchText, prompt: "Name, alias, or equipment")
+        .searchFocused($focusedField, equals: searchFieldID)
+        .formKeyboardScope($focusedField)
+        .onChange(of: editingMovement?.id) { _, _ in focusedField = nil }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button("Import WOD Lab", systemImage: "square.and.arrow.down") {
+                    focusedField = nil
                     isImporting = true
                 }
                 .accessibilityIdentifier("import-wod-lab")
                 Button("Add Movement", systemImage: "plus") {
+                    focusedField = nil
                     editingMovement = .custom(name: "")
                 }
                 .accessibilityIdentifier("add-movement")
@@ -58,7 +65,7 @@ struct MovementLibraryView: View {
         }
         .task { await load() }
         .refreshable { await load() }
-        .sheet(item: $editingMovement) { movement in
+        .sheet(item: $editingMovement, onDismiss: { focusedField = nil }) { movement in
             NavigationStack {
                 MovementDefinitionEditor(movement: movement) { saved in
                     await save(saved)
@@ -261,6 +268,7 @@ struct MovementLibraryView: View {
 
 private struct MovementDefinitionEditor: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State private var movement: MovementDefinition
     @State private var aliasesText: String
     @State private var equipmentText: String
@@ -282,14 +290,17 @@ private struct MovementDefinitionEditor: View {
         Form {
             Section("Identity") {
                 TextField("Movement name", text: $movement.canonicalName)
+                    .formKeyboardField()
                     .accessibilityIdentifier("movement-name")
                 TextField("Aliases, separated by commas", text: $aliasesText, axis: .vertical)
+                    .formKeyboardField(dismissOnSubmit: false)
                 Picker("Category", selection: $movement.category) {
                     ForEach(MovementCategory.allCases) { category in
                         Text(category.displayName).tag(category)
                     }
                 }
                 TextField("Equipment, separated by commas", text: $equipmentText)
+                    .formKeyboardField()
             }
 
             Section {
@@ -300,7 +311,9 @@ private struct MovementDefinitionEditor: View {
                     )
                 }
                 TextField(
-                    "Preferred unit (optional)", text: optionalString($movement.preferredUnit))
+                    "Preferred unit (optional)", text: optionalString($movement.preferredUnit)
+                )
+                .formKeyboardField()
             } header: {
                 Text("Measurements")
             } footer: {
@@ -321,19 +334,26 @@ private struct MovementDefinitionEditor: View {
         }
         .navigationTitle(movement.canonicalName.isEmpty ? "New Movement" : "Edit Movement")
         .navigationBarTitleDisplayMode(.inline)
+        .formKeyboardScope($focusedField)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button("Cancel") {
+                    focusedField = nil
+                    dismiss()
+                }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save() } }
-                    .disabled(
-                        isSaving
-                            || movement.canonicalName.trimmingCharacters(
-                                in: .whitespacesAndNewlines
-                            ).isEmpty
-                    )
-                    .accessibilityIdentifier("save-movement")
+                Button("Save") {
+                    focusedField = nil
+                    Task { await save() }
+                }
+                .disabled(
+                    isSaving
+                        || movement.canonicalName.trimmingCharacters(
+                            in: .whitespacesAndNewlines
+                        ).isEmpty
+                )
+                .accessibilityIdentifier("save-movement")
             }
         }
     }

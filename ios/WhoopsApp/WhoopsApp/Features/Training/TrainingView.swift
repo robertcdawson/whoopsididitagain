@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TrainingView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @FocusState private var focusedField: UUID?
     let parser: any WorkoutParser
     let scalingEngine: any WorkoutScalingEngine
     let workoutRepository: any WorkoutRepository
@@ -33,6 +34,7 @@ struct TrainingView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         TextEditor(text: $rawText)
+                            .formKeyboardField(dismissOnSubmit: false)
                             .frame(minHeight: 150)
                             .padding(8)
                             .background(.background, in: RoundedRectangle(cornerRadius: 10))
@@ -75,6 +77,7 @@ struct TrainingView: View {
                                 .accessibilityIdentifier("cancel-workout-parsing")
                         }
                         Button("Enter manually") {
+                            focusedField = nil
                             cancelParsing()
                             editingPlan = manualPlan()
                         }
@@ -118,7 +121,10 @@ struct TrainingView: View {
                         FoundationCard(title: "Recent Actual Work") {
                             ForEach(completedWorkouts) { workout in
                                 NavigationLink {
-                                    CompletedWorkoutDetailView(workout: workout) {
+                                    CompletedWorkoutDetailView(
+                                        workout: workout, movementLibrary: movementLibrary,
+                                        onSave: { await saveCompleted($0) }
+                                    ) {
                                         try await workoutRepository.deleteCompletedWorkout(
                                             id: workout.id
                                         )
@@ -162,13 +168,16 @@ struct TrainingView: View {
                 .padding()
             }
             .navigationTitle("Train")
+            .formKeyboardScope($focusedField, doneIdentifier: "dismiss-workout-keyboard")
             .onDisappear { cancelParsing() }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { cancelParsing() }
             }
             .task { await load() }
             .refreshable { await load() }
-            .sheet(item: $editingPlan) { plan in
+            .onChange(of: editingPlan?.id) { _, _ in focusedField = nil }
+            .onChange(of: completingPlan?.id) { _, _ in focusedField = nil }
+            .sheet(item: $editingPlan, onDismiss: { focusedField = nil }) { plan in
                 WorkoutPlanEditorView(
                     plan: plan,
                     restrictions: restrictions,
@@ -178,8 +187,8 @@ struct TrainingView: View {
                     await savePlan(saved)
                 }
             }
-            .sheet(item: $completingPlan) { plan in
-                WorkoutCompletionView(plan: plan) { workout in
+            .sheet(item: $completingPlan, onDismiss: { focusedField = nil }) { plan in
+                WorkoutCompletionView(plan: plan, movementLibrary: movementLibrary) { workout in
                     await saveCompleted(workout)
                 }
             }
@@ -208,7 +217,10 @@ struct TrainingView: View {
     private func planCard(_ plan: WorkoutPlan) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             NavigationLink {
-                WorkoutPlanDetailView(plan: plan, evaluation: evaluations[plan.id])
+                WorkoutPlanDetailView(
+                    plan: plan, evaluation: evaluations[plan.id], restrictions: restrictions,
+                    scalingEngine: scalingEngine, movementLibrary: movementLibrary,
+                    onSave: { await savePlan($0) })
             } label: {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -270,13 +282,22 @@ struct TrainingView: View {
             .accessibilityIdentifier("workout-plan-details-\(plan.id)")
             Divider()
             HStack {
-                Button("Edit") { editingPlan = plan }
-                    .buttonStyle(.bordered)
-                Button("Record actual") { completingPlan = plan }
-                    .buttonStyle(.borderedProminent)
+                Button("Edit") {
+                    focusedField = nil
+                    editingPlan = plan
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("edit-workout-plan-\(plan.id)")
+                Button("Record actual") {
+                    focusedField = nil
+                    completingPlan = plan
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("record-actual-workout-\(plan.id)")
                 Spacer()
                 Menu {
                     Button("Delete plan", role: .destructive) {
+                        focusedField = nil
                         planPendingDeletion = plan
                     }
                 } label: {
@@ -305,6 +326,7 @@ struct TrainingView: View {
 
     @MainActor
     private func startParsing() {
+        focusedField = nil
         cancelParsing()
         let id = UUID()
         parsingID = id
@@ -454,8 +476,26 @@ struct TrainingView: View {
 }
 
 private struct WorkoutPlanDetailView: View {
-    let plan: WorkoutPlan
-    let evaluation: WorkoutEvaluation?
+    @State private var plan: WorkoutPlan
+    @State private var evaluation: WorkoutEvaluation?
+    @State private var isEditing = false
+    let restrictions: [RestrictionProfile]
+    let scalingEngine: any WorkoutScalingEngine
+    let movementLibrary: any MovementLibraryRepository
+    let onSave: (WorkoutPlan) async -> Bool
+
+    init(
+        plan: WorkoutPlan, evaluation: WorkoutEvaluation?, restrictions: [RestrictionProfile],
+        scalingEngine: any WorkoutScalingEngine, movementLibrary: any MovementLibraryRepository,
+        onSave: @escaping (WorkoutPlan) async -> Bool
+    ) {
+        _plan = State(initialValue: plan)
+        _evaluation = State(initialValue: evaluation)
+        self.restrictions = restrictions
+        self.scalingEngine = scalingEngine
+        self.movementLibrary = movementLibrary
+        self.onSave = onSave
+    }
 
     var body: some View {
         List {
@@ -469,12 +509,30 @@ private struct WorkoutPlanDetailView: View {
                 }
                 LabeledContent("Status", value: statusName)
                 if let timeCap = plan.timeCapSeconds {
-                    LabeledContent("Time cap", value: "\(timeCap / 60) min")
+                    LabeledContent(
+                        "Time cap", value: WorkoutDurationInput.summary(seconds: timeCap))
+                }
+            }
+
+            if let result = plan.reportedResult {
+                Section("Reported result") {
+                    LabeledContent("Completed rounds", value: String(result.completedRounds))
+                    LabeledContent("Additional reps", value: String(result.additionalRepetitions))
                 }
             }
 
             Section("Intended stimulus") {
                 Text(plan.intendedStimulus.primary)
+                if let minimum = plan.intendedStimulus.estimatedDurationMinimumMinutes {
+                    LabeledContent(
+                        "Estimated minimum",
+                        value: WorkoutDurationInput.summary(seconds: minimum * 60))
+                }
+                if let maximum = plan.intendedStimulus.estimatedDurationMaximumMinutes {
+                    LabeledContent(
+                        "Estimated maximum",
+                        value: WorkoutDurationInput.summary(seconds: maximum * 60))
+                }
                 ForEach(Array(plan.intendedStimulus.secondary.enumerated()), id: \.offset) {
                     item in
                     Label(item.element, systemImage: "target")
@@ -513,9 +571,10 @@ private struct WorkoutPlanDetailView: View {
             ForEach(plan.segments) { segment in
                 Section("Segment \(segment.sequence) · \(segment.type.displayName)") {
                     segmentStructure(segment)
-                    if !segment.notes.isEmpty {
+                    let notes = plan.visibleNotes(segment.notes)
+                    if !notes.isEmpty {
                         LabeledContent("Notes and targets") {
-                            Text(segment.notes)
+                            Text(notes)
                                 .multilineTextAlignment(.trailing)
                         }
                     }
@@ -531,6 +590,12 @@ private struct WorkoutPlanDetailView: View {
                                 .accessibilityIdentifier(
                                     "planned-movement-prescription-\(movement.id)"
                                 )
+                            if let total = plan.effectiveReportedRepetitionTotals[movement.id] {
+                                Text(
+                                    "Reported total: \(total) reps\(plan.reportedRepetitionOverrides[movement.id] == nil ? "" : " (edited)")"
+                                )
+                                .font(.caption)
+                            }
                             if movement.originalText != movement.displayName,
                                 !movement.originalText.isEmpty
                             {
@@ -574,6 +639,23 @@ private struct WorkoutPlanDetailView: View {
             }
         }
         .accessibilityIdentifier("workout-plan-detail")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit") { isEditing = true }
+                    .accessibilityIdentifier("edit-planned-workout")
+            }
+        }
+        .sheet(isPresented: $isEditing) {
+            WorkoutPlanEditorView(
+                plan: plan, restrictions: restrictions,
+                scalingEngine: scalingEngine, movementLibrary: movementLibrary
+            ) { updated in
+                guard await onSave(updated) else { return false }
+                plan = updated
+                evaluation = await scalingEngine.evaluate(plan: updated, restrictions: restrictions)
+                return true
+            }
+        }
         .navigationTitle(plan.title)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -583,17 +665,19 @@ private struct WorkoutPlanDetailView: View {
         if segment.type == .rest {
             LabeledContent(
                 "Rest duration",
-                value: segment.durationSeconds.map { "\($0) sec" } ?? "Missing"
+                value: segment.durationSeconds.map { WorkoutDurationInput.summary(seconds: $0) }
+                    ?? "Missing"
             )
         } else {
             if let rounds = segment.rounds {
                 LabeledContent("Rounds", value: rounds.formatted())
             }
             if let duration = segment.durationSeconds {
-                LabeledContent("Duration", value: "\(duration) sec")
+                LabeledContent("Duration", value: WorkoutDurationInput.summary(seconds: duration))
             }
             if let rest = segment.restSeconds {
-                LabeledContent(uniformRestLabel(segment), value: "\(rest) sec")
+                LabeledContent(
+                    uniformRestLabel(segment), value: WorkoutDurationInput.summary(seconds: rest))
             }
         }
     }
@@ -616,7 +700,9 @@ private struct WorkoutPlanDetailView: View {
         if let percentage = movement.percentageOfOneRepMax {
             values.append("\(percentage.formatted())% 1RM")
         }
-        if let duration = movement.durationSeconds { values.append("\(duration) sec") }
+        if let duration = movement.durationSeconds {
+            values.append(WorkoutDurationInput.summary(seconds: duration))
+        }
         if let tempo = movement.tempo { values.append("Tempo \(tempo)") }
         return values.isEmpty ? "No quantity entered" : values.joined(separator: " · ")
     }
@@ -632,11 +718,25 @@ private struct WorkoutPlanDetailView: View {
 
 private struct CompletedWorkoutDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    let workout: CompletedWorkout
+    @State private var workout: CompletedWorkout
+    let movementLibrary: any MovementLibraryRepository
+    let onSave: (CompletedWorkout) async -> Bool
     let onDelete: () async throws -> Void
 
+    @State private var isEditing = false
     @State private var isConfirmingDeletion = false
     @State private var errorMessage: String?
+
+    init(
+        workout: CompletedWorkout, movementLibrary: any MovementLibraryRepository,
+        onSave: @escaping (CompletedWorkout) async -> Bool,
+        onDelete: @escaping () async throws -> Void
+    ) {
+        _workout = State(initialValue: workout)
+        self.movementLibrary = movementLibrary
+        self.onSave = onSave
+        self.onDelete = onDelete
+    }
 
     var body: some View {
         List {
@@ -648,7 +748,7 @@ private struct CompletedWorkoutDetailView: View {
                     )
                 }
                 LabeledContent("Ended") {
-                    Text(workout.endedAt, format: .dateTime.hour().minute())
+                    Text(workout.endedAt, format: .dateTime.month().day().hour().minute())
                 }
                 LabeledContent("Duration", value: durationDescription)
                 LabeledContent("Session RPE", value: "\(workout.sessionRPE)/10")
@@ -658,6 +758,12 @@ private struct CompletedWorkoutDetailView: View {
                         Text(workout.notes)
                             .multilineTextAlignment(.trailing)
                     }
+                }
+            }
+
+            if let result = workout.reportedResult {
+                Section("Reported result") {
+                    Text(result.summary)
                 }
             }
 
@@ -698,6 +804,19 @@ private struct CompletedWorkoutDetailView: View {
         .accessibilityIdentifier("completed-workout-detail")
         .navigationTitle(workout.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Edit") { isEditing = true }
+                    .accessibilityIdentifier("edit-completed-workout")
+            }
+        }
+        .sheet(isPresented: $isEditing) {
+            WorkoutCompletionView(workout: workout, movementLibrary: movementLibrary) { updated in
+                guard await onSave(updated) else { return false }
+                workout = updated
+                return true
+            }
+        }
         .confirmationDialog(
             "Delete this completed workout?",
             isPresented: $isConfirmingDeletion,
@@ -718,10 +837,7 @@ private struct CompletedWorkoutDetailView: View {
     }
 
     private var durationDescription: String {
-        let seconds = max(0, Int(workout.endedAt.timeIntervalSince(workout.startedAt)))
-        let hours = seconds / 3_600
-        let minutes = (seconds % 3_600) / 60
-        return hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes) min"
+        WorkoutDurationInput.summary(seconds: max(0, workout.durationSeconds))
     }
 
     private func actualSummary(_ movement: CompletedMovement) -> String {
@@ -734,7 +850,9 @@ private struct CompletedWorkoutDetailView: View {
                 [load.formatted(), movement.actualLoadUnit].compactMap { $0 }.joined(separator: " ")
             )
         }
-        if let duration = movement.actualDurationSeconds { values.append("\(duration) sec") }
+        if let duration = movement.actualDurationSeconds {
+            values.append(WorkoutDurationInput.summary(seconds: duration))
+        }
         return values.isEmpty ? "No result entered" : values.joined(separator: " · ")
     }
 

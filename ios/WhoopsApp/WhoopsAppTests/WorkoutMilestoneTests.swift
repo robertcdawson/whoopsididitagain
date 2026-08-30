@@ -4,6 +4,496 @@ import XCTest
 @testable import WhoopsApp
 
 final class WorkoutMilestoneTests: XCTestCase {
+    private let scoredWorkout =
+        "AMRAP 8 minutes\n4 Burpees\n12 Overhead Kettlebell Swings (35#)\nScore: 5 rounds, 3 reps"
+
+    func testDecimalQuantityInputPreservesPartialAndLocalizedValues() {
+        let english = Locale(identifier: "en_US")
+        for text in ["", ".", "0.", "12.", "12.5", "0.25", "1000.75"] {
+            XCTAssertTrue(WorkoutDecimalInput.accepts(text, locale: english), text)
+        }
+        for text in ["-1", "nan", "inf", "1.2.3", "12 kg", "1,000"] {
+            XCTAssertFalse(WorkoutDecimalInput.accepts(text, locale: english), text)
+        }
+        XCTAssertEqual(WorkoutDecimalInput.number("12.5", locale: english), 12.5)
+        XCTAssertEqual(WorkoutDecimalInput.number("0", locale: english), 0)
+        XCTAssertNil(WorkoutDecimalInput.number(".", locale: english))
+        XCTAssertEqual(WorkoutDecimalInput.text(1_000.75, locale: english), "1000.75")
+        let french = Locale(identifier: "fr_FR")
+        XCTAssertTrue(WorkoutDecimalInput.accepts("12,", locale: french))
+        XCTAssertEqual(WorkoutDecimalInput.number("12,5", locale: french), 12.5)
+        XCTAssertEqual(WorkoutDecimalInput.text(12.5, locale: french), "12,5")
+    }
+
+    func testCompletedWorkoutTimingCanChangeDateEndAndDecimalDuration() async throws {
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        var workout = CompletedWorkout(plan: plan, now: Date(timeIntervalSince1970: 172_800))
+        workout.setDuration(seconds: 3_645.6)
+        let start = workout.startedAt
+        XCTAssertEqual(workout.durationSeconds, 3_645.6, accuracy: 0.000_001)
+        XCTAssertEqual(workout.endedAt, start.addingTimeInterval(3_645.6))
+
+        // Move to just before midnight; elapsed duration crosses into the following day.
+        workout.reschedule(startingAt: Date(timeIntervalSince1970: 259_170))
+        XCTAssertEqual(workout.startedAt, Date(timeIntervalSince1970: 259_170))
+        XCTAssertEqual(workout.durationSeconds, 3_645.6, accuracy: 0.000_001)
+        workout.endedAt = workout.startedAt.addingTimeInterval(90.6)
+        XCTAssertEqual(workout.durationSeconds, 90.6, accuracy: 0.000_001)
+        XCTAssertEqual(
+            WorkoutDurationInput.minutesText(
+                seconds: workout.durationSeconds, locale: Locale(identifier: "en_US")), "1.51")
+        let validEnd = workout.endedAt
+        workout.setDuration(seconds: .nan)
+        workout.setDuration(seconds: -.infinity)
+        workout.setDuration(seconds: -1)
+        XCTAssertEqual(workout.endedAt, validEnd)
+        workout.endedAt = workout.startedAt
+        XCTAssertNotNil(workout.validationMessage)
+        workout.endedAt = workout.startedAt.addingTimeInterval(-60)
+        XCTAssertNotNil(workout.validationMessage)
+    }
+
+    func testCompletedMovementDuplicateCopiesAllFieldsWithNewIdentity() async throws {
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        var original = CompletedWorkout(plan: plan).movements[0]
+        original.actualDistanceMeters = 75
+        original.actualCalories = 12
+        original.actualLoadValue = 9.5
+        original.actualLoadUnit = "kg"
+        original.actualDurationSeconds = 61.2
+        original.modification = "Synthetic modification"
+        original.painDuring = 2
+        original.notes = "Synthetic notes"
+        var duplicate = original.duplicated()
+        XCTAssertNotEqual(duplicate.id, original.id)
+        duplicate.id = original.id
+        XCTAssertEqual(duplicate, original)
+    }
+
+    func testStimulusEstimatesAcceptDecimalMinutesAndDecodeLegacyIntegers() throws {
+        let legacy = Data(
+            #"{"primary":"Synthetic","secondary":[],"estimatedDurationMinimumMinutes":5,"estimatedDurationMaximumMinutes":15}"#
+                .utf8)
+        var stimulus = try JSONDecoder().decode(WorkoutStimulus.self, from: legacy)
+        XCTAssertEqual(stimulus.estimatedDurationMinimumMinutes, 5)
+        XCTAssertTrue(stimulus.hasValidDurationRange)
+        stimulus.estimatedDurationMinimumMinutes = 5.25
+        stimulus.estimatedDurationMaximumMinutes = 15.75
+        XCTAssertEqual(
+            try JSONDecoder().decode(WorkoutStimulus.self, from: JSONEncoder().encode(stimulus)),
+            stimulus)
+        stimulus.estimatedDurationMinimumMinutes = .nan
+        XCTAssertFalse(stimulus.hasValidDurationRange)
+    }
+
+    @MainActor
+    func testCompletedWorkoutEditsRoundTripAllFieldsWithoutDuplicatesOrPlanChanges() async throws {
+        let container = try workoutContainer()
+        let repository = WorkoutPersistence(container: container)
+        var plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        plan.status = .planned
+        try await repository.savePlan(plan)
+        let original = CompletedWorkout(plan: plan, now: Date(timeIntervalSince1970: 100_000))
+        try await repository.saveCompletedWorkout(original)
+        let plansBefore = try await repository.plans()
+        var edited = original
+        edited.title = "Corrected synthetic workout"
+        edited.reschedule(startingAt: Date(timeIntervalSince1970: 50_000))
+        edited.setDuration(seconds: 91.2)
+        edited.sessionRPE = 8
+        edited.postSessionPain = 3
+        edited.notes = "First note\nSecond note"
+        edited.reportedResult = .init(completedRounds: 6, additionalRepetitions: 1)
+        edited.movements[0].canonicalMovementID = "row"
+        edited.movements[0].displayName = "Corrected row"
+        edited.movements[0].actualRepetitions = 0
+        edited.movements[0].actualDistanceMeters = 1_250
+        edited.movements[0].actualCalories = 42
+        edited.movements[0].actualLoadValue = 12.5
+        edited.movements[0].actualLoadUnit = "kg"
+        edited.movements[0].actualDurationSeconds = 90.6
+        edited.movements[0].modification = "Changed movement"
+        edited.movements[0].painDuring = 4
+        edited.movements[0].notes = "Movement-specific context"
+        var duplicate = edited.movements[0].duplicated()
+        duplicate.displayName = "Another row"
+        edited.movements = [duplicate, edited.movements[0]]
+        try await repository.saveCompletedWorkout(edited)
+        try await repository.saveCompletedWorkout(edited)
+        let reopened = WorkoutPersistence(container: container)
+        let workouts = try await reopened.completedWorkouts()
+        XCTAssertEqual(workouts, [edited])
+        XCTAssertEqual(workouts.first?.id, original.id)
+        XCTAssertEqual(workouts.first?.plannedWorkoutID, original.plannedWorkoutID)
+        let plansAfter = try await reopened.plans()
+        XCTAssertEqual(plansAfter, plansBefore)
+        let rows = try ModelContext(container).fetch(FetchDescriptor<CompletedMovementRecord>())
+        XCTAssertEqual(Set(rows.map(\.id)), Set(edited.movements.map(\.id)))
+
+        // Optional results can be cleared; no plan-derived values may be filled back in on edit.
+        edited.reportedResult = nil
+        edited.notes = ""
+        edited.movements[0].canonicalMovementID = nil
+        edited.movements[0].actualRepetitions = nil
+        edited.movements[0].actualDistanceMeters = nil
+        edited.movements[0].actualCalories = nil
+        edited.movements[0].actualLoadValue = nil
+        edited.movements[0].actualLoadUnit = nil
+        edited.movements[0].actualDurationSeconds = nil
+        edited.movements[0].modification = ""
+        edited.movements[0].notes = ""
+        try await reopened.saveCompletedWorkout(edited)
+        let cleared = try await WorkoutPersistence(container: container).completedWorkouts()
+        XCTAssertEqual(cleared, [edited])
+    }
+
+    @MainActor
+    func testInvalidCompletedWorkoutEditsLeaveStoredWorkoutUnchanged() async throws {
+        let container = try workoutContainer()
+        let repository = WorkoutPersistence(container: container)
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        let original = CompletedWorkout(plan: plan)
+        try await repository.saveCompletedWorkout(original)
+        let invalidEdits: [(inout CompletedWorkout) -> Void] = [
+            { $0.title = "  " },
+            { $0.endedAt = $0.startedAt.addingTimeInterval(-1) },
+            { $0.startedAt = Date(timeIntervalSince1970: .infinity) },
+            { $0.sessionRPE = 0 }, { $0.sessionRPE = 11 },
+            { $0.postSessionPain = -1 }, { $0.postSessionPain = 11 },
+            { $0.reportedResult?.additionalRepetitions = -1 },
+            { $0.movements[0].displayName = "" },
+            { $0.movements[0].actualLoadValue = .nan },
+            { $0.movements[0].actualDurationSeconds = .infinity },
+            { $0.movements[0].actualRepetitions = -1 },
+            { $0.movements[0].painDuring = 11 },
+            { $0.movements.append($0.movements[0]) },
+        ]
+        for change in invalidEdits {
+            var edited = original
+            change(&edited)
+            XCTAssertNotNil(edited.validationMessage)
+            do {
+                try await repository.saveCompletedWorkout(edited)
+                XCTFail("Invalid completion must not be saved")
+            } catch { XCTAssertTrue(error is WorkoutValidationError) }
+            let saved = try await WorkoutPersistence(container: container).completedWorkouts()
+            XCTAssertEqual(saved, [original])
+        }
+    }
+
+    @MainActor
+    func testCompletedMovementCannotBeMovedToAnotherWorkoutByReusingItsID() async throws {
+        let container = try workoutContainer()
+        let repository = WorkoutPersistence(container: container)
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        let original = CompletedWorkout(plan: plan)
+        try await repository.saveCompletedWorkout(original)
+        var other = CompletedWorkout(plan: plan)
+        other.movements = original.movements
+        do {
+            try await repository.saveCompletedWorkout(other)
+            XCTFail("The source workout's results must not be reassigned")
+        } catch { XCTAssertTrue(error is WorkoutValidationError) }
+        let saved = try await WorkoutPersistence(container: container).completedWorkouts()
+        XCTAssertEqual(saved, [original])
+    }
+
+    @MainActor
+    func testPlannedDateStimulusEstimatesAndOrderRemainEditable() async throws {
+        let container = try workoutContainer()
+        let repository = WorkoutPersistence(container: container)
+        var plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        try await repository.savePlan(plan)
+        plan.scheduledAt = Date(timeIntervalSince1970: 42_000)
+        plan.title = "Edited plan"
+        plan.format = .rounds
+        plan.timeCapSeconds = 91.2
+        plan.intendedStimulus = .init(
+            primary: "Edited stimulus", secondary: ["Edited target"],
+            estimatedDurationMinimumMinutes: 5, estimatedDurationMaximumMinutes: 15)
+        plan.segments[0].movements.swapAt(0, 1)
+        try await repository.savePlan(plan)
+        let saved = try await WorkoutPersistence(container: container).plans()
+        XCTAssertEqual(saved, [plan])
+        plan.intendedStimulus.estimatedDurationMaximumMinutes = 4
+        XCTAssertFalse(plan.intendedStimulus.hasValidDurationRange)
+        do {
+            try await repository.savePlan(plan)
+            XCTFail("Inverted estimate ranges must not save")
+        } catch { XCTAssertEqual(error as? WorkoutValidationError, .invalidMovement) }
+        let unchanged = try await WorkoutPersistence(container: container).plans()
+        XCTAssertEqual(unchanged, saved)
+    }
+
+    @MainActor
+    private func workoutContainer() throws -> ModelContainer {
+        try ModelContainer(
+            for: WorkoutPlanRecord.self, WorkoutSegmentRecord.self,
+            MovementPrescriptionRecord.self, CompletedWorkoutRecord.self,
+            CompletedMovementRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    }
+
+    func testReportedTotalCorrectionsStaySeparateFromScoreAndPrescription() async throws {
+        var plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        let firstID = plan.movements[0].id
+        let secondID = plan.movements[1].id
+        plan.reportedRepetitionOverrides[firstID] = 19
+        XCTAssertEqual(plan.reportedRepetitionTotals?[firstID], 23)
+        XCTAssertEqual(plan.effectiveReportedRepetitionTotals[firstID], 19)
+        XCTAssertEqual(plan.effectiveReportedRepetitionTotals[secondID], 60)
+        XCTAssertEqual(plan.movements.map(\.repetitions), [4, 12])
+        XCTAssertEqual(plan.reportedResult, .init(completedRounds: 5, additionalRepetitions: 3))
+        XCTAssertTrue(plan.hasValidReportedRepetitionOverrides)
+        plan.reportedResult?.completedRounds = 6
+        XCTAssertEqual(plan.reportedRepetitionTotals?[firstID], 27)
+        XCTAssertEqual(CompletedWorkout(plan: plan).movements.map(\.actualRepetitions), [19, 72])
+        plan.reportedRepetitionOverrides[firstID] = 0
+        XCTAssertEqual(CompletedWorkout(plan: plan).movements[0].actualRepetitions, 0)
+        plan.reportedRepetitionOverrides[firstID] = nil
+        XCTAssertEqual(plan.effectiveReportedRepetitionTotals[firstID], 27)
+        XCTAssertEqual(CompletedWorkout(plan: plan).movements[0].actualRepetitions, 27)
+    }
+
+    func testManualReportedTotalsWorkWithoutAnInferableScore() async throws {
+        var plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        let firstID = plan.movements[0].id
+        plan.reportedRepetitionOverrides[firstID] = 18
+        plan.reportedResult?.additionalRepetitions = 99
+        XCTAssertNil(plan.reportedRepetitionTotals)
+        XCTAssertEqual(CompletedWorkout(plan: plan).movements.map(\.actualRepetitions), [18, nil])
+        plan.reportedResult = nil
+        XCTAssertEqual(CompletedWorkout(plan: plan).movements.map(\.actualRepetitions), [18, nil])
+        plan.reportedRepetitionOverrides[firstID] = nil
+        XCTAssertEqual(CompletedWorkout(plan: plan).movements.map(\.actualRepetitions), [4, 12])
+    }
+
+    func testReportedTotalCorrectionsAreValidatedAndStayWithMovementIdentity() async throws {
+        var plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        let source = plan.movements[0]
+        for invalid in [-1, 100_001, Int.max] {
+            plan.reportedRepetitionOverrides[source.id] = invalid
+            XCTAssertFalse(plan.hasValidReportedRepetitionOverrides)
+            XCTAssertEqual(plan.effectiveReportedRepetitionTotals[source.id], 23)
+        }
+        plan.reportedRepetitionOverrides[source.id] = 19
+        let duplicate = source.duplicated()
+        plan.segments[0].movements.insert(duplicate, at: 1)
+        XCTAssertNil(plan.reportedRepetitionOverrides[duplicate.id])
+        XCTAssertEqual(plan.effectiveReportedRepetitionTotals[duplicate.id], 20)
+        plan.segments[0].movements.swapAt(0, 2)
+        XCTAssertEqual(plan.effectiveReportedRepetitionTotals[source.id], 19)
+        plan.segments[0].movements.removeAll { $0.id == source.id }
+        plan.discardOrphanedReportedRepetitionOverrides()
+        XCTAssertTrue(plan.reportedRepetitionOverrides.isEmpty)
+        XCTAssertTrue(plan.hasValidReportedRepetitionOverrides)
+    }
+
+    @MainActor
+    func testReportedTotalCorrectionsPersistUpdateAndResetWithoutChangingCompletion() async throws {
+        let container = try ModelContainer(
+            for: WorkoutPlanRecord.self, WorkoutSegmentRecord.self, MovementPrescriptionRecord.self,
+            CompletedWorkoutRecord.self, CompletedMovementRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let repository = WorkoutPersistence(container: container)
+        var plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        let id = plan.movements[0].id
+        plan.reportedRepetitionOverrides[id] = 19
+        try await repository.savePlan(plan)
+        let initial = try await repository.plans()
+        XCTAssertEqual(initial.first, plan)
+        let completed = CompletedWorkout(plan: try XCTUnwrap(initial.first))
+        try await repository.saveCompletedWorkout(completed)
+        plan.reportedRepetitionOverrides[id] = 0
+        try await repository.savePlan(plan)
+        let edited = try await repository.plans()
+        XCTAssertEqual(edited.first?.effectiveReportedRepetitionTotals[id], 0)
+        plan.reportedRepetitionOverrides[id] = nil
+        try await repository.savePlan(plan)
+        let reset = try await repository.plans()
+        XCTAssertEqual(reset.first?.reportedRepetitionOverrides, [:])
+        XCTAssertEqual(reset.first?.effectiveReportedRepetitionTotals[id], 23)
+        let savedCompletions = try await repository.completedWorkouts()
+        XCTAssertEqual(savedCompletions.first?.movements[0].actualRepetitions, 19)
+        XCTAssertEqual(savedCompletions.first?.reportedResult, completed.reportedResult)
+        plan.reportedRepetitionOverrides[id] = -1
+        do {
+            try await repository.savePlan(plan)
+            XCTFail("Negative reported totals must not be saved")
+        } catch {
+            XCTAssertEqual(error as? WorkoutValidationError, .invalidMovement)
+        }
+        let unchanged = try await repository.plans()
+        XCTAssertEqual(unchanged.first?.reportedRepetitionOverrides, [:])
+    }
+
+    func testReportedScorePopulatesTotalsWithoutChangingPrescription() async throws {
+        let parsed = try await VersionedWorkoutParser().parse(rawText: scoredWorkout)
+        let plan = WorkoutPlan(parsed: parsed)
+        XCTAssertEqual(plan.reportedResult, .init(completedRounds: 5, additionalRepetitions: 3))
+        XCTAssertNil(plan.segments[0].rounds)
+        XCTAssertEqual(plan.movements.map(\.repetitions), [4, 12])
+        XCTAssertEqual(plan.movements.map { plan.reportedRepetitionTotals?[$0.id] }, [23, 60])
+        XCTAssertEqual(CompletedWorkout(plan: plan).movements.map(\.actualRepetitions), [23, 60])
+        XCTAssertEqual(plan.status, .draft)
+        XCTAssertFalse(plan.visibleNotes(plan.segments[0].notes).contains("Score:"))
+    }
+
+    func testPartialRoundFollowsMovementOrderAndRejectsAmbiguousTotals() async throws {
+        var plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        plan.reportedResult?.additionalRepetitions = 6
+        XCTAssertEqual(plan.movements.map { plan.reportedRepetitionTotals?[$0.id] }, [24, 62])
+        plan.reportedResult?.additionalRepetitions = 16
+        XCTAssertNil(plan.reportedRepetitionTotals)
+        XCTAssertTrue(
+            CompletedWorkout(plan: plan).movements.allSatisfy { $0.actualRepetitions == nil })
+        plan.reportedResult?.additionalRepetitions = 0
+        plan.segments[0].movements[0].distanceMeters = 200
+        XCTAssertNil(plan.reportedRepetitionTotals)
+        XCTAssertNil(CompletedWorkout(plan: plan).movements[0].actualDistanceMeters)
+        plan.segments[0].movements[0].distanceMeters = nil
+        plan.segments.append(plan.segments[0])
+        XCTAssertNil(plan.reportedRepetitionTotals)
+    }
+
+    func testReportedScoreParsingIsConservativeAndSupportsZero() {
+        XCTAssertEqual(
+            WorkoutReportedResult.parse("Score: 0 rounds and 3 reps"),
+            .init(completedRounds: 0, additionalRepetitions: 3))
+        XCTAssertEqual(
+            WorkoutReportedResult.parse("Result: 4 rounds"),
+            .init(completedRounds: 4, additionalRepetitions: 0))
+        for source in [
+            "5 rounds", "Score: 3-5 rounds", "Score: -5 rounds", "Score: 5.5 rounds",
+            "Score: 5 rounds\nScore: 6 rounds", "Score: 2 rounds, 99999999999999999999999 reps",
+        ] {
+            XCTAssertNil(WorkoutReportedResult.parse(source), source)
+        }
+    }
+
+    func testDecimalMinutesRoundTripAndLocaleWithoutIntegerRounding() async throws {
+        let us = Locale(identifier: "en_US")
+        let de = Locale(identifier: "de_DE")
+        XCTAssertEqual(WorkoutDurationInput.seconds("6.25", locale: us), 375)
+        XCTAssertEqual(WorkoutDurationInput.seconds("0.01", locale: us), 0.6)
+        XCTAssertEqual(WorkoutDurationInput.seconds("1,25", locale: de), 75)
+        XCTAssertEqual(WorkoutDurationInput.minutesText(seconds: 375, locale: us), "6.25")
+        XCTAssertEqual(WorkoutDurationInput.minutesText(seconds: 0.6, locale: us), "0.01")
+        XCTAssertEqual(WorkoutDurationInput.minutesText(seconds: 75, locale: de), "1,25")
+        XCTAssertTrue(WorkoutDurationInput.accepts("1.", locale: us))
+        for invalid in ["1.234", "-1", "nan", "1e2", "1..2"] {
+            XCTAssertFalse(WorkoutDurationInput.accepts(invalid, locale: us))
+        }
+        XCTAssertNil(WorkoutDurationInput.seconds("1441", locale: us))
+        let parsed = try await VersionedWorkoutParser().parse(
+            rawText: "AMRAP 6.25 minutes\nPlank for 0.01 minutes")
+        XCTAssertEqual(parsed.timeCapSeconds, 375)
+        XCTAssertEqual(parsed.segments[0].movements[0].durationSeconds, 0.6)
+    }
+
+    func testDuplicatedMovementHasIndependentIdentityAndAllPrescriptionFields() async throws {
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        let source = plan.movements[1]
+        var copy = source.duplicated()
+        XCTAssertNotEqual(copy.id, source.id)
+        let newID = copy.id
+        copy.id = source.id
+        XCTAssertEqual(copy, source)
+        copy.id = newID
+        copy.repetitions = 9
+        copy.loadValue = 20
+        copy.loadUnit = "kg"
+        XCTAssertEqual(source.repetitions, 12)
+        XCTAssertEqual(source.loadValue, 35)
+        XCTAssertEqual(source.loadUnit, "lb")
+        XCTAssertEqual(copy.canonicalMovementID, source.canonicalMovementID)
+    }
+
+    func testLoadPickerUsesOnlyPoundsAndKilogramsAndNormalizesAliases() {
+        XCTAssertEqual(WorkoutLoadUnit.allCases.map(\.displayName), ["lbs", "kg"])
+        XCTAssertEqual(WorkoutLoadUnit.normalized("lbs")?.rawValue, "lb")
+        XCTAssertEqual(WorkoutLoadUnit.normalized("KG")?.rawValue, "kg")
+        XCTAssertNil(WorkoutLoadUnit.normalized("oz"))
+    }
+
+    @MainActor
+    func testPreciseDurationsScoreAndDuplicateOrderPersistIndependently() async throws {
+        let container = try ModelContainer(
+            for: WorkoutPlanRecord.self, WorkoutSegmentRecord.self, MovementPrescriptionRecord.self,
+            CompletedWorkoutRecord.self, CompletedMovementRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let repository = WorkoutPersistence(container: container)
+        var plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        plan.timeCapSeconds = 375
+        plan.segments[0].durationSeconds = 375
+        plan.segments[0].restSeconds = 0.6
+        var duplicate = plan.movements[0].duplicated()
+        duplicate.loadUnit = "kg"
+        duplicate.loadValue = 20
+        duplicate.durationSeconds = 0.6
+        plan.segments[0].movements.insert(duplicate, at: 1)
+        try await repository.savePlan(plan)
+        let stored = try await repository.plans()
+        let reloaded = try XCTUnwrap(stored.first)
+        XCTAssertEqual(reloaded, plan)
+        var actual = CompletedWorkout(plan: reloaded)
+        actual.movements[1].actualDurationSeconds = 0.6
+        try await repository.saveCompletedWorkout(actual)
+        let completed = try await repository.completedWorkouts()
+        XCTAssertEqual(completed.first, actual)
+        plan.reportedResult = nil
+        plan.segments[0].movements.remove(at: 1)
+        try await repository.savePlan(plan)
+        let afterDelete = try await repository.plans()
+        XCTAssertNil(
+            afterDelete.first?.reportedResult,
+            "Clearing a saved result must not reparse stale raw text")
+        XCTAssertEqual(afterDelete.first?.movements.map(\.id), plan.movements.map(\.id))
+        XCTAssertEqual(afterDelete.first?.movements.last?.loadUnit, "lb")
+    }
+
+    @MainActor
+    func testLegacyWholeSecondRecordsRemainReadable() async throws {
+        let container = try ModelContainer(
+            for: WorkoutPlanRecord.self, WorkoutSegmentRecord.self, MovementPrescriptionRecord.self,
+            CompletedWorkoutRecord.self, CompletedMovementRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let repository = WorkoutPersistence(container: container)
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: scoredWorkout))
+        try await repository.savePlan(plan)
+        let context = ModelContext(container)
+        let record = try XCTUnwrap(context.fetch(FetchDescriptor<WorkoutPlanRecord>()).first)
+        record.preciseTimeCapSeconds = nil
+        record.reportedResultData = nil
+        record.reportedRepetitionOverridesData = nil
+        let segment = try XCTUnwrap(context.fetch(FetchDescriptor<WorkoutSegmentRecord>()).first)
+        segment.preciseDurationSeconds = nil
+        segment.restSeconds = 1
+        segment.preciseRestSeconds = nil
+        try context.save()
+        let legacy = try await WorkoutPersistence(container: container).plans()
+        XCTAssertEqual(legacy.first?.timeCapSeconds, 480)
+        XCTAssertEqual(legacy.first?.segments[0].durationSeconds, 480)
+        XCTAssertEqual(legacy.first?.segments[0].restSeconds, 1)
+        XCTAssertNil(legacy.first?.reportedResult, "Legacy notes are not silently reinterpreted")
+        XCTAssertEqual(legacy.first?.reportedRepetitionOverrides, [:])
+        XCTAssertEqual(legacy.first?.segments[0].notes, plan.segments[0].notes)
+    }
+
     func testRowPressLadderParsesWithoutInventingValues() async throws {
         let raw = """
             Complete for time
@@ -77,7 +567,7 @@ final class WorkoutMilestoneTests: XCTestCase {
         XCTAssertFalse(result.intendedStimulus.secondary.contains { $0.contains("Score:") })
         XCTAssertTrue(result.ambiguities.isEmpty)
         XCTAssertEqual(result.rawText, raw)
-        XCTAssertEqual(result.parserVersion, "deterministic-1.4.0")
+        XCTAssertEqual(result.parserVersion, "deterministic-1.5.0")
         XCTAssertNil(result.modelVersion)
     }
 
@@ -93,7 +583,7 @@ final class WorkoutMilestoneTests: XCTestCase {
         for (text, cap) in [("12 minutes", 720), ("7:30", 450)] {
             let result = try await VersionedWorkoutParser().parse(
                 rawText: "For time\n400 m Row\n6 Strict Press 30 lb\nTime cap: \(text)")
-            XCTAssertEqual(result.timeCapSeconds, cap)
+            XCTAssertEqual(result.timeCapSeconds, Double(cap))
             XCTAssertEqual(result.segments.first?.movements.count, 2)
             XCTAssertNil(result.segments.first?.durationSeconds)
             XCTAssertTrue(result.ambiguities.isEmpty)
@@ -297,7 +787,7 @@ final class WorkoutMilestoneTests: XCTestCase {
 
         XCTAssertEqual(result.title, "Echo Bike Intervals")
         XCTAssertEqual(result.format, .intervals)
-        XCTAssertEqual(result.parserVersion, "deterministic-1.4.0")
+        XCTAssertEqual(result.parserVersion, "deterministic-1.5.0")
         XCTAssertEqual(result.segments.count, 1)
         XCTAssertEqual(segment.restSeconds, 90)
         XCTAssertEqual(

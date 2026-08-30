@@ -554,6 +554,7 @@ private struct ExperimentObservationRow: View {
 
 private struct ExperimentEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State var experiment: ExperimentDefinition
     let onSave: (ExperimentDefinition) async throws -> Void
 
@@ -580,18 +581,24 @@ private struct ExperimentEditorView: View {
         Form {
             Section("Question") {
                 TextField("Short title", text: $experiment.title)
+                    .formKeyboardField()
                     .accessibilityIdentifier("experiment-title")
                 TextField(
                     "What are you trying to learn?", text: $experiment.question, axis: .vertical
                 )
+                .formKeyboardField(dismissOnSubmit: false)
                 .lineLimit(2...5)
                 TextField("Hypothesis (optional)", text: $experiment.hypothesis, axis: .vertical)
+                    .formKeyboardField(dismissOnSubmit: false)
                     .lineLimit(2...5)
             }
             Section("Conditions") {
                 TextField("Condition A", text: $experiment.intervention, axis: .vertical)
+                    .formKeyboardField(dismissOnSubmit: false)
                 TextField(
-                    "Condition B", text: $experiment.comparisonCondition, axis: .vertical)
+                    "Condition B", text: $experiment.comparisonCondition, axis: .vertical
+                )
+                .formKeyboardField(dismissOnSubmit: false)
                 Text(
                     "At the end of a day, choose the condition that actually happened. These labels do not schedule a future action."
                 )
@@ -638,12 +645,15 @@ private struct ExperimentEditorView: View {
             }
             Section("Criteria and context") {
                 TextField("Inclusion criteria, one per line", text: $inclusionText, axis: .vertical)
+                    .formKeyboardField(dismissOnSubmit: false)
                     .lineLimit(2...6)
                 TextField("Exclusion criteria, one per line", text: $exclusionText, axis: .vertical)
+                    .formKeyboardField(dismissOnSubmit: false)
                     .lineLimit(2...6)
                 TextField(
                     "Potential confounders, one per line", text: $confounderText, axis: .vertical
                 )
+                .formKeyboardField(dismissOnSubmit: false)
                 .lineLimit(2...6)
             }
             Section("Schedule") {
@@ -670,17 +680,24 @@ private struct ExperimentEditorView: View {
         }
         .navigationTitle(experiment.title.isEmpty ? "New Experiment" : "Edit Experiment")
         .navigationBarTitleDisplayMode(.inline)
+        .formKeyboardScope($focusedField)
         .onChange(of: experiment.primaryOutcome) { _, outcome in
             experiment.outcomeTiming = outcome.recommendedTiming
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button("Cancel") {
+                    focusedField = nil
+                    dismiss()
+                }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save() } }
-                    .disabled(!experiment.isValid)
-                    .accessibilityIdentifier("save-experiment")
+                Button("Save") {
+                    focusedField = nil
+                    Task { await save() }
+                }
+                .disabled(!experiment.isValid)
+                .accessibilityIdentifier("save-experiment")
             }
         }
         .alert("Couldn’t save experiment", isPresented: errorIsPresented) {
@@ -906,6 +923,7 @@ struct DailyExperimentLogView: View {
 
 private struct ExperimentObservationEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State var observation: ExperimentObservation
     let experiment: ExperimentDefinition
     let existingObservations: [ExperimentObservation]
@@ -983,7 +1001,9 @@ private struct ExperimentObservationEditorView: View {
                 Toggle("Include in analysis", isOn: $observation.included)
                 if !observation.included {
                     TextField(
-                        "Exclusion reason", text: $observation.exclusionReason, axis: .vertical)
+                        "Exclusion reason", text: $observation.exclusionReason, axis: .vertical
+                    )
+                    .formKeyboardField(dismissOnSubmit: false)
                 }
             }
             Section("Automatic outcome") {
@@ -1007,7 +1027,9 @@ private struct ExperimentObservationEditorView: View {
             }
             Section {
                 TextField("Confounders, one per line", text: $confounderText, axis: .vertical)
+                    .formKeyboardField(dismissOnSubmit: false)
                 TextField("Notes", text: $observation.notes, axis: .vertical)
+                    .formKeyboardField(dismissOnSubmit: false)
             } header: {
                 Text("Optional context")
             } footer: {
@@ -1020,6 +1042,7 @@ private struct ExperimentObservationEditorView: View {
             if isUpdatingExistingDay {
                 Section {
                     Button("Delete this day", role: .destructive) {
+                        focusedField = nil
                         isConfirmingDeletion = true
                     }
                 } footer: {
@@ -1032,19 +1055,26 @@ private struct ExperimentObservationEditorView: View {
         }
         .navigationTitle("Condition Day")
         .navigationBarTitleDisplayMode(.inline)
+        .formKeyboardScope($focusedField)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
+                Button("Cancel") {
+                    focusedField = nil
+                    dismiss()
+                }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { Task { await save() } }
-                    .disabled(
-                        !observation.included
-                            && observation.exclusionReason.trimmingCharacters(
-                                in: .whitespacesAndNewlines
-                            ).isEmpty
-                            || hasDateConflict
-                    )
+                Button("Save") {
+                    focusedField = nil
+                    Task { await save() }
+                }
+                .disabled(
+                    !observation.included
+                        && observation.exclusionReason.trimmingCharacters(
+                            in: .whitespacesAndNewlines
+                        ).isEmpty
+                        || hasDateConflict
+                )
             }
         }
         .alert("Couldn’t save observation", isPresented: errorIsPresented) {

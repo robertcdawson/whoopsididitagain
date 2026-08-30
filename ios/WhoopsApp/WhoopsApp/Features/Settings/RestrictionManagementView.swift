@@ -135,6 +135,7 @@ struct RestrictionManagementView: View {
 
 private struct RestrictionEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State private var profile: RestrictionProfile
     let onSave: (RestrictionProfile) async -> Void
 
@@ -151,12 +152,16 @@ private struct RestrictionEditorView: View {
             Form {
                 Section("Injury") {
                     TextField("Name", text: $profile.injuryName)
+                        .formKeyboardField()
                     TextField("Body region", text: $profile.bodyRegion)
+                        .formKeyboardField()
                     TextField("Side", text: $profile.side)
+                        .formKeyboardField()
                 }
                 Section("Restriction") {
                     Toggle("Active", isOn: $profile.isActive)
                     TextField("Movement or demand", text: $profile.movementTag)
+                        .formKeyboardField()
                     Picker("Level", selection: $profile.level) {
                         ForEach(RestrictionLevel.allCases) { level in
                             Text(level.displayName).tag(level)
@@ -168,15 +173,21 @@ private struct RestrictionEditorView: View {
                         in: 0...10
                     )
                     TextField("Rationale", text: $profile.rationale, axis: .vertical)
+                        .formKeyboardField(dismissOnSubmit: false)
                 }
             }
             .navigationTitle("Restriction")
+            .formKeyboardScope($focusedField)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        focusedField = nil
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        focusedField = nil
                         Task {
                             await onSave(profile)
                             dismiss()

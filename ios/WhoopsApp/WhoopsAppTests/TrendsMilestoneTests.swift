@@ -229,7 +229,7 @@ final class TrendsMilestoneTests: XCTestCase {
                     actualCalories: nil,
                     actualLoadValue: nil,
                     actualLoadUnit: nil,
-                    actualDurationSeconds: minutes * 60,
+                    actualDurationSeconds: Double(minutes * 60),
                     modification: "",
                     painDuring: movementPain,
                     notes: ""

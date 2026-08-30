@@ -1,7 +1,7 @@
 import Foundation
 
 struct VersionedWorkoutParser: WorkoutParser {
-    static let parserVersion = "deterministic-1.4.0"
+    static let parserVersion = "deterministic-1.5.0"
     let catalog: MovementCatalog
 
     init(catalog: MovementCatalog = .standard) {
@@ -155,14 +155,15 @@ struct VersionedWorkoutParser: WorkoutParser {
             ambiguities: ambiguities,
             parserConfidence: confidence,
             parserVersion: Self.parserVersion,
-            modelVersion: nil
+            modelVersion: nil,
+            reportedResult: WorkoutReportedResult.parse(rawText)
         )
         return try result.validated(catalog: catalog)
     }
 
     private struct WorkBlock {
         var movements: [MovementPrescription] = []
-        var followingRestSeconds: Int?
+        var followingRestSeconds: Double?
     }
 
     private static func normalizedLine(_ value: String) -> String {
@@ -217,7 +218,7 @@ struct VersionedWorkoutParser: WorkoutParser {
         ) != nil
     }
 
-    private static func restDuration(from line: String) -> Int? {
+    private static func restDuration(from line: String) -> Double? {
         let lower = line.lowercased()
         guard
             lower.range(
@@ -232,7 +233,7 @@ struct VersionedWorkoutParser: WorkoutParser {
         from blocks: [WorkBlock],
         format: WorkoutFormat,
         rounds: Int?,
-        timeCap: Int?,
+        timeCap: Double?,
         context: [String]
     ) -> [WorkoutSegment] {
         let restValues = blocks.dropLast().compactMap(\.followingRestSeconds)
@@ -315,7 +316,7 @@ struct VersionedWorkoutParser: WorkoutParser {
         return .manual
     }
 
-    private static func timeCap(in text: String, format: WorkoutFormat) -> Int? {
+    private static func timeCap(in text: String, format: WorkoutFormat) -> Double? {
         let lines = text.components(separatedBy: .newlines)
         if let cap = lines.first(where: isTimeCapInstruction) { return duration(in: cap) }
         guard format == .amrap || format == .emom else { return nil }
@@ -328,7 +329,7 @@ struct VersionedWorkoutParser: WorkoutParser {
             if let minutes = captureDouble(
                 #"(?i)^\s*(?:amrap|emom)\s+(\d+(?:\.\d+)?)\s*:?[ \t]*$"#, in: line)
             {
-                return positiveInteger(minutes * 60, maximum: 86_400)
+                return validDuration(minutes * 60)
             }
         }
         return nil
@@ -409,7 +410,7 @@ struct VersionedWorkoutParser: WorkoutParser {
     func stimulus(
         for movements: [MovementPrescription],
         format: WorkoutFormat,
-        timeCap: Int?,
+        timeCap: Double?,
         context: [String]
     ) -> WorkoutStimulus {
         let items = movements.compactMap { movement in
@@ -439,7 +440,7 @@ struct VersionedWorkoutParser: WorkoutParser {
         for item in context where !secondary.contains(item) {
             secondary.append(item)
         }
-        let estimatedMinutes = timeCap.map { max(1, $0 / 60) }
+        let estimatedMinutes = timeCap.map { max(1, ($0 / 60).rounded()) }
         return WorkoutStimulus(
             primary: primary,
             secondary: secondary,
@@ -474,7 +475,7 @@ struct VersionedWorkoutParser: WorkoutParser {
         let loadValue: Double?
         let loadUnit: String?
         let percentageOfOneRepMax: Double?
-        let durationSeconds: Int?
+        let durationSeconds: Double?
         let hasAmbiguousNumbers: Bool
 
         var hasNoPrescription: Bool {
@@ -564,13 +565,13 @@ struct VersionedWorkoutParser: WorkoutParser {
         return Int(value.rounded())
     }
 
-    private static func duration(in text: String) -> Int? {
+    private static func duration(in text: String) -> Double? {
         guard removingAmbiguousNumbers(text) == text else { return nil }
         let clock = captureGroups(#"(?<![\d.:])(\d+):(\d{2})(?![\d:])"#, in: text)
         if clock.count == 2 {
             guard let minutes = Double(clock[0]), let seconds = Double(clock[1]), seconds < 60
             else { return nil }
-            return positiveInteger(minutes * 60 + seconds, maximum: 86_400)
+            return validDuration(minutes * 60 + seconds)
         }
         let quantity = captureGroups(
             #"(?i)(?<![\d.])(\d+(?:\.\d+)?)[ \t]*(s|sec|secs|seconds?|min|mins|minutes?|h|hours?)\b"#,
@@ -578,7 +579,11 @@ struct VersionedWorkoutParser: WorkoutParser {
         guard quantity.count == 2, let value = Double(quantity[0]) else { return nil }
         let unit = quantity[1].lowercased()
         let multiplier = unit.hasPrefix("h") ? 3_600.0 : unit.hasPrefix("m") ? 60.0 : 1.0
-        return positiveInteger(value * multiplier, maximum: 86_400)
+        return validDuration(value * multiplier)
+    }
+
+    private static func validDuration(_ seconds: Double) -> Double? {
+        seconds.isFinite && seconds > 0 && seconds <= 86_400 ? seconds : nil
     }
 
     private static func captureDouble(_ pattern: String, in text: String) -> Double? {

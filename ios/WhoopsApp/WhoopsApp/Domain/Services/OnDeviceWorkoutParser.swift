@@ -513,7 +513,8 @@ extension WorkoutExtraction {
             segments: built, ambiguities: ambiguities,
             // A conservative review indicator, not model self-reported probability of correctness.
             parserConfidence: ambiguities.isEmpty ? 0.7 : 0.4,
-            parserVersion: OnDeviceWorkoutParser.parserVersion, modelVersion: modelIdentifier
+            parserVersion: OnDeviceWorkoutParser.parserVersion, modelVersion: modelIdentifier,
+            reportedResult: WorkoutReportedResult.parse(source.rawText)
         )
         return try result.validated(catalog: catalog)
     }
@@ -539,21 +540,21 @@ extension WorkoutExtraction {
         return (value, groups[1])
     }
 
-    private static func seconds(_ quote: String?, in source: String) throws -> Int? {
+    private static func seconds(_ quote: String?, in source: String) throws -> Double? {
         guard let text = try WorkoutExtractionSource.verify(quote, in: source) else { return nil }
         if text.contains(":") {
             let groups = try captures(#"^(\d{1,3}):(\d{2})$"#, text)
             guard let minutes = Int(groups[0]), let seconds = Int(groups[1]), seconds < 60,
                 minutes * 60 + seconds > 0
             else { throw WorkoutAIFailure.invalidOutput }
-            return minutes * 60 + seconds
+            return Double(minutes * 60 + seconds)
         }
         let quantity = try quantity(
             text, in: source, units: #"s|sec|secs|seconds?|min|mins|minutes?|h|hours?"#)!
         let multiplier =
             quantity.unit.hasPrefix("m") ? 60 : quantity.unit.hasPrefix("h") ? 3_600 : 1
-        let seconds = Int((quantity.value * Double(multiplier)).rounded())
-        guard (1...86_400).contains(seconds) else { throw WorkoutAIFailure.invalidOutput }
+        let seconds = quantity.value * Double(multiplier)
+        guard seconds > 0 && seconds <= 86_400 else { throw WorkoutAIFailure.invalidOutput }
         return seconds
     }
 

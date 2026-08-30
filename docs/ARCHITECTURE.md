@@ -1,7 +1,7 @@
 # Architecture
 
 **Status:** Milestone 5 trends and weekly review implemented
-**Last updated:** August 21, 2026
+**Last updated:** August 30, 2026
 
 `PROJECT_PLAN.md` is the product source of truth. This document records the architecture that is
 currently implemented.
@@ -30,9 +30,35 @@ HealthKit access is read-only and never passes through the backend. The app requ
 sample type independently, so categories the user denies behave as empty sources while allowed
 categories continue synchronizing.
 
+HealthKit observer registration is claimed under a lock before the first `await`. Manual and
+observer-triggered imports share a suspending FIFO permit in `LiveHealthKitRepository`; the permit
+covers query, persistence, and anchor advancement for all pages of one metric. This prevents actor
+reentrancy from activating parallel anchored queries or committing results based on stale anchors.
+Cancellation removes queued waiters promptly; an active query settles before releasing the permit,
+and cancelled batches are not committed. Cached history reads do not wait for that permit.
+Metric-inclusion notifications publish on `MainActor`. See `HEALTHKIT_STABILITY.md` for the
+reproduced races, regression coverage, and limits of the original simulator crash diagnosis.
+
 Direct WHOOP sleep is authoritative when available. Primary overnight sleep is assigned to its
 wake day, and duration is the rounded sum of light, slow-wave, and REM stages. Apple Health sleep
 is used only as a fallback for a day without a completed primary WHOOP sleep.
+
+## Form keyboard focus
+
+Text-entry screens own a `FocusState<UUID?>` and install `formKeyboardScope`. Fields opt into that
+scope with `formKeyboardField`, using stable per-view IDs so repeated labels do not share focus.
+The scope dismisses the keyboard as scrolling begins and clears semantic focus on the user-driven
+scroll phase, so the keyboard accessory cannot revive it. It offers one keyboard Done action and
+clears focus on screen disappearance or app inactivity. Single-line Return submits dismiss focus;
+multiline notes retain Return/newline behavior. Search fields use SwiftUI's `searchFocused` with
+the same scope.
+
+Save, cancel, duplicate, and destructive-confirmation actions clear their screen's focus before
+proceeding. Train additionally clears its paste-field focus before parsing or presenting editors,
+and when those sheets close, so dismissing a sheet cannot revive the underlying keyboard. The
+pattern is used across workout entry/review/completion, movement management, check-ins, overrides,
+restrictions, and experiment editing. Do not reintroduce process-wide responder broadcasts, timed
+keyboard workarounds, or whole-form tap gestures that interfere with input and controls.
 
 ## WHOOP connection
 
@@ -108,7 +134,7 @@ duration.
 
 ## Workout planning and completion
 
-Workout processing is local. The deterministic fallback, `deterministic-1.4.0`, preserves the
+Workout processing is local. The deterministic fallback, `deterministic-1.5.0`, preserves the
 raw text, normalizes known aliases through a canonical movement catalog, extracts only quantities it
 can identify, and creates an explicit ambiguity for anything unknown or incomplete. The complete
 payload boundary is defined by `contracts/workout-parser.schema.json`; the same domain validator
@@ -144,8 +170,9 @@ does not mix successful AI fragments with silently guessed replacements. Conflic
 ambiguous repeat scope require fallback. Failure returns the deterministic draft with a visible explanation;
 user cancellation returns no draft. The UI snapshots input and rejects late results, keeps manual
 entry available, and cancels on navigation away or backgrounding. Parser provenance and OS/build-based
-model identity are retained; Apple does not expose an exact stable model weight revision. No storage
-migration is required. See [Apple parser verification](APPLE_WORKOUT_PARSER.md) for the live-model evaluation.
+model identity are retained; Apple does not expose an exact stable model weight revision. The Apple
+prototype itself adds no storage fields. See [Apple parser verification](APPLE_WORKOUT_PARSER.md)
+for the live-model evaluation; the editor's additive persistence changes are described below.
 
 Compatibility Unicode is normalized before classification, so mathematical-bold programming parses
 like ordinary text. A standalone heading becomes the plan title. Repeated one-movement efforts with
@@ -160,8 +187,32 @@ the complete paste. Spelled-out "as many rounds as possible" is recognized as AM
 and bare `#` loads are normalized to pounds. `Score:`, `Result:`, and `Completed:` lines are excluded
 from format, round-count, and duration detection and preserved as explicitly labeled reported-result
 notes on the first segment. They do not become movement rows, stimulus targets, or completed-workout
-records. Structured import of round-plus-repetition scores into actual-workout logging remains
-deferred; the original reported result stays editable and visible in segment notes.
+records. Version 1.5 also extracts one unambiguous round-plus-repetition score into an optional
+`WorkoutReportedResult`. The editor shows completed rounds and additional reps separately from
+prescribed rounds. For one rep-based AMRAP/rounds segment, deterministic totals multiply per-round
+reps by completed rounds, then distribute extras in movement order. Mixed-unit or multi-segment
+workouts and extras reaching another full round require manual totals. Actual-work logging prefills
+these totals for review but never saves a completion automatically. The raw source remains unchanged;
+unsupported result syntax stays in notes. Legacy plans retain their existing notes without automatic
+reinterpretation; re-paste or add a reported result to populate structured fields. A cleared saved
+snapshot does not reparse stale text.
+
+The review editor also exposes a per-movement Reported total reps field. User corrections live in
+`WorkoutPlan.reportedRepetitionOverrides`, keyed by prescription ID, outside parsed prescriptions.
+An additive optional `WorkoutPlanRecord.reportedRepetitionOverridesData` JSON snapshot preserves
+them; absent data means no overrides for older stores. Counts are whole numbers from 0 through
+100,000. Corrected counts take precedence for display and completion prefill without rewriting the
+score or per-round reps. Score changes retain explicit corrections; Use calculated total removes
+one. Duplicates receive no copied correction, and deleting a movement/segment removes its orphaned
+corrections. Unknown actual reps stay blank if the plan contains reported work but cannot calculate
+that movement's total. Editing a plan never changes an already-recorded completion.
+
+All workout duration editors use decimal minutes (at most two decimal places), with fractional
+seconds in domain models. Existing integer SwiftData columns remain intact; additive optional
+Double columns store precision and take precedence when present. Plan and completion records have
+optional result snapshots, while movement records gain explicit ordering. The lbs/kg pickers store
+canonical lb/kg without converting the entered load. Duplicate actions copy every prescription field
+with a new UUID and insert immediately after the source; edits and deletion remain independent.
 
 The bundled library includes an explicit overhead/American kettlebell swing, with kettlebell
 equipment and repetition/load/duration measurements. Generic or Russian swing wording is not
@@ -192,7 +243,18 @@ after values are populated, matching the review flow.
 The Train screen treats saved cards as navigable records. A planned-workout detail view reads the
 stored overview, stimulus, restriction evaluation, segment structure, prescriptions, and original
 source without mutating them. Recent completed-workout rows similarly open the actual session values;
-editing and completion remain separate explicit actions.
+both detail screens expose an explicit Edit action. `WorkoutCompletionView` has distinct creation
+and existing-record initializers: editing copies the saved completion, never refills it from a plan,
+and updates the detail snapshot after a successful save. A cancelled or failed save keeps persisted
+values intact. The repository validates before mutation and rejects movement IDs owned by another
+completion. Existing-record upserts preserve identity and ordering, avoiding duplicate workouts.
+
+Completed session duration is derived from start/end timestamps. Start edits shift the end by the
+same elapsed duration; duration edits move the end; end edits refresh the duration input. Session
+and movement fields, scores, and movement membership/order are editable, while source identities
+and parser provenance remain system-managed. Planned details also expose schedule, duration-range,
+and structural edits. Estimated stimulus durations accept decimal minutes in their existing JSON
+snapshot and continue to decode older integer values. See `WORKOUT_EDITING.md` for the field audit.
 
 The effective movement catalog is a deterministic merge of bundled definitions and local personal
 records. Plans and completions reference stable movement identifiers, while repetitions, load,

@@ -19,6 +19,7 @@ final class HealthKitClient: HealthKitReading, @unchecked Sendable {
 
     private let healthStore: HKHealthStore
     private let lock = NSLock()
+    private var observersStarted = false
     private var observerQueries: [HKObserverQuery] = []
 
     init(healthStore: HKHealthStore = HKHealthStore()) {
@@ -96,7 +97,13 @@ final class HealthKitClient: HealthKitReading, @unchecked Sendable {
     func startObserving(
         onChange: @escaping @Sendable (HealthMetric) async -> Void
     ) async {
-        let shouldStart = lock.withLock { observerQueries.isEmpty }
+        // Claim registration before the first await; another startup may enter while
+        // background-delivery registration is suspended.
+        let shouldStart = lock.withLock {
+            guard !observersStarted else { return false }
+            observersStarted = true
+            return true
+        }
         guard shouldStart else { return }
 
         var queries: [HKObserverQuery] = []
@@ -110,8 +117,8 @@ final class HealthKitClient: HealthKitReading, @unchecked Sendable {
                 }
                 let completion = ObserverCompletion(completion)
                 Task {
+                    defer { completion.call() }
                     await onChange(metric)
-                    completion.call()
                 }
             }
             healthStore.execute(query)

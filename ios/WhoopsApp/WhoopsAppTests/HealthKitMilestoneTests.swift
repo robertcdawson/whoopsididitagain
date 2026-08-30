@@ -1,10 +1,272 @@
 import Foundation
+import HealthKit
 import SwiftData
 import XCTest
 
 @testable import WhoopsApp
 
 final class HealthKitMilestoneTests: XCTestCase {
+    private actor ConcurrentReader: HealthKitReading {
+        nonisolated let isHealthDataAvailable = true
+        nonisolated let firstQueryStarted = XCTestExpectation(description: "First query started")
+        private var active = 0
+        private let pausesFirstQuery: Bool
+        private let failsFirstQuery: Bool
+        private let ignoresCancellation: Bool
+        private var firstQueryContinuation: CheckedContinuation<Void, Never>?
+        private var onChange: (@Sendable (HealthMetric) async -> Void)?
+        private(set) var queryCount = 0
+        private(set) var maximumActive = 0
+        private(set) var anchorsReceived: [HealthMetric: [Data?]] = [:]
+
+        init(
+            pausesFirstQuery: Bool = false, failsFirstQuery: Bool = false,
+            ignoresCancellation: Bool = false
+        ) {
+            self.pausesFirstQuery = pausesFirstQuery
+            self.failsFirstQuery = failsFirstQuery
+            self.ignoresCancellation = ignoresCancellation
+        }
+
+        func requestReadAuthorization() async throws {}
+        func startObserving(onChange: @escaping @Sendable (HealthMetric) async -> Void) async {
+            self.onChange = onChange
+        }
+
+        func emitChange(for metric: HealthMetric) async { await onChange?(metric) }
+
+        func releaseFirstQuery() {
+            firstQueryContinuation?.resume()
+            firstQueryContinuation = nil
+        }
+
+        func anchoredChanges(for metric: HealthMetric, anchorData: Data?) async throws
+            -> HealthKitChangeBatch
+        {
+            active += 1
+            queryCount += 1
+            let isFirst = queryCount == 1
+            maximumActive = max(maximumActive, active)
+            anchorsReceived[metric, default: []].append(anchorData)
+            defer { active -= 1 }
+            if isFirst && pausesFirstQuery {
+                await withCheckedContinuation { continuation in
+                    firstQueryContinuation = continuation
+                    firstQueryStarted.fulfill()
+                }
+            } else if isFirst {
+                firstQueryStarted.fulfill()
+            }
+            // Make suspension explicit; cancellation-ignoring mode models an active HK query
+            // whose callback still needs to settle before another query may start.
+            if ignoresCancellation {
+                try? await Task.sleep(for: .milliseconds(5))
+            } else {
+                try await Task.sleep(for: .milliseconds(5))
+            }
+            if isFirst && failsFirstQuery { throw AppError.invalidHealthKitResponse }
+            let previous =
+                anchorData.flatMap { String(data: $0, encoding: .utf8) }.flatMap(Int.init)
+                ?? 0
+            return HealthKitChangeBatch(
+                samples: [], deletedSampleIDs: [],
+                anchorData: Data(String(previous + 1).utf8), hasMore: false)
+        }
+    }
+
+    private final class SuspendedObservationStore: HKHealthStore, @unchecked Sendable {
+        let firstDeliverySuspended = XCTestExpectation(
+            description: "Observer registration suspended")
+        private let lock = NSLock()
+        private var executedQueries = 0
+        private var didSuspend = false
+        private var pendingCompletion: (@Sendable (Bool, Error?) -> Void)?
+
+        var queryCount: Int { lock.withLock { executedQueries } }
+
+        override func execute(_ query: HKQuery) {
+            lock.withLock { executedQueries += 1 }
+        }
+
+        override func enableBackgroundDelivery(
+            for type: HKObjectType, frequency: HKUpdateFrequency,
+            withCompletion completion: @escaping @Sendable (Bool, Error?) -> Void
+        ) {
+            let suspended = lock.withLock {
+                guard !didSuspend else { return false }
+                didSuspend = true
+                pendingCompletion = completion
+                return true
+            }
+            if suspended { firstDeliverySuspended.fulfill() } else { completion(true, nil) }
+        }
+
+        func releaseFirstDelivery() {
+            let completion = lock.withLock {
+                let saved = pendingCompletion
+                pendingCompletion = nil
+                return saved
+            }
+            completion?(true, nil)
+        }
+    }
+
+    @MainActor
+    func testConcurrentImportsSerializeQueriesAndNeverReuseStaleAnchors() async throws {
+        let reader = ConcurrentReader()
+        let anchors = TestAnchorStore()
+        let repository = LiveHealthKitRepository(
+            client: reader, persistence: HealthKitPersistence(container: try makeContainer()),
+            anchors: anchors)
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<8 {
+                group.addTask { _ = try await repository.synchronize() }
+            }
+            try await group.waitForAll()
+        }
+
+        let maximumActive = await reader.maximumActive
+        let received = await reader.anchorsReceived[.heartRate]
+        XCTAssertEqual(maximumActive, 1)
+        XCTAssertEqual(received, [nil] + (1...7).map { Data(String($0).utf8) })
+        XCTAssertEqual(anchors.anchorData(for: .heartRate), Data("8".utf8))
+    }
+
+    @MainActor
+    func testObserverBurstAndManualRefreshUseTheSameImportQueue() async throws {
+        let reader = ConcurrentReader()
+        let anchors = TestAnchorStore()
+        anchors.markAuthorizationRequested()
+        let repository = LiveHealthKitRepository(
+            client: reader, persistence: HealthKitPersistence(container: try makeContainer()),
+            anchors: anchors)
+        await repository.startObserving()
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask { _ = try await repository.synchronize() }
+            for metric in HealthMetric.allCases {
+                group.addTask { await reader.emitChange(for: metric) }
+            }
+            try await group.waitForAll()
+        }
+        let maximumActive = await reader.maximumActive
+        XCTAssertEqual(maximumActive, 1)
+        for metric in HealthMetric.allCases {
+            XCTAssertEqual(anchors.anchorData(for: metric), Data("2".utf8))
+        }
+    }
+
+    @MainActor
+    func testFailedQueryReleasesPermitAndDoesNotAdvanceItsAnchor() async throws {
+        let reader = ConcurrentReader(failsFirstQuery: true)
+        let anchors = TestAnchorStore()
+        let repository = LiveHealthKitRepository(
+            client: reader, persistence: HealthKitPersistence(container: try makeContainer()),
+            anchors: anchors)
+        async let first = repository.synchronize()
+        async let second = repository.synchronize()
+        _ = try await (first, second)
+        let maximumActive = await reader.maximumActive
+        let received = await reader.anchorsReceived[.heartRate]
+        XCTAssertEqual(maximumActive, 1)
+        XCTAssertEqual(received, [nil, nil])
+        XCTAssertEqual(anchors.anchorData(for: .heartRate), Data("1".utf8))
+        XCTAssertEqual(anchors.anchorData(for: .restingHeartRate), Data("2".utf8))
+    }
+
+    @MainActor
+    func testQueuedCancellationDoesNotWaitForTheActiveQueryOrBlockHistory() async throws {
+        let reader = ConcurrentReader(pausesFirstQuery: true)
+        let anchors = TestAnchorStore()
+        let repository = LiveHealthKitRepository(
+            client: reader, persistence: HealthKitPersistence(container: try makeContainer()),
+            anchors: anchors)
+        let first = Task { try await repository.synchronize() }
+        await fulfillment(of: [reader.firstQueryStarted], timeout: 3)
+        let cancelledFinished = expectation(description: "Queued caller cancelled promptly")
+        let cancelled = Task {
+            defer { cancelledFinished.fulfill() }
+            do {
+                _ = try await repository.synchronize()
+                XCTFail("Cancelled queued sync must not run")
+            } catch { XCTAssertTrue(error is CancellationError) }
+        }
+        // Give the new caller a chance to enqueue while the first query remains suspended.
+        for _ in 0..<20 { await Task.yield() }
+        cancelled.cancel()
+        await fulfillment(of: [cancelledFinished], timeout: 3)
+        let history = try await repository.history()
+        let queryCount = await reader.queryCount
+        XCTAssertEqual(history.recordCount, 0)
+        XCTAssertEqual(queryCount, 1)
+        XCTAssertNil(anchors.anchorData(for: .heartRate))
+        await reader.releaseFirstQuery()
+        _ = try await first.value
+        await cancelled.value
+        _ = try await repository.synchronize()
+        XCTAssertEqual(anchors.anchorData(for: .heartRate), Data("2".utf8))
+    }
+
+    @MainActor
+    func testActiveCancellationWaitsForQuerySettlementWithoutCommittingItsBatch() async throws {
+        let reader = ConcurrentReader(pausesFirstQuery: true, ignoresCancellation: true)
+        let anchors = TestAnchorStore()
+        let repository = LiveHealthKitRepository(
+            client: reader, persistence: HealthKitPersistence(container: try makeContainer()),
+            anchors: anchors)
+        let cancelled = Task { try await repository.synchronize() }
+        await fulfillment(of: [reader.firstQueryStarted], timeout: 3)
+        cancelled.cancel()
+        await reader.releaseFirstQuery()
+        do {
+            _ = try await cancelled.value
+            XCTFail("Cancelled active sync must not commit or query another metric")
+        } catch { XCTAssertTrue(error is CancellationError) }
+        let queryCount = await reader.queryCount
+        XCTAssertEqual(queryCount, 1)
+        XCTAssertNil(anchors.anchorData(for: .heartRate))
+        _ = try await repository.synchronize()
+        XCTAssertEqual(anchors.anchorData(for: .heartRate), Data("1".utf8))
+    }
+
+    @MainActor
+    func testObserverStartupIsClaimedBeforeItsFirstSuspension() async {
+        let store = SuspendedObservationStore()
+        let client = HealthKitClient(healthStore: store)
+        let first = Task { await client.startObserving { _ in } }
+        await fulfillment(of: [store.firstDeliverySuspended], timeout: 3)
+
+        await client.startObserving { _ in }
+        let countWhileStarting = store.queryCount
+        store.releaseFirstDelivery()
+        await first.value
+        XCTAssertEqual(countWhileStarting, 1)
+        XCTAssertEqual(store.queryCount, HealthMetric.allCases.count)
+    }
+
+    @MainActor
+    func testMetricInclusionNotificationIsDeliveredOnMainThread() async throws {
+        let suite = "HealthKitMilestoneTests.notification.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let repository = LiveHealthKitRepository(
+            client: FakeReader(batches: [:]),
+            persistence: HealthKitPersistence(container: try makeContainer()),
+            anchors: TestAnchorStore(),
+            metricInclusion: HealthMetricInclusionStore(defaults: defaults))
+        let delivered = expectation(description: "Metric inclusion notification")
+        let token = NotificationCenter.default.addObserver(
+            forName: .healthMetricInclusionDidChange, object: nil, queue: nil
+        ) { _ in
+            XCTAssertTrue(Thread.isMainThread)
+            delivered.fulfill()
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+        await repository.setMetric(.hrvSDNN, included: false)
+        await fulfillment(of: [delivered], timeout: 3)
+    }
+
     private final class FakeReader: HealthKitReading, @unchecked Sendable {
         let isHealthDataAvailable = true
         private let lock = NSLock()

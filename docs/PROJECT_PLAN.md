@@ -377,8 +377,16 @@ movement rows. Heart-rate targets and intended RPE ranges should be preserved
 as editable workout context and must not be treated as movements.
 
 Leading list bullets, spelled-out AMRAP, and pound-symbol load notation should be accepted without
-changing the source text. Explicit reported-result lines such as `Score:` are retained in labeled,
-editable segment notes, separate from planned movements, rounds, durations, and stimulus targets.
+changing the source text. Explicit reported-result lines such as `Score:` stay separate from planned
+movements, rounds, durations, and stimulus targets. An unambiguous rounds-plus-reps score populates
+editable Completed rounds and Additional reps fields. In one rep-based AMRAP/rounds segment, code
+calculates movement totals in written order and prefills actual repetitions for review; mixed-unit,
+multi-segment, or inconsistent scores require manual totals. Unsupported scores remain in notes.
+Each movement's reported total is editable independently of prescribed reps and the round/repetition
+score. Explicit corrections (including zero) survive score changes and saving, are labeled as edited,
+and can be reset to the calculated count. Keep corrections outside parser output, keyed by movement
+identity on the reviewed plan; a duplicated prescription does not copy a manual correction. Actual-work
+logging uses corrected counts first, calculated counts second, and leaves unknown totals blank.
 Parsing a reported score must not silently record actual completion. Explicit overhead/American
 kettlebell swings are recognized separately from unspecified swing variants; unknown movements
 must remain visibly unevaluated against active restrictions.
@@ -389,6 +397,22 @@ efforts. A dedicated rest segment instead uses `durationSeconds`, contains no
 movements or rounds, and cannot also set `restSeconds`. Variable recovery is
 represented with separate rest segments in sequence rather than conflicting
 values on one segment.
+
+Workout time caps, segment/rest durations, and movement durations are edited and displayed in minutes
+with up to two decimal places. Fractional seconds remain lossless in storage. Load-unit editors offer
+lbs and kg, storing canonical `lb` and `kg`; changing the unit corrects its label, not the load number.
+Duplicating a movement inserts an independent prescription immediately after its source, with all
+fields copied and a new identity. Movement order must survive saving because partial-round totals
+depend on it. Existing whole-second records remain readable without deleting the app's data.
+
+Both planned and completed workout details must expose an Edit action. Completed sessions remain
+editable after saving: title, date/start/end, decimal-minute duration, RPE, post-session pain, notes,
+score, and every actual movement value. Allow actual movement addition, duplication, removal, and
+reordering. Save updates the same record; Cancel discards the draft. Moving a start preserves elapsed
+duration, changing an end updates duration, and changing duration moves the end. Never regenerate
+saved actual values from a plan or overwrite movement totals when a score is edited. Keep generated
+identities, source provenance, and calculated restriction assessments system-managed. See
+`WORKOUT_EDITING.md` for the complete field audit and edit semantics.
 
 ### On-device parser prototype (August 30, 2026)
 
@@ -1360,6 +1384,12 @@ Request only the types actually used by enabled features.
 
 Use anchored queries for incremental retrieval and observer queries for background change notification.
 
+Observer registration must be idempotent before its first suspension point. Manual refreshes and
+observer callbacks share one cancellation-aware import queue covering query, persistence, and
+anchor advancement across all pages. History reads remain available while a query is suspended,
+and notifications consumed by the UI are delivered on the main actor. Preserve existing history,
+permissions, and anchors when addressing startup failures; see `HEALTHKIT_STABILITY.md`.
+
 ## 11.5 Source Precedence
 
 Use explicit source rules rather than indiscriminately blending records.
@@ -2140,6 +2170,11 @@ Support:
 - Plain-language summaries
 - Accessible charts with textual equivalents
 
+Text-entry screens should own their SwiftUI focus state and clear it when saving, cancelling,
+leaving the screen, or backgrounding the app. Presenting and dismissing a sheet must not restore
+focus to its underlying text field. Provide a keyboard Done action and scroll dismissal, retain
+newlines in multiline notes, and avoid global responder broadcasts or tap gestures that steal input.
+
 ### 18.3 Data Freshness
 
 Every important screen should show:
@@ -2365,7 +2400,8 @@ whoops-i-did-it-again/
 - A Rest segment has one required duration and cannot contain movements, rounds, or another rest
   value.
 - Saved planned workouts and recent completed workouts can be tapped to inspect their full,
-  read-only structure and recorded values without entering an edit flow.
+  read-only structure and recorded values without entering an edit flow. Both detail screens also
+  expose an Edit action for corrections; saving updates the existing record rather than a copy.
 
 ---
 

@@ -68,7 +68,7 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
 
 - **Date:** August 16, 2026
 - **Status:** Accepted
-- **Decision:** `deterministic-1.4.0` is the default parser. It preserves raw text, applies Unicode
+- **Decision:** `deterministic-1.5.0` is the default parser. It preserves raw text, applies Unicode
   compatibility normalization, maps only approved
   aliases, and reports unknown or incomplete prescriptions as explicit ambiguities. Parsed payloads
   must pass the versioned workout JSON Schema and domain validation, including mutually exclusive
@@ -85,6 +85,21 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
 - **Amended August 30, 2026:** Fix time-cap metadata, standalone strength sets, missing quantities on
   unmapped movements, and explicit rest structure. Preserve uncertain ranges/alternatives for review
   instead of selecting a number; recognize bounded clock-format durations.
+- **Editor amendment August 30, 2026:** Store unambiguous reported round/repetition results separately
+  from prescriptions and expose editable result fields. Code derives partial-round movement totals
+  only for a single rep-based AMRAP/rounds segment, in written order. Saving a plan never creates a
+  completion. Completion values are prefilled for explicit review; uncertain totals stay blank.
+  Use Double seconds in the domain and additive optional precision columns in SwiftData, falling back
+  to legacy integer columns. This supports hundredths of a minute without rounding subsecond values
+  or changing existing attribute types. Persist explicit movement order and optional result snapshots.
+  Duplicate prescriptions with fresh IDs; preserve their movement-library links. Unit pickers expose
+  only lbs/kg, retain canonical lb/kg storage, and do not silently convert load values.
+- **Reported-total correction amendment August 30, 2026:** Allow independent, visibly labeled manual
+  movement totals, including zero, with a reset to calculated totals. Store overrides on the reviewed
+  plan by movement ID, not in parser output or prescribed reps. Preserve them when the score changes,
+  do not copy them when duplicating prescriptions, and remove them with deleted movements. Use an
+  additive optional JSON column; old records need no reparse. Completion prefill prefers corrections
+  without changing the separate reported score or previously saved completions.
 
 ## ADR-008: Preserve planned and actual training as separate records
 
@@ -241,6 +256,36 @@ behavior without weakening source fidelity.
   The entire attempt retains its 20-second deadline, with at most 16 parts and 40 response tokens
   per part. The updated live accuracy gate remains separate from mocked assembly tests; see
   `APPLE_WORKOUT_PARSER.md` for measured results. No default-on or phone rollout is implied.
+
+## ADR-018: Screen-scoped keyboard focus
+
+- **Date:** August 30, 2026
+- **Status:** Implemented
+- **Decision:** Use SwiftUI `FocusState` scoped to each input screen and explicit focus clearing at
+  navigation, save/cancel, sheet, and background boundaries. Give repeated fields independent IDs,
+  provide a Done action and immediate scroll dismissal, and preserve multiline Return behavior.
+  Clear the Train paste field before presenting review so it cannot regain focus on dismissal.
+- **Scope:** All current text-entry forms and movement searches. No global UIKit responder
+  broadcast, delayed dismissal, or catch-all tap gesture. Domain values and persistence are unchanged.
+- **Verification:** UI regressions assert keyboard disappearance through nested editing, sheet
+  dismissal, save/cancel, tab changes, and background/foreground; multiline notes remain editable.
+- **Reference:** [Apple FocusState documentation](https://developer.apple.com/documentation/swiftui/focusstate).
+
+## ADR-019: Serialize HealthKit import transactions across suspension points
+
+- **Date:** August 30, 2026
+- **Status:** Implemented
+- **Decision:** Use one cancellation-aware FIFO import permit per HealthKit repository, shared by
+  manual and observer-triggered refreshes. Hold it from anchor read through all query pages and
+  persistence/anchor advancement. Keep history reads outside this permit. Claim observer startup
+  atomically before awaiting delivery registration; publish source-selection changes on `MainActor`.
+- **Rationale:** Actor isolation alone does not serialize an entire asynchronous transaction.
+  Synthetic tests reproduced overlapping queries with stale anchors, duplicate observer startup,
+  and off-main notifications. The import permit also removes the concurrent HealthKit activation
+  pattern present in a simulator startup crash, without clearing stores or serializing all UI work.
+- **Limit:** The precise cause of the framework's predicate-formatting crash remains unproven.
+  See `HEALTHKIT_STABILITY.md`; passing retries alone are not proof of a framework fix.
+- **Reference:** [Apple actor reentrancy guidance](https://developer.apple.com/videos/play/wwdc2021/10133/).
 
 ## Open decisions
 
