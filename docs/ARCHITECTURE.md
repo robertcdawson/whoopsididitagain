@@ -108,28 +108,80 @@ duration.
 
 ## Workout planning and completion
 
-Workout processing is local and deterministic in `deterministic-1.2.0`. The parser preserves the
+Workout processing is local. The deterministic fallback, `deterministic-1.4.0`, preserves the
 raw text, normalizes known aliases through a canonical movement catalog, extracts only quantities it
 can identify, and creates an explicit ambiguity for anything unknown or incomplete. The complete
 payload boundary is defined by `contracts/workout-parser.schema.json`; the same domain validator
 rejects invalid confidence, nonpositive quantities, empty segments, and unknown canonical IDs. A
-future LLM may propose this payload, but cannot bypass validation or the manual-entry fallback.
+model may propose this payload, but cannot bypass validation or the manual-entry fallback.
+
+The optional `apple-extraction-2.0.0` prototype uses Apple's on-device Foundation Models framework
+on iOS 26 and later. `LibraryWorkoutParser` takes one merged movement-catalog snapshot. Normal app
+wiring supplies no model, regardless of any stored opt-in, and Train hides the experimental controls
+because the live-model accuracy gate failed. Only DEBUG simulator runs with an explicit synthetic
+test-provider mode expose those controls; the standalone Mac harness evaluates the real model.
+The staged extractor splits numbered source lines in code, removes
+explicit reported results, and sends exactly one line to each fresh session, sequentially. Apple
+returns one explicit label such as `exercise_line` or `strength_header`; code maps that label to
+role/format fields. Apple never supplies quantities or line IDs. It receives no health history or
+restrictions, has no tools, and never calls a cloud model or the backend. Model sessions are created on demand and
+serialized; a cancelled or timed-out session cannot overlap another model allocation.
+
+Code extracts literal quantity tokens from each original line. The adapter verifies those quotations,
+converts units in code, resolves canonical IDs from source lines against the catalog, and validates the resulting
+domain payload. It rejects invented values, invalid source references, duplicated movement lines,
+and rest without source evidence. Omitted lines and quantities remain visible as review notes.
+The app also falls back when an AI draft drops source numbers or leaves source lines unstructured;
+the standalone evaluation bypasses that routing so fallback cannot mask model errors.
+The current bounded schema handles one movement per source line; complex or unsupported syntax may
+need the deterministic fallback or manual correction. Only the exact string `null` is normalized to
+absence for optional quantity fields to accommodate observed system-model output.
+
+AI input is limited to 2,400 numbered-source UTF-8 bytes and 16 parts, each generation to 40 response
+tokens, and the entire attempt to 20 seconds (not 20 seconds per part). Code owns source order,
+segment assembly, and completeness checks. A failed part discards the entire staged draft; the app
+does not mix successful AI fragments with silently guessed replacements. Conflicting formats or
+ambiguous repeat scope require fallback. Failure returns the deterministic draft with a visible explanation;
+user cancellation returns no draft. The UI snapshots input and rejects late results, keeps manual
+entry available, and cancels on navigation away or backgrounding. Parser provenance and OS/build-based
+model identity are retained; Apple does not expose an exact stable model weight revision. No storage
+migration is required. See [Apple parser verification](APPLE_WORKOUT_PARSER.md) for the live-model evaluation.
 
 Compatibility Unicode is normalized before classification, so mathematical-bold programming parses
 like ordinary text. A standalone heading becomes the plan title. Repeated one-movement efforts with
 a common explicit rest are represented as one interval segment with `restSeconds`; heart-rate and
 intended-RPE targets remain editable context rather than becoming movement rows.
+Version 1.4 keeps time caps out of movement rows, recognizes strength/set headings, preserves
+unmapped movement quantities, supports clock durations, and retains separate rest between different
+movements or at the end. Numeric alternatives, ranges, and negative quantities require review.
+
+Leading list bullets are removed for classification and quantity extraction while `rawText` retains
+the complete paste. Spelled-out "as many rounds as possible" is recognized as AMRAP; parenthesized
+and bare `#` loads are normalized to pounds. `Score:`, `Result:`, and `Completed:` lines are excluded
+from format, round-count, and duration detection and preserved as explicitly labeled reported-result
+notes on the first segment. They do not become movement rows, stimulus targets, or completed-workout
+records. Structured import of round-plus-repetition scores into actual-workout logging remains
+deferred; the original reported result stays editable and visible in segment notes.
+
+The bundled library includes an explicit overhead/American kettlebell swing, with kettlebell
+equipment and repetition/load/duration measurements. Generic or Russian swing wording is not
+silently mapped to the overhead variation. Its overhead and elbow-extension tags conservatively
+represent the straight-arm overhead finish described by the
+[CrossFit movement standard](https://games.crossfit.com/workouts/regionals/2011?division=11);
+these are editable application heuristics, not individualized medical clearance.
 
 For a non-rest segment, `restSeconds` means one uniform recovery between repeated rounds or efforts.
 A dedicated `rest` segment instead stores its required recovery length in `durationSeconds` and has
 no movements, rounds, or secondary `restSeconds`. This makes variable recovery an explicit sequence
 of work and rest segments and prevents either representation from silently overriding the other.
 
-`workout-scaling-1.0.0` intersects movement-demand tags with active restriction demands. An `Avoid`
+`workout-scaling-1.0.1` intersects movement-demand tags with active restriction demands. An `Avoid`
 match is a hard conflict and returns `Modify`; softer matches return `Proceed with limits`. Candidate
 substitutions come only from the approved catalog and are filtered so they do not retain the matched
 restricted demand. Explanations state the intended stimulus being preserved and the movement
 specificity that may be lost.
+An unmapped movement produces an explicit incomplete-evaluation caution for each active restriction
+instead of being silently skipped. It does not receive automatic substitution candidates.
 
 SwiftData stores workout plans, segments, and prescriptions independently from completed workouts
 and completed movements. Completion starts as an editable copy of the plan, then saves actual

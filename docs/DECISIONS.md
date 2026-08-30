@@ -68,13 +68,23 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
 
 - **Date:** August 16, 2026
 - **Status:** Accepted
-- **Decision:** `deterministic-1.2.0` is the default parser. It preserves raw text, applies Unicode
+- **Decision:** `deterministic-1.4.0` is the default parser. It preserves raw text, applies Unicode
   compatibility normalization, maps only approved
   aliases, and reports unknown or incomplete prescriptions as explicit ambiguities. Parsed payloads
   must pass the versioned workout JSON Schema and domain validation, including mutually exclusive
   work-segment recovery and dedicated Rest segments. Manual entry remains available.
 - **Rationale:** Core workout planning must work offline, missing quantities must never be invented,
   and a future LLM should be an optional structured-input producer rather than an authority.
+- **Amended August 29, 2026:** Normalize leading list bullets and `#` load notation, recognize
+  spelled-out AMRAP, and exclude explicit reported-result lines from prescription inference.
+  Preserve reported scores in existing, editable segment notes without automatically recording
+  actual work or adding a storage schema. Add explicit overhead swing aliases without guessing
+  the range of motion of an unspecified swing. Unmapped movements retain restriction-review
+  cautions. No AI provider or model is connected by this change; a future optional parser requires
+  representative evaluations and the same validation, review, and deterministic safety boundaries.
+- **Amended August 30, 2026:** Fix time-cap metadata, standalone strength sets, missing quantities on
+  unmapped movements, and explicit rest structure. Preserve uncertain ranges/alternatives for review
+  instead of selecting a number; recognize bounded clock-format durations.
 
 ## ADR-008: Preserve planned and actual training as separate records
 
@@ -197,8 +207,44 @@ behavior without weakening source fidelity.
   downstream calculation without disconnecting Apple Health, losing other useful metrics, or
   deleting recoverable source records.
 
+## ADR-017: Use Apple's on-device model as a bounded workout extractor
+
+- **Date:** August 30, 2026
+- **Status:** Prototype implemented; live accuracy gate failed; not approved as the default parser
+- **Decision:** Use Foundation Models as an optional, request-only workout extraction provider.
+  Preserve the current deterministic parser, manual editor, merged movement catalog, restriction
+  engine, and explicit save review. No cloud provider, API key, backend change, custom adapter, or
+  downloadable third-party weights are part of this slice. After live testing found substantial
+  extraction errors, the phone-update boundary supplies no model and hides the experimental Train
+  toggle in normal runs, even if an old opt-in remains stored. Only DEBUG simulator synthetic-provider
+  runs expose test controls; the standalone Mac harness retains real-model evaluation. The research
+  code can be committed without enabling it on the phone. Do not promote this prototype based on
+  mock tests alone.
+- **Boundary:** The staged model chooses one explicit label per source line (such as `exercise_line`
+  or `strength_header`); code maps that label to role/format fields. Code owns
+  quantity extraction, source IDs, ordering, and assembly. Code checks evidence,
+  converts units, maps movement IDs, calculates stimulus, and applies restrictions. Reported results
+  are removed before generation and restored as separate notes. Generated demand tags, safety
+  decisions, calculated training loads, and automatic actual-workout creation are prohibited.
+- **Reliability:** Bound input, output, and time; serialize model sessions; discard late/cancelled
+  results; show deterministic fallback provenance. Model unavailability must not block the rest of
+  the app. Preserve iOS 18 compatibility with runtime availability checks.
+- **Verification:** Mock-based unit/UI tests exercise failure boundaries separately from a
+  standalone, production-code live-model evaluation over synthetic fixtures. Neither mocked tests
+  nor Mac results substitute for phone latency/memory and user acceptance. OS updates require
+  reevaluation because the system model may change.
+- **Quality finding:** The first 30-case synthetic evaluation matched only 3 expected structures.
+  Required-string fields and a smaller freeform JSON prompt each failed all six targeted cases.
+  These experiments do not establish Apple's general capabilities, but this broad, single-pass
+  extractor is not sufficient. The replacement staged hybrid uses fresh, sequential sessions and
+  one unambiguous generated label per line. A failed or unverified part discards the assembled draft.
+  The entire attempt retains its 20-second deadline, with at most 16 parts and 40 response tokens
+  per part. The updated live accuracy gate remains separate from mocked assembly tests; see
+  `APPLE_WORKOUT_PARSER.md` for measured results. No default-on or phone rollout is implied.
+
 ## Open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final
 bundle identifier, Apple signing team, production domains, PostgreSQL provider, credential
-encryption mechanism, and LLM provider.
+encryption mechanism. The workout parsing provider is resolved by ADR-017; any future narration or
+historical-query provider remains a separate decision.

@@ -149,6 +149,45 @@ Workout-completion acceptance follow-up found August 28, 2026:
 - [x] Preserve calorie prescriptions through Record actual, persistence, and read-only details.
 - [x] Give populated actual-workout fields persistent visible labels instead of placeholder-only labels.
 
+Pasted-workout acceptance follow-up found August 29, 2026:
+
+- [x] Recognize spelled-out AMRAP, leading list bullets, and parenthesized/bare pound symbols.
+- [x] Keep reported scores out of planned rounds, durations, movements, and stimulus targets.
+- [x] Preserve reported-result text in editable segment notes without creating actual-workout records.
+- [x] Add explicit overhead/American kettlebell swings to the merged movement library.
+- [x] Require manual restriction review for unmapped movements instead of silently clearing them.
+- [x] Add synthetic parser, load-unit, library-upgrade, persistence, restriction, and UI regression coverage.
+- [ ] Confirm the corrected pasted-workout review on the physical iPhone.
+
+Verification follow-up from August 29, 2026:
+
+- [ ] Investigate the background-thread publication warning emitted by the HealthKit metric-toggle unit test; its assertions passed, and HealthKit code was not changed by the parser fix.
+
+Apple on-device parser prototype (August 30, 2026):
+
+- [x] Add a mockable Foundation Models provider with iOS availability checks and no cloud calls.
+- [x] Validate source-quoted quantities, convert units in code, and retain deterministic restrictions.
+- [x] Separate reported results and preserve missing/unsupported details as review notes.
+- [x] Add on-demand serialized sessions, bounded generation, timeout, cancellation, and visible fallback.
+- [x] Add test-only Train inclusion controls and review provenance without migrating saved workouts.
+- [x] Add synthetic unit/UI boundary tests and a standalone production-code evaluation harness.
+- [x] Complete live-model fixture evaluation and record its limitations (initial candidate: 3/30).
+- [x] Implement sequential one-line classification with explicit label-to-field mapping and
+  code-owned quantities, source IDs, ordering, assembly, and all-or-nothing fallback.
+- [x] Compare the staged design against unchanged original expectations plus 12 fresh examples:
+  28/30 original, 4/12 fresh; the fresh set prevents treating the original improvement as readiness.
+- [ ] Pass the revised live accuracy gate; timed work, rest, and instruction variations still fail.
+- [x] Address baseline fixture gaps: time-cap/strength headers, standalone set counts, unknown-movement
+  quantities, dedicated rest, ambiguous numbers, clock durations, and the plural goblet-squat alias.
+  The deterministic baseline now matches 30/30 original and 12/12 fresh fixtures.
+- [x] Pass the final full unit and UI suites (98 unit + 14 UI), unsigned physical-device build,
+  and backend checks. The built-in-parser phone update is ready; live Apple phone acceptance
+  remains held for model quality.
+- [x] Separate the phone-update path from the experiment: normal app runs use only the built-in
+  parser, ignore any old Apple opt-in, and hide Apple controls; retain synthetic simulator tests
+  and standalone live-model research. No phone data reset or signing/bundle-ID change is required.
+- [ ] Confirm Apple parsing, fallback, latency, and peak memory on the physical iPhone.
+
 ## Milestone 4.1: Personal Movement Library and WOD Lab Migration
 
 - [x] Persist stable personal movement facts separately from workout prescriptions.

@@ -440,13 +440,23 @@ struct MovementCatalog: Sendable {
             "deadlift", "Deadlift", [], "hinge",
             [.hipDominant, .spinalCompression, .gripIntensive], ["sled_push", "air_bike"]),
         item(
+            "overhead_kettlebell_swing", "Overhead kettlebell swing",
+            [
+                "overhead kettlebell swings", "overhead kb swing", "overhead kb swings",
+                "american kettlebell swing", "american kettlebell swings",
+                "american kb swing", "american kb swings",
+            ],
+            "hinge", [.hipDominant, .gripIntensive, .overhead, .elbowExtension, .anaerobic],
+            ["deadlift", "air_bike"]),
+        item(
             "back_squat", "Back squat", [], "squat",
             [.kneeDominant, .hipDominant, .spinalCompression], ["goblet_squat", "sled_push"]),
         item(
             "front_squat", "Front squat", [], "squat",
             [.kneeDominant, .hipDominant, .spinalCompression], ["goblet_squat", "sled_push"]),
         item(
-            "goblet_squat", "Goblet squat", [], "squat", [.kneeDominant, .hipDominant],
+            "goblet_squat", "Goblet squat", ["goblet squats"], "squat",
+            [.kneeDominant, .hipDominant],
             ["air_bike", "sled_push"]),
         item(
             "wall_ball", "Wall ball", ["wallball", "wall balls"], "squat",

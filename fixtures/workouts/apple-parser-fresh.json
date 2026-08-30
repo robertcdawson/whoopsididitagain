@@ -1,0 +1,284 @@
+[
+  {
+    "id": "fresh_clock_amrap",
+    "text": "AMRAP 7:30\n9 Wall balls (18 lb)\n150 m Run",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 450,
+      "segments": [
+        {
+          "kind": "work",
+          "duration": 450,
+          "movements": [
+            {
+              "id": "wall_ball",
+              "reps": 9,
+              "load": 18,
+              "unit": "lb"
+            },
+            {
+              "id": "run",
+              "distance": 150
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_mixed_case_bullets",
+    "text": "As many reps as possible in 11 minutes\n▪7 Burpees\n- 13 Goblet Squats at 24 kg\nResult: 6 rounds, 2 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 660,
+      "segments": [
+        {
+          "kind": "work",
+          "duration": 660,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 7
+            },
+            {
+              "id": "goblet_squat",
+              "reps": 13,
+              "load": 24,
+              "unit": "kg"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_clock_cap",
+    "text": "Complete for time\n750 m Row\n9 Strict Press (42 lb)\nTime cap: 9:45",
+    "expected": {
+      "format": "for_time",
+      "timeCap": 585,
+      "segments": [
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "row",
+              "distance": 750
+            },
+            {
+              "id": "strict_press",
+              "reps": 9,
+              "load": 42,
+              "unit": "lb"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_sets_percentage",
+    "text": "Strength:\n6 sets\n3 Deadlift at 65% 1RM",
+    "expected": {
+      "format": "strength",
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 6,
+          "movements": [
+            {
+              "id": "deadlift",
+              "reps": 3,
+              "percentage": 65
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_rounds_score",
+    "text": "2 rounds\n11 Burpees\n250 m Run\nScore: 8 rounds in 20 minutes",
+    "expected": {
+      "format": "rounds",
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 2,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 11
+            },
+            {
+              "id": "run",
+              "distance": 250
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_seconds_movement",
+    "text": "Row for 75 sec",
+    "expected": {
+      "format": "manual",
+      "segments": [
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "row",
+              "duration": 75
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_decimal_distance",
+    "text": "1.25 km Row",
+    "expected": {
+      "format": "manual",
+      "segments": [
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "row",
+              "distance": 1250
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_unknown_loaded",
+    "text": "9 Lunar lunges at 14 kg",
+    "expected": {
+      "format": "manual",
+      "segments": [
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": null,
+              "reps": 9,
+              "load": 14,
+              "unit": "kg"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_different_rest",
+    "text": "For time\n650 m Row\nRest 45 sec\n7 Burpees",
+    "expected": {
+      "format": "for_time",
+      "segments": [
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "row",
+              "distance": 650
+            }
+          ]
+        },
+        {
+          "kind": "rest",
+          "duration": 45,
+          "movements": []
+        },
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 7
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_trailing_rest",
+    "text": "For time\n450 m Row\nRest 20 seconds\n6 Burpees\nRest 40 seconds",
+    "expected": {
+      "format": "for_time",
+      "segments": [
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "row",
+              "distance": 450
+            }
+          ]
+        },
+        {
+          "kind": "rest",
+          "duration": 20,
+          "movements": []
+        },
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 6
+            }
+          ]
+        },
+        {
+          "kind": "rest",
+          "duration": 40,
+          "movements": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "fresh_alternative_load",
+    "text": "9 Strict Press 40/25 kg",
+    "expected": {
+      "format": "manual",
+      "segments": [
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "strict_press",
+              "reps": 9
+            }
+          ]
+        }
+      ]
+    },
+    "requiresReview": true
+  },
+  {
+    "id": "fresh_range_reps",
+    "text": "7-11 Burpees",
+    "expected": {
+      "format": "manual",
+      "segments": [
+        {
+          "kind": "work",
+          "movements": [
+            {
+              "id": "burpee"
+            }
+          ]
+        }
+      ]
+    },
+    "requiresReview": true
+  }
+]

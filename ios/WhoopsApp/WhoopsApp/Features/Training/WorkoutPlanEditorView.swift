@@ -38,6 +38,14 @@ struct WorkoutPlanEditorView: View {
                     )
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    Label(
+                        plan.parserVersion.hasPrefix("apple-extraction-")
+                            ? "Parsed with Apple Intelligence · On device"
+                            : "Parsed with the built-in parser or entered manually",
+                        systemImage: "iphone"
+                    )
+                    .font(.caption)
+                    .accessibilityIdentifier("workout-parser-provenance")
                 }
 
                 Section("Workout") {

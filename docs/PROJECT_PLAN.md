@@ -376,12 +376,50 @@ lines should become interval structure through `restSeconds`, not manual
 movement rows. Heart-rate targets and intended RPE ranges should be preserved
 as editable workout context and must not be treated as movements.
 
+Leading list bullets, spelled-out AMRAP, and pound-symbol load notation should be accepted without
+changing the source text. Explicit reported-result lines such as `Score:` are retained in labeled,
+editable segment notes, separate from planned movements, rounds, durations, and stimulus targets.
+Parsing a reported score must not silently record actual completion. Explicit overhead/American
+kettlebell swings are recognized separately from unspecified swing variants; unknown movements
+must remain visibly unevaluated against active restrictions.
+
 Recovery has two mutually exclusive representations. On a non-rest segment,
 `restSeconds` is one uniform recovery applied between its repeated rounds or
 efforts. A dedicated rest segment instead uses `durationSeconds`, contains no
 movements or rounds, and cannot also set `restSeconds`. Variable recovery is
 represented with separate rest segments in sequence rather than conflicting
 values on one segment.
+
+### On-device parser prototype (August 30, 2026)
+
+Apple Foundation Models is the selected optional provider for workout extraction. Use the system
+on-device model on supported iOS versions, without sending workouts or health history to a server.
+The staged model analyzes exactly one source line per fresh, sequential session, returning one
+explicit label (for example `exercise_line` versus `strength_header`). Code maps that label to
+role/format fields. Deterministic code extracts source-quoted quantities, owns source IDs/order and
+segment assembly, verifies evidence, converts units, resolves the merged movement catalog, validates
+the domain payload, and performs all restriction checks. Explicit reported results remain separate
+from prescriptions.
+
+Keep the current parser and manual editor available. Show which parser produced a draft and explain
+fallback when the model is unavailable, takes too long, produces invalid output, or drops source
+quantities/lines. Initial live testing failed the accuracy gate; keep Apple parsing experimental and
+unavailable in normal app runs. For this phone update, normal app wiring uses only the built-in parser,
+ignores any old Apple opt-in preference, and hides the Apple controls. Synthetic simulator tests retain
+the opt-in/cancel/review workflow; the standalone Mac harness retains live-model evaluation.
+Evaluate live model accuracy on synthetic workouts separately from mocked boundary tests,
+then confirm latency and memory on the physical iPhone. No automated rewrite of saved workouts,
+cloud parsing, fine-tuning, or generative readiness advice is included in this slice.
+
+Do not enable the prototype on the phone until a revised extraction design passes live quality
+checks. Built-in-parser phone updates can proceed with the prototype inaccessible. The first
+single-pass candidate matched 3 of 30 synthetic fixtures; smaller prompt variants
+did not improve the six-case targeted sample. This measures this prototype, not overall Apple model
+quality. See `docs/APPLE_WORKOUT_PARSER.md` for reproducible evaluation and acceptance status.
+The staged replacement retains a single 20-second deadline across at most 16 parts, with 40 response
+tokens per part. Failed parts discard the entire draft and trigger an explained built-in fallback.
+Do not let mocked staged-assembly success or deterministic quantity extraction conceal model
+classification errors. Compare the original fixture expectations plus independent new examples.
 
 ### Movement Taxonomy
 

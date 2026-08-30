@@ -37,6 +37,10 @@ away. Planned work and actual completion are stored separately, including
 session RPE, movement modifications, and pain response. The deterministic
 parser works locally without an LLM.
 
+The current phone build uses the improved built-in workout parser. Apple-model research is retained
+in the repository but cannot be enabled in normal app runs while its accuracy gate remains unmet.
+See [parser evaluation and rollout status](docs/APPLE_WORKOUT_PARSER.md).
+
 The app now merges its bundled catalog with a personal, on-device movement
 library. Stable facts such as names, aliases, category, equipment, supported
 measurements, and restriction-demand tags are reusable; reps, load, distance,

@@ -57,7 +57,14 @@ struct WhoopsApp: App {
         readinessEngine = VersionedReadinessEngine()
         let library = MovementLibraryPersistence(container: container)
         movementLibrary = library
-        workoutParser = LibraryWorkoutParser(library: library)
+        workoutParser = LibraryWorkoutParser(
+            library: library,
+            model: FeatureFlags.appleWorkoutParserTestModeEnabled()
+                ? AppleWorkoutModelClient() : nil,
+            isAIEnabled: {
+                UserDefaults.standard.bool(forKey: "appleWorkoutParsingEnabled")
+            }
+        )
         workoutScalingEngine = LibraryWorkoutScalingEngine(library: library)
         workoutRepository = WorkoutPersistence(container: container)
         experimentRepository = ExperimentPersistence(container: container)

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct TrainingView: View {
+    @Environment(\.scenePhase) private var scenePhase
     let parser: any WorkoutParser
     let scalingEngine: any WorkoutScalingEngine
     let workoutRepository: any WorkoutRepository
@@ -16,6 +17,9 @@ struct TrainingView: View {
     @State private var completingPlan: WorkoutPlan?
     @State private var planPendingDeletion: WorkoutPlan?
     @State private var isParsing = false
+    @State private var parsingTask: Task<Void, Never>?
+    @State private var parsingID: UUID?
+    @AppStorage("appleWorkoutParsingEnabled") private var appleParsingEnabled = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -33,11 +37,28 @@ struct TrainingView: View {
                             .padding(8)
                             .background(.background, in: RoundedRectangle(cornerRadius: 10))
                             .accessibilityIdentifier("raw-workout-entry")
+                            .disabled(isParsing)
+                        if FeatureFlags.appleWorkoutParserTestModeEnabled() {
+                            Toggle(
+                                "Try Apple Intelligence (experimental)", isOn: $appleParsingEnabled
+                            )
+                            .disabled(isParsing)
+                            .accessibilityIdentifier("apple-workout-parsing-toggle")
+                            Text(
+                                "Synthetic simulator test mode. Apple parsing is unavailable in normal phone runs."
+                            )
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        } else {
+                            Text("Parsed locally with the built-in parser.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         Button {
-                            Task { await parseWorkout() }
+                            startParsing()
                         } label: {
                             if isParsing {
-                                ProgressView().frame(maxWidth: .infinity)
+                                ProgressView("Parsing workout…").frame(maxWidth: .infinity)
                             } else {
                                 Label("Parse and review", systemImage: "text.magnifyingglass")
                                     .frame(maxWidth: .infinity)
@@ -49,8 +70,15 @@ struct TrainingView: View {
                                 || rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                         )
                         .accessibilityIdentifier("parse-workout")
-                        Button("Enter manually") { editingPlan = manualPlan() }
-                            .frame(maxWidth: .infinity)
+                        if isParsing {
+                            Button("Cancel parsing") { cancelParsing() }
+                                .accessibilityIdentifier("cancel-workout-parsing")
+                        }
+                        Button("Enter manually") {
+                            cancelParsing()
+                            editingPlan = manualPlan()
+                        }
+                        .frame(maxWidth: .infinity)
                     }
 
                     FoundationCard(title: "Your Movements") {
@@ -134,6 +162,10 @@ struct TrainingView: View {
                 .padding()
             }
             .navigationTitle("Train")
+            .onDisappear { cancelParsing() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .background { cancelParsing() }
+            }
             .task { await load() }
             .refreshable { await load() }
             .sheet(item: $editingPlan) { plan in
@@ -272,15 +304,41 @@ struct TrainingView: View {
     }
 
     @MainActor
-    private func parseWorkout() async {
+    private func startParsing() {
+        cancelParsing()
+        let id = UUID()
+        parsingID = id
+        let source = rawText
         isParsing = true
-        defer { isParsing = false }
-        do {
-            let parsed = try await parser.parse(rawText: rawText)
-            editingPlan = WorkoutPlan(parsed: parsed)
-        } catch {
-            errorMessage = error.localizedDescription
+        errorMessage = nil
+        parsingTask = Task {
+            defer {
+                if parsingID == id {
+                    isParsing = false
+                    parsingTask = nil
+                    parsingID = nil
+                }
+            }
+            do {
+                let parsed = try await parser.parse(rawText: source)
+                try Task.checkCancellation()
+                guard parsingID == id else { return }
+                editingPlan = WorkoutPlan(parsed: parsed)
+            } catch {
+                guard parsingID == id, !Task.isCancelled, !(error is CancellationError) else {
+                    return
+                }
+                errorMessage = error.localizedDescription
+            }
         }
+    }
+
+    @MainActor
+    private func cancelParsing() {
+        parsingTask?.cancel()
+        parsingTask = nil
+        parsingID = nil
+        isParsing = false
     }
 
     private func manualPlan() -> WorkoutPlan {

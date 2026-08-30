@@ -48,6 +48,235 @@ final class WorkoutMilestoneTests: XCTestCase {
         XCTAssertTrue(result.ambiguities.isEmpty)
     }
 
+    func testSpelledOutAMRAPPreservesBulletQuantitiesAndSeparatesScore() async throws {
+        // Synthetic example: exercises the reported syntax without storing personal results.
+        let raw = """
+            Complete as many rounds as possible in 8 minutes
+
+            •4 Burpees
+            •12 Overhead Kettlebell Swings (35#)
+
+            Score: 5 rounds, 3 reps
+            """
+        let result = try await VersionedWorkoutParser().parse(rawText: raw)
+        let segment = try XCTUnwrap(result.segments.first)
+
+        XCTAssertEqual(result.format, .amrap)
+        XCTAssertEqual(result.timeCapSeconds, 480)
+        XCTAssertEqual(segment.durationSeconds, 480)
+        XCTAssertNil(segment.rounds)
+        XCTAssertEqual(result.segments.count, 1)
+        XCTAssertEqual(segment.movements.count, 2)
+        XCTAssertEqual(
+            segment.movements.map(\.canonicalMovementID), ["burpee", "overhead_kettlebell_swing"])
+        XCTAssertEqual(segment.movements.map(\.repetitions), [4, 12])
+        XCTAssertEqual(segment.movements.last?.loadValue, 35)
+        XCTAssertEqual(segment.movements.last?.loadUnit, "lb")
+        XCTAssertEqual(
+            segment.notes, "Reported result (not a prescription): Score: 5 rounds, 3 reps")
+        XCTAssertFalse(result.intendedStimulus.secondary.contains { $0.contains("Score:") })
+        XCTAssertTrue(result.ambiguities.isEmpty)
+        XCTAssertEqual(result.rawText, raw)
+        XCTAssertEqual(result.parserVersion, "deterministic-1.4.0")
+        XCTAssertNil(result.modelVersion)
+    }
+
+    func testBulletPrefixesDoNotHideRepetitionCounts() async throws {
+        for prefix in ["•", "• ", "- ", "* ", "– ", "▪", "◦ "] {
+            let result = try await VersionedWorkoutParser().parse(rawText: "\(prefix)8 Burpees")
+            XCTAssertEqual(result.segments.first?.movements.first?.repetitions, 8, prefix)
+            XCTAssertTrue(result.ambiguities.isEmpty, prefix)
+        }
+    }
+
+    func testTimeCapRemainsMetadataAndSupportsClockNotation() async throws {
+        for (text, cap) in [("12 minutes", 720), ("7:30", 450)] {
+            let result = try await VersionedWorkoutParser().parse(
+                rawText: "For time\n400 m Row\n6 Strict Press 30 lb\nTime cap: \(text)")
+            XCTAssertEqual(result.timeCapSeconds, cap)
+            XCTAssertEqual(result.segments.first?.movements.count, 2)
+            XCTAssertNil(result.segments.first?.durationSeconds)
+            XCTAssertTrue(result.ambiguities.isEmpty)
+        }
+        let amrap = try await VersionedWorkoutParser().parse(rawText: "AMRAP 7:30\n8 Burpees")
+        XCTAssertEqual(amrap.timeCapSeconds, 450)
+        XCTAssertEqual(amrap.segments.first?.movements.count, 1)
+        XCTAssertTrue(amrap.ambiguities.isEmpty)
+        let missing = try await VersionedWorkoutParser().parse(rawText: "AMRAP\nRow for 45 seconds")
+        XCTAssertNil(missing.timeCapSeconds, "A movement duration is not a workout time limit")
+    }
+
+    func testStrengthSetsAreStructureNotMovements() async throws {
+        let result = try await VersionedWorkoutParser().parse(
+            rawText: "Strength\n4 sets\n5 Deadlift at 70% 1RM")
+        XCTAssertEqual(result.format, .strength)
+        XCTAssertEqual(result.segments.first?.rounds, 4)
+        XCTAssertEqual(result.segments.first?.movements.count, 1)
+        XCTAssertEqual(result.segments.first?.movements.first?.repetitions, 5)
+        XCTAssertEqual(result.segments.first?.movements.first?.percentageOfOneRepMax, 70)
+        XCTAssertTrue(result.ambiguities.isEmpty)
+    }
+
+    func testRestBetweenDifferentMovementsAndTrailingRestRemainExplicit() async throws {
+        let different = try await VersionedWorkoutParser().parse(
+            rawText: "For time\n400 m Row\nRest 1:30\n10 Burpees")
+        XCTAssertEqual(different.segments.map(\.type), [.work, .rest, .work])
+        XCTAssertEqual(different.segments[1].durationSeconds, 90)
+        XCTAssertTrue(different.segments[1].movements.isEmpty)
+        let trailing = try await VersionedWorkoutParser().parse(
+            rawText: "400 m Row\nRest 30 seconds\n400 m Row\nRest 30 seconds")
+        XCTAssertEqual(trailing.segments.map(\.type), [.work, .rest, .work, .rest])
+    }
+
+    func testUnknownMovementRetainsExplicitQuantitiesWithoutInventedMapping() async throws {
+        let result = try await VersionedWorkoutParser().parse(rawText: "6 Moon hops at 20 kg")
+        let movement = try XCTUnwrap(result.segments.first?.movements.first)
+        XCTAssertNil(movement.canonicalMovementID)
+        XCTAssertEqual(movement.repetitions, 6)
+        XCTAssertEqual(movement.loadValue, 20)
+        XCTAssertFalse(result.ambiguities.isEmpty)
+    }
+
+    func testPluralGobletSquatsUseAnExplicitCatalogAlias() async throws {
+        let result = try await VersionedWorkoutParser().parse(rawText: "13 Goblet Squats at 24 kg")
+        XCTAssertEqual(result.segments.first?.movements.first?.canonicalMovementID, "goblet_squat")
+        XCTAssertTrue(result.ambiguities.isEmpty)
+    }
+
+    func testRangesAlternativesAndNegativeQuantitiesRequireReview() async throws {
+        for raw in ["8-10 Burpees", "8–10 Burpees", "-8 Burpees"] {
+            let result = try await VersionedWorkoutParser().parse(rawText: raw)
+            XCTAssertNil(result.segments.first?.movements.first?.repetitions, raw)
+            XCTAssertFalse(result.ambiguities.isEmpty, raw)
+        }
+        for load in ["30/20 kg", "20-30 kg", "-20 kg"] {
+            let result = try await VersionedWorkoutParser().parse(rawText: "8 Strict Press \(load)")
+            XCTAssertEqual(result.segments.first?.movements.first?.repetitions, 8)
+            XCTAssertNil(result.segments.first?.movements.first?.loadValue, load)
+            XCTAssertFalse(result.ambiguities.isEmpty, load)
+        }
+        let invalid = try await VersionedWorkoutParser().parse(rawText: "8 Burpees\nTime cap: 1:90")
+        XCTAssertNil(invalid.timeCapSeconds)
+        XCTAssertFalse(invalid.ambiguities.isEmpty)
+        let huge = try await VersionedWorkoutParser().parse(
+            rawText: "999999999999999999999999999999999999999 Burpees")
+        XCTAssertNil(huge.segments.first?.movements.first?.repetitions)
+        XCTAssertFalse(huge.ambiguities.isEmpty)
+    }
+
+    func testLoadUnitVariantsPreserveWeights() async throws {
+        for (source, expectedUnit) in [
+            ("(35#)", "lb"), ("35#", "lb"), ("35 #", "lb"),
+            ("(35 lb)", "lb"), ("35 lbs", "lb"), ("(35kg)", "kg"), ("35 kgs", "kg"),
+        ] {
+            let result = try await VersionedWorkoutParser().parse(
+                rawText: "8 Strict Press \(source)")
+            let movement = try XCTUnwrap(result.segments.first?.movements.first)
+            XCTAssertEqual(movement.loadValue, 35, source)
+            XCTAssertEqual(movement.loadUnit, expectedUnit, source)
+        }
+    }
+
+    func testResultMetadataCannotDefineWorkoutStructureOrBecomeMovements() async throws {
+        let fixedRounds = try await VersionedWorkoutParser().parse(
+            rawText: """
+                3 rounds
+                8 Burpees
+                Result: 9 rounds, 4 reps
+                """)
+        XCTAssertEqual(fixedRounds.segments.first?.rounds, 3)
+        XCTAssertEqual(fixedRounds.segments.first?.movements.count, 1)
+
+        let noDuration = try await VersionedWorkoutParser().parse(
+            rawText: """
+                AMRAP
+                8 Burpees
+                Score: 9 rounds in 12 minutes
+                """)
+        XCTAssertNil(noDuration.timeCapSeconds)
+        XCTAssertNil(noDuration.segments.first?.rounds)
+
+        let manual = try await VersionedWorkoutParser().parse(
+            rawText: """
+                8 Burpees
+                Completed: 4 rounds for time in 10 minutes
+                """)
+        XCTAssertEqual(manual.format, .manual)
+        XCTAssertNil(manual.timeCapSeconds)
+        XCTAssertNil(manual.segments.first?.rounds)
+        XCTAssertEqual(manual.segments.first?.movements.count, 1)
+
+        do {
+            _ = try await VersionedWorkoutParser().parse(rawText: "Score: 9 rounds, 4 reps")
+            XCTFail("A result alone is not a workout prescription")
+        } catch {
+            XCTAssertEqual(error as? WorkoutValidationError, .missingSegments)
+        }
+    }
+
+    func testExplicitSwingAliasesDoNotAssumeGenericSwingsAreOverhead() async throws {
+        for alias in ["Overhead KB Swings", "American Kettlebell Swing", "American KB Swings"] {
+            let parsed = try await VersionedWorkoutParser().parse(rawText: "8 \(alias) 35 lb")
+            XCTAssertEqual(
+                parsed.segments.first?.movements.first?.canonicalMovementID,
+                "overhead_kettlebell_swing")
+        }
+        for name in ["KB Swing", "Russian Kettlebell Swing"] {
+            let parsed = try await VersionedWorkoutParser().parse(rawText: "8 \(name) 35 lb")
+            XCTAssertNil(parsed.segments.first?.movements.first?.canonicalMovementID)
+            XCTAssertFalse(parsed.ambiguities.isEmpty)
+        }
+    }
+
+    func testOverheadSwingAndUnmappedMovementBothReachRestrictionReview() async throws {
+        let restriction = RestrictionProfile(
+            id: "synthetic-elbow", injuryName: "Test elbow", bodyRegion: "Arm", side: "Right",
+            movementTag: "elbow extension", level: .avoid, painThreshold: 2,
+            rationale: "Synthetic restriction", isActive: true
+        )
+        let swing = try await VersionedWorkoutParser().parse(rawText: "8 Overhead KB Swings 35 lb")
+        let known = await DeterministicWorkoutScalingEngine().evaluate(
+            plan: WorkoutPlan(parsed: swing), restrictions: [restriction]
+        )
+        XCTAssertEqual(known.recommendation, .modify)
+        XCTAssertEqual(known.conflicts.first?.severity, .hard)
+
+        let unknown = try await VersionedWorkoutParser().parse(rawText: "8 Mystery Movements")
+        let unreviewed = await DeterministicWorkoutScalingEngine().evaluate(
+            plan: WorkoutPlan(parsed: unknown), restrictions: [restriction]
+        )
+        XCTAssertEqual(unreviewed.recommendation, .proceedWithLimits)
+        XCTAssertEqual(unreviewed.conflicts.first?.severity, .caution)
+        XCTAssertTrue(
+            unreviewed.conflicts.first?.explanation.contains("cannot be evaluated") == true)
+        XCTAssertTrue(unreviewed.conflicts.first?.substitutionCandidates.isEmpty == true)
+    }
+
+    @MainActor
+    func testReportedScorePersistsAsNotesWithoutCreatingCompletedWork() async throws {
+        let container = try ModelContainer(
+            for: WorkoutPlanRecord.self, WorkoutSegmentRecord.self,
+            MovementPrescriptionRecord.self, CompletedWorkoutRecord.self,
+            CompletedMovementRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = WorkoutPersistence(container: container)
+        let parsed = try await VersionedWorkoutParser().parse(
+            rawText: """
+                8 minute AMRAP
+                4 Burpees
+                Score: 5 rounds, 3 reps
+                """)
+        var plan = WorkoutPlan(parsed: parsed)
+        plan.status = .planned
+        try await repository.savePlan(plan)
+        let saved = try await repository.plans()
+        let completed = try await repository.completedWorkouts()
+        XCTAssertEqual(saved.first?.segments.first?.notes, parsed.segments.first?.notes)
+        XCTAssertNil(saved.first?.segments.first?.rounds)
+        XCTAssertTrue(completed.isEmpty)
+    }
+
     func testStylizedEchoBikeIntervalsPreserveStructureAndTargets() async throws {
         let raw = """
             𝗘𝗰𝗵𝗼 𝗕𝗶𝗸𝗲 𝗜𝗻𝘁𝗲𝗿𝘃𝗮𝗹𝘀:
@@ -68,7 +297,7 @@ final class WorkoutMilestoneTests: XCTestCase {
 
         XCTAssertEqual(result.title, "Echo Bike Intervals")
         XCTAssertEqual(result.format, .intervals)
-        XCTAssertEqual(result.parserVersion, "deterministic-1.2.0")
+        XCTAssertEqual(result.parserVersion, "deterministic-1.4.0")
         XCTAssertEqual(result.segments.count, 1)
         XCTAssertEqual(segment.restSeconds, 90)
         XCTAssertEqual(

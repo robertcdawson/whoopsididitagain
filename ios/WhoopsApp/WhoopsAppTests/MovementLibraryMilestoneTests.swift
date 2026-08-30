@@ -5,6 +5,37 @@ import XCTest
 
 @MainActor
 final class MovementLibraryMilestoneTests: XCTestCase {
+    func testExistingLibraryAddsSwingWithoutOverwritingPersonalizedDefaults() async throws {
+        let container = try makeContainer()
+        let context = ModelContext(container)
+        let encoder = JSONEncoder()
+        for var movement in MovementDefinition.bundled
+        where movement.id != "overhead_kettlebell_swing" {
+            if movement.id == "burpee" { movement.aliases.append("Personal floor drill") }
+            context.insert(try MovementDefinitionRecord(movement: movement, encoder: encoder))
+        }
+        try context.save()
+
+        let library = MovementLibraryPersistence(container: container)
+        let parsed = try await LibraryWorkoutParser(library: library).parse(
+            rawText: "8 Overhead Kettlebell Swings (35#)"
+        )
+        try await library.prepareDefaults()
+        let definitions = try await library.movements(includeArchived: false)
+        let swing = try XCTUnwrap(definitions.first { $0.id == "overhead_kettlebell_swing" })
+
+        XCTAssertEqual(parsed.segments.first?.movements.first?.canonicalMovementID, swing.id)
+        XCTAssertEqual(parsed.segments.first?.movements.first?.loadValue, 35)
+        XCTAssertEqual(swing.equipment, ["Kettlebell"])
+        XCTAssertEqual(swing.supportedMeasurements, [.repetitions, .load, .duration])
+        XCTAssertTrue(swing.demandTags.contains(.overhead))
+        XCTAssertTrue(swing.demandTags.contains(.elbowExtension))
+        XCTAssertEqual(definitions.filter { $0.id == swing.id }.count, 1)
+        XCTAssertTrue(
+            definitions.first { $0.id == "burpee" }?.aliases.contains("Personal floor drill")
+                == true)
+    }
+
     func testPersonalMovementPersistsAcrossRepositoryInstances() async throws {
         let container = try makeContainer()
         let first = MovementLibraryPersistence(container: container)
