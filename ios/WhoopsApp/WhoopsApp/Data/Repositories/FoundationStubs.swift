@@ -134,6 +134,24 @@ actor PreviewMovementLibraryRepository: MovementLibraryRepository {
     }
 }
 
+actor PreviewProtocolRepository: ProtocolRepository {
+    private var saved: [TherapyProtocol] = []
+
+    func protocols(includeArchived: Bool) async throws -> [TherapyProtocol] {
+        saved.filter { includeArchived || !$0.isArchived }
+    }
+
+    func saveProtocol(_ therapyProtocol: TherapyProtocol) async throws {
+        let validated = try therapyProtocol.validated()
+        saved.removeAll { $0.id == validated.id }
+        saved.append(validated)
+    }
+
+    func deleteProtocol(id: String) async throws {
+        saved.removeAll { $0.id == id }
+    }
+}
+
 actor PreviewAssessmentRepository: AssessmentRepository {
     private var checkIns: [String: MorningCheckIn] = [:]
     private var profiles: [RestrictionProfile] = []

@@ -158,3 +158,32 @@ duplicates. Review the demand tags for any personal movement before relying on r
 Live acceptance remains: review Trends after enough personal history has accumulated, share one
 JSON and one CSV export to a private destination, and confirm that the summaries and wording match
 Robert's judgment. The deterministic calculations remain authoritative if narration is added later.
+
+## Redesign Phase 1: Protocol Intake and Tap-Chip Review
+
+`docs/DESIGN.md` defines the redesign and its implementation priority. Phase 1 is camera/OCR
+intake plus the tap-chip parse review (`Capture` and `ParseReview` mockups).
+
+- [x] Add the protocol domain model: source, phase and unlock milestone, per-item cadence.
+- [x] Add a versioned deterministic protocol parser that shares the movement catalog.
+- [x] Surface partial movement matches as tap-to-choose candidates, never guesses.
+- [x] Mark unmatched movements as new and add them to Your Movements with one tap.
+- [x] Capture screen with three equal paths: camera scan, paste, and dictation.
+- [x] Run Vision OCR on-device so the photographed sheet never leaves the phone.
+- [x] Require on-device speech recognition for the dictation path or decline with a fallback.
+- [x] Parse review with per-item cadence preset chips (daily, n×/wk, custom weekdays).
+- [x] Run the shared restriction evaluation over resolved items before save.
+- [x] Support swipe-left row drops with a transient undo.
+- [x] Persist saved protocols and list them on Train with delete support.
+- [x] Add camera, microphone, and speech-recognition usage descriptions.
+- [x] Add parser, review-resolution, cadence, restriction-check, and persistence tests.
+- [x] Add a UI test covering the paste path into the tap-chip review.
+
+Deferred to later phases per the design's priority order: protocol recurrence and docket
+generation, one-tap "as prescribed" logging, widget/notification completion, quick-action pain
+logging, and the "bring to PT" export summary. The saved protocol stores per-item cadence so
+docket generation can build on it without another migration.
+
+Live acceptance remains: photograph the real PT sheet on Robert's iPhone, confirm the parsed
+items match the sheet, resolve any candidate prompts, and confirm the restriction line reflects
+the current right-arm restrictions before saving.

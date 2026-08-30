@@ -12,6 +12,18 @@ struct LibraryWorkoutParser: WorkoutParser {
     }
 }
 
+struct LibraryProtocolParser: ProtocolParser {
+    let library: any MovementLibraryRepository
+
+    func parse(rawText: String, source: ProtocolSource) async throws -> ParsedProtocol {
+        try await library.prepareDefaults()
+        let movements = try await library.movements(includeArchived: false)
+        return try await DeterministicProtocolParser(
+            catalog: MovementCatalog(items: movements.map(\.catalogItem))
+        ).parse(rawText: rawText, source: source)
+    }
+}
+
 struct LibraryWorkoutScalingEngine: WorkoutScalingEngine {
     let library: any MovementLibraryRepository
 

@@ -162,6 +162,32 @@ final class WhoopsAppUITests: XCTestCase {
     }
 
     @MainActor
+    func testProtocolPastePathReachesTapChipReview() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        app.tabBars.buttons["Train"].tap()
+        let newProtocol = app.buttons["new-protocol"]
+        XCTAssertTrue(newProtocol.waitForExistence(timeout: 5))
+        newProtocol.tap()
+
+        let pasteLink = app.buttons["protocol-paste-link"]
+        XCTAssertTrue(pasteLink.waitForExistence(timeout: 5))
+        pasteLink.tap()
+
+        let entry = app.textViews["protocol-paste-entry"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.tap()
+        entry.typeText("Ring row 3x10")
+        app.buttons["protocol-paste-use"].tap()
+
+        XCTAssertTrue(app.staticTexts["found 1 movement."].waitForExistence(timeout: 5))
+        let save = app.buttons["protocol-review-save"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertTrue(save.isEnabled)
+    }
+
+    @MainActor
     func testPersonalMovementCanBeStartedFromLibrary() throws {
         let app = XCUIApplication()
         app.launch()

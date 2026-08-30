@@ -1,6 +1,7 @@
 # Design
 
-**Status:** Design exploration complete; not yet implemented
+**Status:** Design exploration complete; phase 1 of the implementation priority (camera/OCR
+intake + tap-chip review) implemented — see `ARCHITECTURE.md` and `TASKS.md`
 **Last updated:** August 30, 2026
 
 This document specifies the app redesign produced in the design exploration session. It is the
