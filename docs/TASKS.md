@@ -255,8 +255,17 @@ HealthKit stability follow-up (August 30, 2026):
   Repeated-launch result: `Test-WhoopsApp-2026.08.30_15-02-35--0700.xcresult` (20/20).
   Full UI result: `Test-WhoopsApp-2026.08.30_15-06-07--0700.xcresult` (20/20).
   Bundles are in `/tmp/whoops-apple-parser-derived/Logs/Test/`. No phone installation or data reset
-  was performed. The exact intermittent framework failure remains unproven; phone acceptance follows.
-- [ ] Confirm repeated phone launches and Apple Health synchronization without resetting data.
+  was performed during automated verification. The exact intermittent framework failure remains
+  unproven despite passing checks.
+- [x] Commit and push the verified workout-editing and HealthKit stability checkpoint:
+  `2a149e4` (`fix: stabilize HealthKit sync and complete workout editing`) on
+  `codex/milestone-6-experiments`. This includes the earlier editor and keyboard improvements;
+  their preceding no-commit/no-push notes describe the state at those earlier validation stages.
+- [x] Confirm repeated phone launches and Apple Health synchronization without resetting data
+  (Robert, August 30, 2026: “Works.” following the Xcode update and phone-check instructions).
+
+This closes the foreground launch/manual-sync acceptance check. The Milestone 2 check for a new
+observer-driven update while backgrounded and the Apple parser's quality/device gates remain open.
 
 See `HEALTHKIT_STABILITY.md` for evidence, implementation boundaries, and phone acceptance steps.
 

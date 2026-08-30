@@ -56,7 +56,13 @@ passed 125 unit tests, all 20 UI tests, and 20 repeated simulator launches. `TAS
 result bundles and supporting parser, backend, build, and formatting checks. Passing launches do
 not replace physical-device acceptance or prove the intermittent framework fault cannot recur.
 
-After updating from Xcode, keep the existing app and Health connection. Close and relaunch the app
-a few times, open Today and Train, then use Settings to synchronize Apple Health once. Confirm it
-stays responsive and existing history/source selections remain intact. If a crash recurs, capture
-its time and Xcode crash report; do not delete the app or its data to work around it.
+Robert confirmed the phone launch and manual Apple Health synchronization check working on
+August 30, 2026, following the Xcode update instructions for source checkpoint `2a149e4`. That
+checkpoint was committed and pushed on `codex/milestone-6-experiments`. This closes foreground
+phone acceptance; an observer-driven update after backgrounding remains a separate Milestone 2
+check. This phone confirmation does not establish the precise cause of the original framework crash.
+
+For future updates, keep the existing app and Health connection. After updating from Xcode, close
+and relaunch the app a few times, open Today and Train, then use Settings to synchronize Apple Health
+once. Confirm it stays responsive and existing history/source selections remain intact. If a crash
+recurs, capture its time and Xcode crash report; do not delete the app or its data to work around it.
