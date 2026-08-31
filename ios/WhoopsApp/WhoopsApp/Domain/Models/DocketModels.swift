@@ -123,11 +123,6 @@ struct DocketItem: Equatable, Identifiable, Sendable {
     var completionStyle: DocketCompletionStyle {
         kind == .workout ? .recordActual : .oneTap
     }
-
-    /// Back-compat alias for `completionStyle == .oneTap`. `DocketView` still branches
-    /// on this Bool; it is retained here (rather than touched as a UI file under T1)
-    /// and will be removed when T3 migrates the view to `completionStyle`.
-    var completesFromDocket: Bool { completionStyle == .oneTap }
 }
 
 struct DailyDocket: Equatable, Sendable {

@@ -9,6 +9,7 @@ struct TodayView: View {
     let workoutRepository: any WorkoutRepository
     let protocolRepository: any ProtocolRepository
     let docketRepository: any DocketRepository
+    let movementLibrary: any MovementLibraryRepository
     let experimentRepository: any ExperimentRepository
 
     @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
@@ -90,6 +91,7 @@ struct TodayView: View {
                         protocolRepository: protocolRepository,
                         workoutRepository: workoutRepository,
                         docketRepository: docketRepository,
+                        movementLibrary: movementLibrary,
                         sleepDeadline: sleepDeadline
                     )
 
@@ -564,6 +566,7 @@ enum TodaySleepSelector {
         workoutRepository: PreviewWorkoutRepository(),
         protocolRepository: PreviewProtocolRepository(),
         docketRepository: PreviewDocketRepository(),
+        movementLibrary: PreviewMovementLibraryRepository(),
         experimentRepository: PreviewExperimentRepository()
     )
 }
