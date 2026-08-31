@@ -26,6 +26,7 @@ struct AppTabView: View {
                 workoutRepository: workoutRepository,
                 protocolRepository: protocolRepository,
                 docketRepository: docketRepository,
+                movementLibrary: movementLibrary,
                 experimentRepository: experimentRepository
             )
             .tabItem {

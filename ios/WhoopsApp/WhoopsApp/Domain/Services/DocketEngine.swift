@@ -5,7 +5,7 @@ import Foundation
 /// from stored cadence plus recorded completions — nothing is generated ahead of
 /// time and nothing is guessed.
 struct DeterministicDocketEngine {
-    static let rulesetVersion = "docket-1.0.0"
+    static let rulesetVersion = "docket-1.1.0"
 
     let calendar: Calendar
     let timeZone: TimeZone
@@ -83,7 +83,11 @@ struct DeterministicDocketEngine {
                         title: protocolItemTitle(item),
                         tag: tag,
                         isCompleted: completion != nil,
-                        completionID: completion?.id
+                        completionID: completion?.id,
+                        prescribedSets: item.sets,
+                        prescribedRepetitions: item.repetitions,
+                        prescribedDurationSeconds: item.durationSeconds,
+                        recordedActual: completion?.actual
                     )
                 )
             }
@@ -100,7 +104,11 @@ struct DeterministicDocketEngine {
                     title: plan.title,
                     tag: nil,
                     isCompleted: plan.status == .completed,
-                    completionID: nil
+                    completionID: nil,
+                    prescribedSets: nil,
+                    prescribedRepetitions: nil,
+                    prescribedDurationSeconds: nil,
+                    recordedActual: nil
                 )
             )
         }
@@ -121,7 +129,11 @@ struct DeterministicDocketEngine {
                     title: "wind down — \(time)",
                     tag: nil,
                     isCompleted: completion != nil,
-                    completionID: completion?.id
+                    completionID: completion?.id,
+                    prescribedSets: nil,
+                    prescribedRepetitions: nil,
+                    prescribedDurationSeconds: nil,
+                    recordedActual: completion?.actual
                 )
             )
         }

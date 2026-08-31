@@ -165,3 +165,139 @@ struct JournalChip: View {
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
     }
 }
+
+/// Circular -/+ stepper with a serif value between, for deviation controls like sets and
+/// reps (RecordActual) — a real stepper, unlike `ProtocolParseReviewView.perWeekStepper`,
+/// which fakes one out of two `JournalChip`s. The circular buttons render at 34 points per
+/// the mockup, but each sits in a >=44pt tappable area so the visual size never shrinks
+/// the hit target.
+struct JournalStepper: View {
+    let label: String
+    let value: Int
+    var minusAccessibilityID: String
+    var plusAccessibilityID: String
+    let onDecrement: () -> Void
+    let onIncrement: () -> Void
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(label)
+                .font(.system(.footnote, design: .serif))
+                .foregroundStyle(Color.journalInk.opacity(0.6))
+            HStack(spacing: 14) {
+                stepperButton(
+                    symbol: "−", accessibilityID: minusAccessibilityID, action: onDecrement)
+                Text("\(value)")
+                    .font(.system(.title3, design: .serif, weight: .bold))
+                    .foregroundStyle(Color.journalInk)
+                    .frame(minWidth: 28)
+                stepperButton(
+                    symbol: "+", accessibilityID: plusAccessibilityID, action: onIncrement)
+            }
+        }
+        .frame(minHeight: 44)
+    }
+
+    private func stepperButton(
+        symbol: String, accessibilityID: String, action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Text(symbol)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(Color.journalInk)
+                .frame(width: 34, height: 34)
+                .overlay(Circle().strokeBorder(Color.journalInk.opacity(0.5), lineWidth: 2))
+        }
+        .buttonStyle(.plain)
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Rectangle())
+        .accessibilityIdentifier(accessibilityID)
+    }
+}
+
+/// Bordered square used for discrete numeric scales (pain 0–10, RPE, energy/motivation
+/// 1–5) — DESIGN.md's "chip scale", distinct from `JournalChip`'s "pill chip". The
+/// selected square fills with `selectedFill` (red pen for pain, ink for neutral scales)
+/// and flips to paper-colored text. Renders at the mockup's ~26×36, centered inside a
+/// >=44pt tappable area.
+struct JournalScaleChip: View {
+    let value: Int
+    var isSelected = false
+    var selectedFill = Color.journalInk
+    var accessibilityID: String?
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text("\(value)")
+                .font(.system(.subheadline, design: .serif))
+                .fontWeight(isSelected ? .bold : .regular)
+                .foregroundStyle(isSelected ? Color.journalPaper : Color.journalInk)
+                .frame(width: 26, height: 36)
+                .background(isSelected ? selectedFill : Color.clear)
+                .overlay(
+                    Rectangle().strokeBorder(
+                        isSelected ? selectedFill : Color.journalInk.opacity(0.4),
+                        lineWidth: isSelected ? 2 : 1.5
+                    )
+                )
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityID ?? "scale-chip-\(value)")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+}
+
+/// Horizontally scrollable row of `JournalScaleChip`s over an arbitrary integer range
+/// (0...10 for pain, 1...5 for energy/motivation, etc.), so the row survives Dynamic
+/// Type without wrapping or clipping instead of laying every value out edge to edge.
+/// `selected` is nil until a value is tapped; the row never invents a default.
+struct JournalScaleChipRow: View {
+    let range: ClosedRange<Int>
+    let selected: Int?
+    var selectedFill = Color.journalInk
+    var accessibilityID: (Int) -> String = { "scale-chip-\($0)" }
+    let onSelect: (Int) -> Void
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 5) {
+                ForEach(Array(range), id: \.self) { value in
+                    JournalScaleChip(
+                        value: value,
+                        isSelected: selected == value,
+                        selectedFill: selectedFill,
+                        accessibilityID: accessibilityID(value)
+                    ) {
+                        onSelect(value)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A shallow hand-drawn wave, replacing hairlines per DESIGN.md's "squiggle
+/// divider". Shared rather than screen-local so a second screen reaching for one
+/// gets this wave instead of drawing its own slightly different curve.
+struct SquiggleDivider: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let midY = rect.midY
+        let amplitude = rect.height / 2
+        path.move(to: CGPoint(x: 0, y: midY))
+        var x: CGFloat = 0
+        let step = width / 4
+        while x < width {
+            path.addQuadCurve(
+                to: CGPoint(x: min(x + step, width), y: midY),
+                control: CGPoint(x: x + step / 2, y: midY - amplitude)
+            )
+            x += step
+        }
+        return path
+    }
+}

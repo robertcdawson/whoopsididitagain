@@ -43,24 +43,30 @@ final class WhoopsAppUITests: XCTestCase {
         replaceText(duration, with: "30.25")
         app.buttons["dismiss-workout-keyboard"].tap()
         XCTAssertEqual(duration.value as? String, "30.25")
-        let rpe = app.steppers["session-rpe"]
-        for _ in 0..<6 where !rpe.isHittable { app.swipeUp() }
-        rpe.buttons["session-rpe-Increment"].tap()
-        rpe.buttons["session-rpe-Increment"].tap()
-        let pain = app.steppers["post-session-pain"]
-        for _ in 0..<6 where !pain.isHittable { app.swipeUp() }
-        pain.buttons["post-session-pain-Increment"].tap()
-        pain.buttons["post-session-pain-Increment"].tap()
+        let rpeChip = app.buttons["session-rpe-chip-7"]
+        for _ in 0..<6 where !rpeChip.isHittable { app.swipeUp() }
+        for _ in 0..<4 where !rpeChip.isHittable { app.swipeLeft() }
+        rpeChip.tap()
+        let painChip = app.buttons["post-session-pain-chip-2"]
+        for _ in 0..<6 where !painChip.isHittable { app.swipeUp() }
+        painChip.tap()
         let rounds = app.textFields["Completed rounds"]
-        for _ in 0..<8 where !rounds.isHittable { app.swipeUp() }
+        for _ in 0..<12 where !rounds.isHittable { app.swipeUp() }
         replaceText(rounds, with: "6")
         app.buttons["dismiss-workout-keyboard"].tap()
-        let reps = app.textFields["Actual repetitions"].firstMatch
-        for _ in 0..<8 where !reps.isHittable { app.swipeUp() }
-        replaceText(reps, with: "17")
-        app.buttons["dismiss-workout-keyboard"].tap()
+        let repsPlus = app.buttons["actual-reps-plus-0"]
+        for _ in 0..<14 where !repsPlus.isHittable { app.swipeUp() }
+        let repsMinus = app.buttons["actual-reps-minus-0"]
+        // The stepper is seeded from the plan's reported score, not zero, and a stepper (unlike
+        // the old text field) can't be set to an absolute value directly. Floor it first so the
+        // following taps land on a known, deterministic total.
+        for _ in 0..<60 { repsMinus.tap() }
+        for _ in 0..<17 { repsPlus.tap() }
+        // A burst of rapid taps leaves the form mid-relayout for a moment; let it settle before
+        // the next interaction rather than racing a stale hit-test coordinate.
+        RunLoop.current.run(until: Date().addingTimeInterval(0.5))
         let load = app.textFields["Actual load"].firstMatch
-        for _ in 0..<6 where !load.isHittable { app.swipeUp() }
+        for _ in 0..<10 where !load.isHittable { app.swipeUp() }
         replaceWholeField(load, with: "12.5", in: app)
         app.buttons["save-actual-workout"].tap()
         XCTAssertTrue(app.navigationBars["Edit Workout"].waitForNonExistence(timeout: 5))
@@ -86,11 +92,12 @@ final class WhoopsAppUITests: XCTestCase {
         detailLink.tap()
         app.buttons["edit-completed-workout"].tap()
         XCTAssertEqual(duration.value as? String, "30.25")
-        for _ in 0..<8 where !rounds.isHittable { app.swipeUp() }
+        for _ in 0..<12 where !rounds.isHittable { app.swipeUp() }
         XCTAssertEqual(rounds.value as? String, "6")
-        for _ in 0..<8 where !reps.isHittable { app.swipeUp() }
-        XCTAssertEqual(reps.value as? String, "17")
-        for _ in 0..<6 where !load.isHittable { app.swipeUp() }
+        let repsValue = app.staticTexts["17"]
+        for _ in 0..<14 where !repsValue.isHittable { app.swipeUp() }
+        XCTAssertTrue(repsValue.exists)
+        for _ in 0..<10 where !load.isHittable { app.swipeUp() }
         XCTAssertEqual(load.value as? String, "12.5")
     }
 
@@ -261,9 +268,9 @@ final class WhoopsAppUITests: XCTestCase {
         for _ in 0..<8 where !actual.isHittable { app.swipeUp() }
         actual.tap()
         XCTAssertTrue(app.navigationBars["Record Actual Work"].waitForExistence(timeout: 5))
-        let reps = app.textFields["Actual repetitions"].firstMatch
-        for _ in 0..<6 where !reps.isHittable { app.swipeUp() }
-        replaceText(reps, with: "18")
+        let load = app.textFields["Actual load"].firstMatch
+        for _ in 0..<10 where !load.isHittable { app.swipeUp() }
+        replaceText(load, with: "18")
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
         app.buttons["save-actual-workout"].tap()
         XCTAssertTrue(app.navigationBars["Train"].waitForExistence(timeout: 5))
@@ -851,5 +858,187 @@ final class WhoopsAppUITests: XCTestCase {
         app.staticTexts.matching(
             NSPredicate(format: "label ==[c] %@", label)
         ).firstMatch
+    }
+
+    @MainActor
+    func testMorningCheckInUsesChipsNotSliders() throws {
+        let app = makeApp()
+        app.launch()
+        app.buttons["morning-check-in"].tap()
+        XCTAssertTrue(app.navigationBars["Morning Check-In"].waitForExistence(timeout: 5))
+
+        XCTAssertTrue(app.sliders.firstMatch.waitForNonExistence(timeout: 2))
+
+        let painChip = app.buttons["checkin-pain-at-rest-chip-3"]
+        for _ in 0..<6 where !painChip.isHittable { app.swipeUp() }
+        XCTAssertTrue(painChip.waitForExistence(timeout: 5))
+        painChip.tap()
+        XCTAssertTrue(painChip.isSelected)
+
+        app.buttons["Save"].tap()
+        XCTAssertTrue(app.navigationBars["Morning Check-In"].waitForNonExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testRecordActualWorkoutUsesChipsNotNumberPads() throws {
+        let app = makeApp()
+        app.launch()
+        app.tabBars.buttons["Train"].tap()
+        let entry = app.textViews["raw-workout-entry"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.tap()
+        entry.typeText("AMRAP 8 minutes\n4 Burpees\nScore: 5 rounds, 3 reps")
+        tapParseWorkout(in: app)
+        XCTAssertTrue(app.navigationBars["Review Workout"].waitForExistence(timeout: 5))
+        app.buttons["review-and-save-workout"].tap()
+        app.buttons["Save reviewed plan"].tap()
+        let actual = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "record-actual-workout-")
+        ).firstMatch
+        for _ in 0..<8 where !actual.isHittable { app.swipeUp() }
+        actual.tap()
+        XCTAssertTrue(app.navigationBars["Record Actual Work"].waitForExistence(timeout: 5))
+        assertKeyboardHidden(in: app)
+
+        XCTAssertFalse(app.textFields["Actual repetitions"].exists)
+
+        let rpeChip = app.buttons["session-rpe-chip-7"]
+        for _ in 0..<6 where !rpeChip.isHittable { app.swipeUp() }
+        for _ in 0..<4 where !rpeChip.isHittable { app.swipeLeft() }
+        rpeChip.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 2))
+
+        let painChip = app.buttons["post-session-pain-chip-2"]
+        for _ in 0..<6 where !painChip.isHittable { app.swipeUp() }
+        painChip.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 2))
+    }
+
+    @MainActor
+    func testDocketProtocolItemLogsAsPrescribedAndOpensRecordActual() throws {
+        let app = XCUIApplication()
+        app.launch()
+        pasteRingRowProtocol(in: app)
+
+        let row = ringRowDocketRow(in: app)
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(row.isHittable)
+        if row.label.hasSuffix(", completed") {
+            row.tap()
+        }
+
+        row.tap()
+        let undo = app.buttons["docket-undo"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 5))
+
+        let recordActual = app.buttons[recordActualIdentifier(for: row)]
+        for _ in 0..<16 where !recordActual.isHittable { app.swipeUp() }
+        XCTAssertTrue(recordActual.waitForExistence(timeout: 5))
+        recordActual.tap()
+
+        let asPrescribed = app.buttons["record-actual-as-prescribed"]
+        XCTAssertTrue(asPrescribed.waitForExistence(timeout: 5))
+        asPrescribed.tap()
+        XCTAssertTrue(asPrescribed.waitForNonExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testDocketRecordActualPainChipIsUnselectedByDefault() throws {
+        let app = XCUIApplication()
+        app.launch()
+        pasteRingRowProtocol(in: app)
+
+        let row = ringRowDocketRow(in: app)
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let recordActual = app.buttons[recordActualIdentifier(for: row)]
+        XCTAssertTrue(recordActual.waitForExistence(timeout: 5))
+        recordActual.tap()
+
+        XCTAssertTrue(app.buttons["record-actual-as-prescribed"].waitForExistence(timeout: 5))
+        let painChips = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "record-actual-pain-")
+        )
+        XCTAssertGreaterThan(painChips.count, 0)
+        for index in 0..<painChips.count {
+            XCTAssertFalse(painChips.element(boundBy: index).isSelected)
+        }
+    }
+
+    @MainActor
+    func testRecordActualControlsMeetTapTargetSize() throws {
+        let app = XCUIApplication()
+        app.launch()
+        pasteRingRowProtocol(in: app)
+
+        let row = ringRowDocketRow(in: app)
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let recordActual = app.buttons[recordActualIdentifier(for: row)]
+        XCTAssertTrue(recordActual.waitForExistence(timeout: 5))
+        recordActual.tap()
+
+        let painChip = app.buttons["record-actual-pain-3"]
+        XCTAssertTrue(painChip.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(painChip.frame.height, 44)
+
+        let setsPlus = app.buttons["record-actual-sets-plus"]
+        XCTAssertTrue(setsPlus.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(setsPlus.frame.height, 44)
+    }
+
+    /// Reaches Today with at least one "ring row 3x10" protocol item on the docket,
+    /// via the same paste path `testProtocolPastePathReachesTapChipReview` proves.
+    /// Tolerates an already-present protocol row from an earlier run rather than
+    /// assuming a clean store — pasting again just adds another equivalent row.
+    @MainActor
+    private func pasteRingRowProtocol(in app: XCUIApplication) {
+        app.tabBars.buttons["Train"].tap()
+        let workoutEntry = app.textViews["raw-workout-entry"]
+        XCTAssertTrue(workoutEntry.waitForExistence(timeout: 5))
+        workoutEntry.tap()
+        workoutEntry.typeText("5 Burpees")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        let newProtocol = app.buttons["new-protocol"]
+        XCTAssertTrue(newProtocol.waitForExistence(timeout: 5))
+        if !newProtocol.isHittable { app.swipeDown() }
+        newProtocol.tap()
+
+        let pasteLink = app.buttons["protocol-paste-link"]
+        XCTAssertTrue(pasteLink.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        pasteLink.tap()
+
+        let entry = app.textViews["protocol-paste-entry"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.tap()
+        entry.typeText("Ring row 3x10")
+        app.buttons["protocol-paste-use"].tap()
+
+        XCTAssertTrue(app.staticTexts["found 1 movement."].waitForExistence(timeout: 5))
+        let save = app.buttons["protocol-review-save"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        save.tap()
+        // Saving reloads Train's data before the capture flow dismisses itself;
+        // wait for that dismissal to complete before the tab bar is interactable.
+        XCTAssertTrue(app.navigationBars["Train"].waitForExistence(timeout: 5))
+
+        app.tabBars.buttons["Today"].tap()
+        XCTAssertTrue(app.staticTexts["The Docket"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func ringRowDocketRow(in app: XCUIApplication) -> XCUIElement {
+        let row = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "docket-item-protocol_item:")
+        ).matching(NSPredicate(format: "label CONTAINS[c] %@", "ring row")).firstMatch
+        for _ in 0..<16 where !row.isHittable { app.swipeUp() }
+        return row
+    }
+
+    /// Derives a protocol row's "log details" button identifier from its own
+    /// `docket-item-<item.id>` identifier, since the item id is a fresh UUID
+    /// minted at parse time and can't be known ahead of the paste.
+    @MainActor
+    private func recordActualIdentifier(for row: XCUIElement) -> String {
+        row.identifier.replacingOccurrences(of: "docket-item-", with: "docket-record-actual-")
     }
 }

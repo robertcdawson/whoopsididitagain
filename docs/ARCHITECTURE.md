@@ -305,21 +305,46 @@ SwiftData as protocol and item records.
 
 ## Daily docket
 
-`docket-1.0.0` generates the Today checklist deterministically on demand from stored protocols,
+`docket-1.1.0` generates the Today checklist deterministically on demand from stored protocols,
 workout plans, sleep settings, and recorded completions; no docket rows are written ahead of
 time, so editing or deleting a protocol can never leave stale entries. Daily and weekday
 cadences resolve against the local calendar day, and a times-per-week item stays due until its
 target number of completions exists within the calendar week (honoring the calendar's first
 weekday), with the week's count shown on the row. Protocol active ranges and archival gate
-generation. Today's committed workout plans appear with completion state mirrored from the
-record-actual flow rather than a docket tap, because completing a workout requires session RPE
-and pain values the docket cannot invent. The sleep wind-down item derives from the existing
-sleep-deadline calculation.
+generation. Today's committed workout plans appear as buttons that launch
+`WorkoutCompletionView`, the same record-actual flow the Train tab uses, rather than completing
+inline from a docket tap — completing a workout needs session RPE and pain values the docket
+cannot invent, so it defers to that flow instead of inventing them. The sleep wind-down item
+derives from the existing sleep-deadline calculation.
 
 Completing a protocol or wind-down item stores one completion per item per local day (an upsert
-by day, kind, and source), which keeps times-per-week counts honest under double taps; undo
-deletes the completion. Completions are the only persisted docket state. Richer per-set actuals,
-docket-launched workout recording, and adherence summaries arrive with the record-actual phase.
+by day, kind, and source); the same upsert now overwrites any previously recorded actual, so
+re-logging a mis-tap is idempotent rather than stacking rows. Completions are the only persisted
+docket state.
+
+A one-tap completion is a user assertion that the prescription was met, so it snapshots the
+item's prescribed sets, repetitions, and hold duration into the stored completion at the moment
+of completion — editing the protocol afterward can never rewrite what was actually logged.
+`DocketCompletionRecord` carries this as six additive optional columns (`actualSets`,
+`actualRepetitions`, `actualDurationSeconds`, `painDuring`, `actualNote`, `isAsPrescribed`); all
+six nil is a legacy phase-2 tap that made no claim about quantities at all, and legacy rows are
+never backfilled. `isAsPrescribed` is the decode sentinel: it is always set whenever an actual is
+written, so its absence is what marks a row as legacy rather than a deliberate "nothing logged"
+value.
+
+On Today, a protocol or wind-down row completes as prescribed with one tap; a trailing "log
+details" button opens a sheet for logging a deviation instead — edited sets/reps/hold-duration,
+an optional pain chip (nil until tapped, never defaulted), and a note. The transient undo bar
+gains a second "adjust" action that reopens the same sheet seeded from the completion just
+written, so a mis-tap becomes a correction rather than undo-and-redo. A completed row renders a
+short deviation aside (e.g. `2×15 · pain 1`) only when its actual is not as-prescribed; an
+as-prescribed row looks exactly as it always has. The chip/stepper controls that back this sheet
+(`JournalStepper`, `JournalScaleChip`/`JournalScaleChipRow`) also replaced the number-pad text
+field and sliders on `WorkoutCompletionView` (session RPE, post-session pain, per-movement pain,
+actual repetitions) and `MorningCheckInView` (pain-at-rest, pain-with-movement, energy,
+motivation), so none of these one-handed entry points require a keyboard. Docket-launched workout
+recording and per-set protocol actuals ship in this phase; adherence summaries do not and remain
+a later phase.
 
 CI builds the app and test bundles and runs the iOS unit-test suite on an iOS Simulator for
 every push; UI tests remain build-only in CI and run locally.

@@ -26,11 +26,19 @@ struct MorningCheckInView: View {
         NavigationStack {
             Form {
                 Section("Symptoms") {
-                    scoreSlider("Pain at rest", value: $checkIn.painAtRest, range: 0...10)
-                    scoreSlider(
+                    scoreChipRow(
+                        "Pain at rest",
+                        value: $checkIn.painAtRest,
+                        range: 0...10,
+                        selectedFill: Color.journalRedPen,
+                        idPrefix: "checkin-pain-at-rest-chip"
+                    )
+                    scoreChipRow(
                         "Pain with movement",
                         value: $checkIn.painWithMovement,
-                        range: 0...10
+                        range: 0...10,
+                        selectedFill: Color.journalRedPen,
+                        idPrefix: "checkin-pain-with-movement-chip"
                     )
                     Toggle("Stiffness", isOn: $checkIn.stiffness)
                     Toggle("Swelling", isOn: $checkIn.swelling)
@@ -39,8 +47,18 @@ struct MorningCheckInView: View {
                 }
 
                 Section("How do you feel?") {
-                    scoreSlider("Energy", value: $checkIn.energy, range: 1...5)
-                    scoreSlider("Motivation", value: $checkIn.motivation, range: 1...5)
+                    scoreChipRow(
+                        "Energy",
+                        value: $checkIn.energy,
+                        range: 1...5,
+                        idPrefix: "checkin-energy-chip"
+                    )
+                    scoreChipRow(
+                        "Motivation",
+                        value: $checkIn.motivation,
+                        range: 1...5,
+                        idPrefix: "checkin-motivation-chip"
+                    )
                 }
 
                 Section("Optional context") {
@@ -100,21 +118,23 @@ struct MorningCheckInView: View {
         }
     }
 
-    private func scoreSlider(
+    private func scoreChipRow(
         _ title: String,
         value: Binding<Int>,
-        range: ClosedRange<Int>
+        range: ClosedRange<Int>,
+        selectedFill: Color = .journalInk,
+        idPrefix: String
     ) -> some View {
         VStack(alignment: .leading) {
             LabeledContent(title, value: "\(value.wrappedValue)")
-            Slider(
-                value: Binding(
-                    get: { Double(value.wrappedValue) },
-                    set: { value.wrappedValue = Int($0.rounded()) }
-                ),
-                in: Double(range.lowerBound)...Double(range.upperBound),
-                step: 1
-            )
+            JournalScaleChipRow(
+                range: range,
+                selected: value.wrappedValue,
+                selectedFill: selectedFill,
+                accessibilityID: { "\(idPrefix)-\($0)" }
+            ) { newValue in
+                value.wrappedValue = newValue
+            }
         }
     }
 }

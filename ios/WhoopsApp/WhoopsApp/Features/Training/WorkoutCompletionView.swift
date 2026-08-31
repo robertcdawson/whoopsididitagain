@@ -75,17 +75,33 @@ struct WorkoutCompletionView: View {
                     )
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    Stepper(
-                        "Session RPE: \(workout.sessionRPE)/10", value: $workout.sessionRPE,
-                        in: 1...10
-                    )
-                    .accessibilityIdentifier("session-rpe")
-                    Stepper(
-                        "Post-session pain: \(workout.postSessionPain)/10",
-                        value: $workout.postSessionPain,
-                        in: 0...10
-                    )
-                    .accessibilityIdentifier("post-session-pain")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Session RPE (1–10)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        JournalScaleChipRow(
+                            range: 1...10,
+                            selected: workout.sessionRPE,
+                            accessibilityID: { "session-rpe-chip-\($0)" }
+                        ) { value in
+                            workout.sessionRPE = value
+                        }
+                    }
+                    .padding(.vertical, 2)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Post-session pain (0–10)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        JournalScaleChipRow(
+                            range: 0...10,
+                            selected: workout.postSessionPain,
+                            selectedFill: .journalRedPen,
+                            accessibilityID: { "post-session-pain-chip-\($0)" }
+                        ) { value in
+                            workout.postSessionPain = value
+                        }
+                    }
+                    .padding(.vertical, 2)
                     multilineField("Session notes", text: $workout.notes)
                 }
 
@@ -263,7 +279,20 @@ struct WorkoutCompletionView: View {
                         $0.id == workout.movements[index].canonicalMovementID
                     })?.canonicalName ?? "Unmapped")
             }
-            numberField("Actual repetitions", value: $workout.movements[index].actualRepetitions)
+            JournalStepper(
+                label: "Actual repetitions",
+                value: workout.movements[index].actualRepetitions ?? 0,
+                minusAccessibilityID: "actual-reps-minus-\(index)",
+                plusAccessibilityID: "actual-reps-plus-\(index)",
+                onDecrement: {
+                    let current = workout.movements[index].actualRepetitions ?? 0
+                    workout.movements[index].actualRepetitions = max(0, current - 1)
+                },
+                onIncrement: {
+                    let current = workout.movements[index].actualRepetitions ?? 0
+                    workout.movements[index].actualRepetitions = current + 1
+                }
+            )
             numberField(
                 "Actual distance in meters", value: $workout.movements[index].actualDistanceMeters)
             numberField("Actual calories", value: $workout.movements[index].actualCalories)
@@ -273,9 +302,20 @@ struct WorkoutCompletionView: View {
             WorkoutMinutesField(
                 title: "Actual duration in minutes",
                 seconds: $workout.movements[index].actualDurationSeconds)
-            Stepper(
-                "Pain during: \(workout.movements[index].painDuring)/10",
-                value: $workout.movements[index].painDuring, in: 0...10)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Pain during (0–10)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                JournalScaleChipRow(
+                    range: 0...10,
+                    selected: workout.movements[index].painDuring,
+                    selectedFill: .journalRedPen,
+                    accessibilityID: { "movement-pain-chip-\(index)-\($0)" }
+                ) { value in
+                    workout.movements[index].painDuring = value
+                }
+            }
+            .padding(.vertical, 2)
             multilineField("Modification from plan", text: $workout.movements[index].modification)
             multilineField("Movement notes", text: $workout.movements[index].notes)
             Menu("Movement actions") {

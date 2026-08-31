@@ -7,8 +7,9 @@ tokens.json
 .tokens/
 credentials.json
 
-# Local Claude Code state
-.claude/attention/
+# Local Claude Code state — the leading-anchored form missed nested copies
+# such as ios/WhoopsApp/.claude/attention/, which then showed up as untracked.
+**/.claude/attention/
 
 # Dependencies
 node_modules/

@@ -31,14 +31,14 @@ final class DocketMilestoneTests: XCTestCase {
         )
 
         XCTAssertEqual(docket.day, "2026-08-31")
-        XCTAssertEqual(docket.rulesetVersion, "docket-1.0.0")
+        XCTAssertEqual(docket.rulesetVersion, "docket-1.1.0")
         XCTAssertEqual(docket.items.count, 1)
         let item = try XCTUnwrap(docket.items.first)
         XCTAssertEqual(item.title, "band extensions 3×15")
         XCTAssertEqual(item.tag, "PT")
         XCTAssertEqual(item.kind, .protocolItem)
         XCTAssertFalse(item.isCompleted)
-        XCTAssertTrue(item.completesFromDocket)
+        XCTAssertEqual(item.completionStyle, .oneTap)
     }
 
     func testDaysOfWeekItemIsDueOnlyOnMatchingWeekdays() {
@@ -156,8 +156,24 @@ final class DocketMilestoneTests: XCTestCase {
 
         XCTAssertEqual(docket.items.map(\.sourceID), ["planned", "done"])
         XCTAssertEqual(docket.items.map(\.isCompleted), [false, true])
-        XCTAssertTrue(docket.items.allSatisfy { !$0.completesFromDocket })
+        XCTAssertTrue(docket.items.allSatisfy { $0.completionStyle == .recordActual })
         XCTAssertTrue(docket.items.allSatisfy { $0.tag == nil })
+    }
+
+    func testWorkoutRowsUseRecordActualCompletionStyle() {
+        let monday = date(2026, 8, 31)
+        let docket = engine.docket(
+            for: monday,
+            protocols: [],
+            plans: [makePlan(id: "squat", scheduledAt: monday, status: .planned)],
+            sleepDeadline: nil,
+            completions: []
+        )
+
+        let item = docket.items.first { $0.sourceID == "squat" }
+        XCTAssertEqual(item?.completionStyle, .recordActual)
+        XCTAssertNil(item?.prescribedSets)
+        XCTAssertNil(item?.recordedActual)
     }
 
     func testWindDownRowUsesDeadlineTimeAndCompletionState() throws {
@@ -281,6 +297,187 @@ final class DocketMilestoneTests: XCTestCase {
         } catch let error as DocketValidationError {
             XCTAssertEqual(error, .invalidDay)
         }
+    }
+
+    func testAsPrescribedSnapshotsPrescribedQuantities() {
+        let docket = engine.docket(
+            for: date(2026, 8, 31),
+            protocols: [makeProtocol(items: [makeItem(id: "band", cadence: .daily)])],
+            plans: [],
+            sleepDeadline: nil,
+            completions: []
+        )
+        let item = docket.items[0]
+
+        let completion = DocketCompletion.asPrescribed(item: item, day: docket.day)
+
+        XCTAssertEqual(completion.actual?.sets, 3)
+        XCTAssertEqual(completion.actual?.repetitions, 15)
+        XCTAssertNil(completion.actual?.durationSeconds)
+        XCTAssertNil(completion.actual?.painDuring)
+        XCTAssertEqual(completion.actual?.note, "")
+        XCTAssertEqual(completion.actual?.isAsPrescribed, true)
+    }
+
+    func testAsPrescribedWithNoPrescriptionStoresNoQuantities() throws {
+        let docket = engine.docket(
+            for: date(2026, 8, 31),
+            protocols: [],
+            plans: [],
+            sleepDeadline: SleepDeadlineCalculator.calculate(
+                now: date(2026, 8, 31),
+                settings: .standard,
+                calendar: calendar
+            ),
+            completions: []
+        )
+        let item = try XCTUnwrap(docket.items.first)
+
+        let completion = DocketCompletion.asPrescribed(item: item, day: docket.day)
+
+        XCTAssertNil(completion.actual?.sets)
+        XCTAssertNil(completion.actual?.repetitions)
+        XCTAssertNil(completion.actual?.durationSeconds)
+        XCTAssertNil(completion.actual?.painDuring)
+        XCTAssertEqual(completion.actual?.isAsPrescribed, true)
+    }
+
+    func testDeviationStoresEditedActualsAndPain() throws {
+        let deviation = DocketCompletion(
+            id: "c1",
+            day: "2026-08-31",
+            kind: .protocolItem,
+            sourceID: "band",
+            protocolID: "proto",
+            completedAt: date(2026, 8, 31),
+            actual: DocketActual(
+                sets: 2,
+                repetitions: 10,
+                durationSeconds: nil,
+                painDuring: 3,
+                note: "shoulder tight",
+                isAsPrescribed: false
+            )
+        )
+        let docket = engine.docket(
+            for: date(2026, 8, 31),
+            protocols: [makeProtocol(items: [makeItem(id: "band", cadence: .daily)])],
+            plans: [],
+            sleepDeadline: nil,
+            completions: [deviation]
+        )
+
+        let item = try XCTUnwrap(docket.items.first)
+        XCTAssertEqual(item.recordedActual, deviation.actual)
+        XCTAssertEqual(item.recordedActual?.isAsPrescribed, false)
+        XCTAssertEqual(item.recordedActual?.painDuring, 3)
+    }
+
+    func testLegacyCompletionWithoutActualsStaysTapOnly() throws {
+        let legacy = DocketCompletion(
+            id: "c1",
+            day: "2026-08-31",
+            kind: .protocolItem,
+            sourceID: "band",
+            protocolID: "proto",
+            completedAt: date(2026, 8, 31)
+        )
+        XCTAssertNil(legacy.actual)
+
+        let docket = engine.docket(
+            for: date(2026, 8, 31),
+            protocols: [makeProtocol(items: [makeItem(id: "band", cadence: .daily)])],
+            plans: [],
+            sleepDeadline: nil,
+            completions: [legacy]
+        )
+
+        let item = try XCTUnwrap(docket.items.first)
+        XCTAssertTrue(item.isCompleted)
+        XCTAssertNil(item.recordedActual)
+    }
+
+    func testDocketItemExposesPrescriptionAndRecordedActual() throws {
+        let docket = engine.docket(
+            for: date(2026, 8, 31),
+            protocols: [makeProtocol(items: [makeItem(id: "band", cadence: .daily)])],
+            plans: [],
+            sleepDeadline: nil,
+            completions: []
+        )
+
+        let item = try XCTUnwrap(docket.items.first)
+        XCTAssertEqual(item.prescribedSets, 3)
+        XCTAssertEqual(item.prescribedRepetitions, 15)
+        XCTAssertNil(item.prescribedDurationSeconds)
+        XCTAssertNil(item.recordedActual)
+    }
+
+    func testDocketPersistenceRoundTripsActualsAndUpsertOverwritesThem() async throws {
+        let container = try ModelContainer(
+            for: DocketCompletionRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let repository = DocketPersistence(container: container)
+        let firstPass = DocketCompletion(
+            id: "first",
+            day: "2026-08-31",
+            kind: .protocolItem,
+            sourceID: "band",
+            protocolID: "proto",
+            completedAt: date(2026, 8, 31),
+            actual: DocketActual(
+                sets: 3,
+                repetitions: 15,
+                durationSeconds: nil,
+                painDuring: nil,
+                note: "",
+                isAsPrescribed: true
+            )
+        )
+
+        try await repository.saveCompletion(firstPass)
+        let roundTripped = try await repository.completions(days: ["2026-08-31"])
+        XCTAssertEqual(roundTripped.count, 1)
+        XCTAssertEqual(roundTripped.first?.actual, firstPass.actual)
+
+        let corrected = DocketCompletion(
+            id: "second",
+            day: "2026-08-31",
+            kind: .protocolItem,
+            sourceID: "band",
+            protocolID: "proto",
+            completedAt: date(2026, 8, 31, hour: 13),
+            actual: DocketActual(
+                sets: 2,
+                repetitions: 10,
+                durationSeconds: nil,
+                painDuring: 4,
+                note: "adjusted after warm-up",
+                isAsPrescribed: false
+            )
+        )
+        try await repository.saveCompletion(corrected)
+
+        let overwritten = try await repository.completions(days: ["2026-08-31"])
+        XCTAssertEqual(overwritten.count, 1, "upsert on (day, kind, sourceID) must not duplicate")
+        XCTAssertEqual(overwritten.first?.id, "first", "the natural key row's identity is retained")
+        XCTAssertEqual(overwritten.first?.actual, corrected.actual)
+
+        let legacy = DocketCompletion(
+            id: "legacy",
+            day: "2026-09-01",
+            kind: .windDown,
+            sourceID: DeterministicDocketEngine.windDownSourceID,
+            protocolID: nil,
+            completedAt: date(2026, 9, 1)
+        )
+        try await repository.saveCompletion(legacy)
+        let legacyRoundTripped = try await repository.completions(days: ["2026-09-01"])
+        XCTAssertNil(
+            legacyRoundTripped.first?.actual,
+            "all-nil columns must not be backfilled into an asserted actual"
+        )
     }
 
     // MARK: - Fixtures
