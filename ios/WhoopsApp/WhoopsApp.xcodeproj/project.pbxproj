@@ -81,6 +81,9 @@
 		B10000000000000000000044 /* WhoopsApp/Data/Persistence/DocketPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000048 /* WhoopsApp/Data/Persistence/DocketPersistence.swift */; };
 		B10000000000000000000045 /* WhoopsApp/Features/Today/DocketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000049 /* WhoopsApp/Features/Today/DocketView.swift */; };
 		B10000000000000000000046 /* WhoopsAppTests/DocketMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1000000000000000000004A /* WhoopsAppTests/DocketMilestoneTests.swift */; };
+		B20000000000000000000001 /* WhoopsApp/Domain/Models/RecordActualDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000001 /* WhoopsApp/Domain/Models/RecordActualDraft.swift */; };
+		B20000000000000000000002 /* WhoopsApp/Features/Today/RecordActualSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000002 /* WhoopsApp/Features/Today/RecordActualSheet.swift */; };
+		B20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift */; };
 		B00000000000000000000039 /* WhoopsApp/App/FeatureFlags.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003D /* WhoopsApp/App/FeatureFlags.swift */; };
 		B0000000000000000000003A /* WhoopsApp/Domain/Models/ExperimentModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003E /* WhoopsApp/Domain/Models/ExperimentModels.swift */; };
 		B0000000000000000000003B /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000003F /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift */; };
@@ -187,6 +190,9 @@
 		F10000000000000000000048 /* WhoopsApp/Data/Persistence/DocketPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Persistence/DocketPersistence.swift; sourceTree = "<group>"; };
 		F10000000000000000000049 /* WhoopsApp/Features/Today/DocketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Today/DocketView.swift; sourceTree = "<group>"; };
 		F1000000000000000000004A /* WhoopsAppTests/DocketMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/DocketMilestoneTests.swift; sourceTree = "<group>"; };
+		F20000000000000000000001 /* WhoopsApp/Domain/Models/RecordActualDraft.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/RecordActualDraft.swift; sourceTree = "<group>"; };
+		F20000000000000000000002 /* WhoopsApp/Features/Today/RecordActualSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Today/RecordActualSheet.swift; sourceTree = "<group>"; };
+		F20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/RecordActualTests.swift; sourceTree = "<group>"; };
 		F0000000000000000000003D /* WhoopsApp/App/FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/FeatureFlags.swift; sourceTree = "<group>"; };
 		F0000000000000000000003E /* WhoopsApp/Domain/Models/ExperimentModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/ExperimentModels.swift; sourceTree = "<group>"; };
 		F0000000000000000000003F /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift; sourceTree = "<group>"; };
@@ -297,6 +303,8 @@
 				F10000000000000000000047 /* WhoopsApp/Domain/Services/DocketEngine.swift */,
 				F10000000000000000000048 /* WhoopsApp/Data/Persistence/DocketPersistence.swift */,
 				F10000000000000000000049 /* WhoopsApp/Features/Today/DocketView.swift */,
+				F20000000000000000000001 /* WhoopsApp/Domain/Models/RecordActualDraft.swift */,
+				F20000000000000000000002 /* WhoopsApp/Features/Today/RecordActualSheet.swift */,
 				F0000000000000000000003D /* WhoopsApp/App/FeatureFlags.swift */,
 				F0000000000000000000003E /* WhoopsApp/Domain/Models/ExperimentModels.swift */,
 				F0000000000000000000003F /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift */,
@@ -321,6 +329,7 @@
 				F0000000000000000000003C /* WhoopsAppTests/TrendsMilestoneTests.swift */,
 				F10000000000000000000045 /* WhoopsAppTests/ProtocolIntakeTests.swift */,
 				F1000000000000000000004A /* WhoopsAppTests/DocketMilestoneTests.swift */,
+				F20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift */,
 				F00000000000000000000042 /* WhoopsAppTests/ExperimentMilestoneTests.swift */,
 				F00000000000000000000045,
 			);
@@ -545,6 +554,8 @@
 				B10000000000000000000043 /* WhoopsApp/Domain/Services/DocketEngine.swift in Sources */,
 				B10000000000000000000044 /* WhoopsApp/Data/Persistence/DocketPersistence.swift in Sources */,
 				B10000000000000000000045 /* WhoopsApp/Features/Today/DocketView.swift in Sources */,
+				B20000000000000000000001 /* WhoopsApp/Domain/Models/RecordActualDraft.swift in Sources */,
+				B20000000000000000000002 /* WhoopsApp/Features/Today/RecordActualSheet.swift in Sources */,
 				B00000000000000000000039 /* WhoopsApp/App/FeatureFlags.swift in Sources */,
 				B0000000000000000000003A /* WhoopsApp/Domain/Models/ExperimentModels.swift in Sources */,
 				B0000000000000000000003B /* WhoopsApp/Domain/Services/DeterministicExperimentEngine.swift in Sources */,
@@ -569,6 +580,7 @@
 				B00000000000000000000038 /* WhoopsAppTests/TrendsMilestoneTests.swift in Sources */,
 				B10000000000000000000041 /* WhoopsAppTests/ProtocolIntakeTests.swift in Sources */,
 				B10000000000000000000046 /* WhoopsAppTests/DocketMilestoneTests.swift in Sources */,
+				B20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift in Sources */,
 				B0000000000000000000003E /* WhoopsAppTests/ExperimentMilestoneTests.swift in Sources */,
 				B00000000000000000000045,
 			);
