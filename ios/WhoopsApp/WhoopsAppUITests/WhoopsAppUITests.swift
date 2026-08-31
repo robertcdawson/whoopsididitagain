@@ -162,6 +162,26 @@ final class WhoopsAppUITests: XCTestCase {
     }
 
     @MainActor
+    func testDocketShowsWindDownAndCompletesWithUndo() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.staticTexts["The Docket"].waitForExistence(timeout: 5))
+        let windDown = app.buttons["docket-item-wind_down:sleep"]
+        XCTAssertTrue(windDown.waitForExistence(timeout: 5))
+        if !windDown.isHittable { app.swipeUp() }
+        if windDown.label.hasSuffix(", completed") {
+            windDown.tap()
+        }
+
+        windDown.tap()
+        let undo = app.buttons["docket-undo"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 5))
+        undo.tap()
+        XCTAssertFalse(undo.waitForExistence(timeout: 2))
+    }
+
+    @MainActor
     func testProtocolPastePathReachesTapChipReview() throws {
         let app = XCUIApplication()
         app.launch()

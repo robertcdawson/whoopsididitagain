@@ -72,6 +72,11 @@
 		B0000000000000000000003F /* WhoopsApp/Features/Training/ProtocolDictationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000043 /* WhoopsApp/Features/Training/ProtocolDictationView.swift */; };
 		B00000000000000000000040 /* WhoopsApp/Features/Training/ProtocolParseReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000044 /* WhoopsApp/Features/Training/ProtocolParseReviewView.swift */; };
 		B00000000000000000000041 /* WhoopsAppTests/ProtocolIntakeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000045 /* WhoopsAppTests/ProtocolIntakeTests.swift */; };
+		B00000000000000000000042 /* WhoopsApp/Domain/Models/DocketModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000046 /* WhoopsApp/Domain/Models/DocketModels.swift */; };
+		B00000000000000000000043 /* WhoopsApp/Domain/Services/DocketEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000047 /* WhoopsApp/Domain/Services/DocketEngine.swift */; };
+		B00000000000000000000044 /* WhoopsApp/Data/Persistence/DocketPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000048 /* WhoopsApp/Data/Persistence/DocketPersistence.swift */; };
+		B00000000000000000000045 /* WhoopsApp/Features/Today/DocketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00000000000000000000049 /* WhoopsApp/Features/Today/DocketView.swift */; };
+		B00000000000000000000046 /* WhoopsAppTests/DocketMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0000000000000000000004A /* WhoopsAppTests/DocketMilestoneTests.swift */; };
 		CBE5C84A30326AFA001C1E49 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = CBE5C84930326AFA001C1E49 /* AppIcon.icon */; };
 /* End PBXBuildFile section */
 
@@ -163,6 +168,11 @@
 		F00000000000000000000043 /* WhoopsApp/Features/Training/ProtocolDictationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Training/ProtocolDictationView.swift; sourceTree = "<group>"; };
 		F00000000000000000000044 /* WhoopsApp/Features/Training/ProtocolParseReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Training/ProtocolParseReviewView.swift; sourceTree = "<group>"; };
 		F00000000000000000000045 /* WhoopsAppTests/ProtocolIntakeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/ProtocolIntakeTests.swift; sourceTree = "<group>"; };
+		F00000000000000000000046 /* WhoopsApp/Domain/Models/DocketModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/DocketModels.swift; sourceTree = "<group>"; };
+		F00000000000000000000047 /* WhoopsApp/Domain/Services/DocketEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Services/DocketEngine.swift; sourceTree = "<group>"; };
+		F00000000000000000000048 /* WhoopsApp/Data/Persistence/DocketPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Data/Persistence/DocketPersistence.swift; sourceTree = "<group>"; };
+		F00000000000000000000049 /* WhoopsApp/Features/Today/DocketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Today/DocketView.swift; sourceTree = "<group>"; };
+		F0000000000000000000004A /* WhoopsAppTests/DocketMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/DocketMilestoneTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -262,6 +272,10 @@
 				F00000000000000000000042 /* WhoopsApp/Features/Training/ProtocolScannerView.swift */,
 				F00000000000000000000043 /* WhoopsApp/Features/Training/ProtocolDictationView.swift */,
 				F00000000000000000000044 /* WhoopsApp/Features/Training/ProtocolParseReviewView.swift */,
+				F00000000000000000000046 /* WhoopsApp/Domain/Models/DocketModels.swift */,
+				F00000000000000000000047 /* WhoopsApp/Domain/Services/DocketEngine.swift */,
+				F00000000000000000000048 /* WhoopsApp/Data/Persistence/DocketPersistence.swift */,
+				F00000000000000000000049 /* WhoopsApp/Features/Today/DocketView.swift */,
 			);
 			name = WhoopsApp;
 			sourceTree = "<group>";
@@ -278,6 +292,7 @@
 				F00000000000000000000039 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift */,
 				F0000000000000000000003C /* WhoopsAppTests/TrendsMilestoneTests.swift */,
 				F00000000000000000000045 /* WhoopsAppTests/ProtocolIntakeTests.swift */,
+				F0000000000000000000004A /* WhoopsAppTests/DocketMilestoneTests.swift */,
 			);
 			name = WhoopsAppTests;
 			sourceTree = "<group>";
@@ -495,6 +510,10 @@
 				B0000000000000000000003E /* WhoopsApp/Features/Training/ProtocolScannerView.swift in Sources */,
 				B0000000000000000000003F /* WhoopsApp/Features/Training/ProtocolDictationView.swift in Sources */,
 				B00000000000000000000040 /* WhoopsApp/Features/Training/ProtocolParseReviewView.swift in Sources */,
+				B00000000000000000000042 /* WhoopsApp/Domain/Models/DocketModels.swift in Sources */,
+				B00000000000000000000043 /* WhoopsApp/Domain/Services/DocketEngine.swift in Sources */,
+				B00000000000000000000044 /* WhoopsApp/Data/Persistence/DocketPersistence.swift in Sources */,
+				B00000000000000000000045 /* WhoopsApp/Features/Today/DocketView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -511,6 +530,7 @@
 				B00000000000000000000035 /* WhoopsAppTests/MovementLibraryMilestoneTests.swift in Sources */,
 				B00000000000000000000038 /* WhoopsAppTests/TrendsMilestoneTests.swift in Sources */,
 				B00000000000000000000041 /* WhoopsAppTests/ProtocolIntakeTests.swift in Sources */,
+				B00000000000000000000046 /* WhoopsAppTests/DocketMilestoneTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

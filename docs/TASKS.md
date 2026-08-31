@@ -187,3 +187,34 @@ docket generation can build on it without another migration.
 Live acceptance remains: photograph the real PT sheet on Robert's iPhone, confirm the parsed
 items match the sheet, resolve any candidate prompts, and confirm the restriction line reflects
 the current right-arm restrictions before saving.
+
+## Redesign Phase 2: Protocol Recurrence and Docket Generation
+
+Phase 2 of the `docs/DESIGN.md` implementation priority: resolve per-item cadence into the
+generated daily checklist on Today.
+
+- [x] Add docket models: item kinds, generated items, and persisted completions.
+- [x] Add a versioned deterministic docket engine that recomputes the docket from stored
+      protocols, workouts, sleep settings, and completions — no pre-generated rows to go stale.
+- [x] Resolve daily and weekday cadences against the local calendar day.
+- [x] Keep times-per-week items due until the target count of completions exists in the
+      calendar week, with the week's progress shown on the row.
+- [x] Respect protocol active ranges and archival when generating items.
+- [x] Include today's committed workouts with status mirrored from the record-actual flow.
+- [x] Include the sleep wind-down item derived from the existing sleep deadline.
+- [x] Render the docket on Today with drawn checkboxes, strike-through completion, and PT tags.
+- [x] Complete protocol and wind-down items with one tap: haptic, drawn-check stroke
+      animation, and a transient undo.
+- [x] Persist completions idempotently (one per item per day) with delete for undo.
+- [x] Run the iOS unit-test suite in CI on every push.
+- [x] Add engine, cadence-recurrence, range, workout, wind-down, and persistence tests plus a
+      docket UI test.
+
+One-tap "as prescribed" recording with editable deviations (the RecordActual pattern) is the
+next phase; until then, workout docket rows mirror the Train tab's record-actual state instead
+of fabricating session RPE or pain values, and protocol-item completions record the tap without
+per-set actuals. Widget/notification completion, quick-action pain logging, and the "bring to
+PT" adherence export remain later phases.
+
+Live acceptance remains: with the real protocol saved, confirm tomorrow morning's docket lists
+the right items for the day and the week counts advance as items are completed.

@@ -14,6 +14,7 @@ struct WhoopsApp: App {
     private let movementLibrary: any MovementLibraryRepository
     private let protocolParser: any ProtocolParser
     private let protocolRepository: any ProtocolRepository
+    private let docketRepository: any DocketRepository
     private let modelContainer: ModelContainer
 
     init() {
@@ -36,7 +37,8 @@ struct WhoopsApp: App {
             CompletedMovementRecord.self,
             MovementDefinitionRecord.self,
             TherapyProtocolRecord.self,
-            TherapyProtocolItemRecord.self
+            TherapyProtocolItemRecord.self,
+            DocketCompletionRecord.self
         )
         let client = BackendClient(baseURL: baseURL, sessionStore: sessionStore)
         let healthKitClient = HealthKitClient()
@@ -61,6 +63,7 @@ struct WhoopsApp: App {
         workoutRepository = WorkoutPersistence(container: container)
         protocolParser = LibraryProtocolParser(library: library)
         protocolRepository = ProtocolPersistence(container: container)
+        docketRepository = DocketPersistence(container: container)
     }
 
     var body: some Scene {
@@ -76,7 +79,8 @@ struct WhoopsApp: App {
                 workoutRepository: workoutRepository,
                 movementLibrary: movementLibrary,
                 protocolParser: protocolParser,
-                protocolRepository: protocolRepository
+                protocolRepository: protocolRepository,
+                docketRepository: docketRepository
             )
             .modelContainer(modelContainer)
             .task { await healthKitRepository.startObserving() }

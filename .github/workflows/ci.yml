@@ -36,7 +36,17 @@ jobs:
           xcodebuild
           -project ios/WhoopsApp/WhoopsApp.xcodeproj
           -scheme WhoopsApp
-          -destination 'generic/platform=iOS Simulator'
+          -destination 'platform=iOS Simulator,name=iPhone 16'
           -derivedDataPath /tmp/whoops-derived-data
           CODE_SIGNING_ALLOWED=NO
           build-for-testing
+      - name: Run unit tests
+        run: >-
+          xcodebuild
+          -project ios/WhoopsApp/WhoopsApp.xcodeproj
+          -scheme WhoopsApp
+          -destination 'platform=iOS Simulator,name=iPhone 16'
+          -derivedDataPath /tmp/whoops-derived-data
+          CODE_SIGNING_ALLOWED=NO
+          test-without-building
+          -only-testing:WhoopsAppTests

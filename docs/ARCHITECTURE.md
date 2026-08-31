@@ -1,8 +1,8 @@
 # Architecture
 
-**Status:** Milestone 5 trends and weekly review implemented; redesign phase 1 (protocol intake
-and tap-chip review) implemented
-**Last updated:** August 30, 2026
+**Status:** Milestone 5 trends and weekly review implemented; redesign phases 1–2 (protocol
+intake, tap-chip review, recurrence and docket generation) implemented
+**Last updated:** August 31, 2026
 
 `PROJECT_PLAN.md` is the product source of truth. This document records the architecture that is
 currently implemented.
@@ -151,8 +151,28 @@ weekdays), candidate chips for ambiguities, swipe-to-drop rows with transient un
 restriction line computed by the existing scaling engine over a transient plan built from the
 resolved items, so protocol items and workouts share one restriction evaluation. Saving
 validates the protocol (all items resolved to known movements, cadences valid) and stores it in
-SwiftData as protocol and item records, with per-item cadence retained for the upcoming docket
-generation phase. Recurrence, docket entries, and adherence remain later phases.
+SwiftData as protocol and item records.
+
+## Daily docket
+
+`docket-1.0.0` generates the Today checklist deterministically on demand from stored protocols,
+workout plans, sleep settings, and recorded completions; no docket rows are written ahead of
+time, so editing or deleting a protocol can never leave stale entries. Daily and weekday
+cadences resolve against the local calendar day, and a times-per-week item stays due until its
+target number of completions exists within the calendar week (honoring the calendar's first
+weekday), with the week's count shown on the row. Protocol active ranges and archival gate
+generation. Today's committed workout plans appear with completion state mirrored from the
+record-actual flow rather than a docket tap, because completing a workout requires session RPE
+and pain values the docket cannot invent. The sleep wind-down item derives from the existing
+sleep-deadline calculation.
+
+Completing a protocol or wind-down item stores one completion per item per local day (an upsert
+by day, kind, and source), which keeps times-per-week counts honest under double taps; undo
+deletes the completion. Completions are the only persisted docket state. Richer per-set actuals,
+docket-launched workout recording, and adherence summaries arrive with the record-actual phase.
+
+CI builds the app and test bundles and runs the iOS unit-test suite on an iOS Simulator for
+every push; UI tests remain build-only in CI and run locally.
 
 ## Repository
 
