@@ -278,3 +278,26 @@ struct JournalScaleChipRow: View {
         }
     }
 }
+
+/// A shallow hand-drawn wave, replacing hairlines per DESIGN.md's "squiggle
+/// divider". Shared rather than screen-local so a second screen reaching for one
+/// gets this wave instead of drawing its own slightly different curve.
+struct SquiggleDivider: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let midY = rect.midY
+        let amplitude = rect.height / 2
+        path.move(to: CGPoint(x: 0, y: midY))
+        var x: CGFloat = 0
+        let step = width / 4
+        while x < width {
+            path.addQuadCurve(
+                to: CGPoint(x: min(x + step, width), y: midY),
+                control: CGPoint(x: x + step / 2, y: midY - amplitude)
+            )
+            x += step
+        }
+        return path
+    }
+}

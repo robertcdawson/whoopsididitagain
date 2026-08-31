@@ -7,7 +7,7 @@ import SwiftUI
 /// the `onSave` closure the caller supplies.
 struct RecordActualSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @FocusState private var isNoteFocused: Bool
+    @FocusState private var focusedField: UUID?
 
     let item: DocketItem
     let day: String
@@ -91,6 +91,7 @@ struct RecordActualSheet: View {
         }
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
         .ignoresSafeArea(edges: .bottom)
+        .formKeyboardScope($focusedField, doneIdentifier: "dismiss-record-actual-keyboard")
     }
 
     private var titleRow: some View {
@@ -207,9 +208,7 @@ struct RecordActualSheet: View {
             )
             .font(.system(.body, design: .serif))
             .foregroundStyle(Color.journalInk)
-            .focused($isNoteFocused)
-            .submitLabel(.done)
-            .onSubmit { isNoteFocused = false }
+            .formKeyboardField(dismissOnSubmit: false)
             .lineLimit(1...3)
             .accessibilityIdentifier("record-actual-note")
         }
@@ -233,7 +232,7 @@ struct RecordActualSheet: View {
 
     @MainActor
     private func save(_ draft: RecordActualDraft) async {
-        isNoteFocused = false
+        focusedField = nil
         isSaving = true
         defer { isSaving = false }
         let completion = draft.completion(item: item, day: day, existingID: existingCompletionID)
@@ -242,27 +241,6 @@ struct RecordActualSheet: View {
         } else {
             errorMessage = "Couldn't save that. Try again."
         }
-    }
-}
-
-/// A shallow hand-drawn wave, replacing hairlines per DESIGN.md's "squiggle divider".
-private struct SquiggleDivider: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let width = rect.width
-        let midY = rect.midY
-        let amplitude = rect.height / 2
-        path.move(to: CGPoint(x: 0, y: midY))
-        var x: CGFloat = 0
-        let step = width / 4
-        while x < width {
-            path.addQuadCurve(
-                to: CGPoint(x: min(x + step, width), y: midY),
-                control: CGPoint(x: x + step / 2, y: midY - amplitude)
-            )
-            x += step
-        }
-        return path
     }
 }
 
