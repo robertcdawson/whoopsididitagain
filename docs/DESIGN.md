@@ -1,8 +1,9 @@
 # Design
 
-**Status:** Design exploration complete; phase 1 of the implementation priority (camera/OCR
-intake + tap-chip review) implemented — see `ARCHITECTURE.md` and `TASKS.md`
-**Last updated:** August 30, 2026
+**Status:** Design exploration complete; phases 1–2 of the implementation priority (camera/OCR
+intake + tap-chip review; protocol recurrence + docket generation) implemented — see
+`ARCHITECTURE.md` and `TASKS.md`
+**Last updated:** August 31, 2026
 
 This document specifies the app redesign produced in the design exploration session. It is the
 implementation reference for restructuring the app around a three-zone information architecture,

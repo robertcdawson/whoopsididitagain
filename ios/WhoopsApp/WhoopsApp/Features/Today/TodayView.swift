@@ -6,6 +6,9 @@ struct TodayView: View {
     let healthKitRepository: any HealthKitRepository
     let assessmentRepository: any AssessmentRepository
     let readinessEngine: any ReadinessEngine
+    let workoutRepository: any WorkoutRepository
+    let protocolRepository: any ProtocolRepository
+    let docketRepository: any DocketRepository
 
     @State private var backendState = "Not checked"
     @State private var isCheckingBackend = false
@@ -77,6 +80,13 @@ struct TodayView: View {
                         .buttonStyle(.borderedProminent)
                         .accessibilityIdentifier("morning-check-in")
                     }
+
+                    DocketView(
+                        protocolRepository: protocolRepository,
+                        workoutRepository: workoutRepository,
+                        docketRepository: docketRepository,
+                        sleepDeadline: sleepDeadline
+                    )
 
                     FoundationCard(title: "Daily Physiology") {
                         metricRow(
@@ -443,6 +453,9 @@ struct TodayView: View {
         whoopRepository: PreviewWhoopRepository(),
         healthKitRepository: PreviewHealthKitRepository(),
         assessmentRepository: PreviewAssessmentRepository(),
-        readinessEngine: VersionedReadinessEngine()
+        readinessEngine: VersionedReadinessEngine(),
+        workoutRepository: PreviewWorkoutRepository(),
+        protocolRepository: PreviewProtocolRepository(),
+        docketRepository: PreviewDocketRepository()
     )
 }

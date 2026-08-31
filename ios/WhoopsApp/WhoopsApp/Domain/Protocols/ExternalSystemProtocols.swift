@@ -85,6 +85,12 @@ protocol ProtocolRepository: Sendable {
     func deleteProtocol(id: String) async throws
 }
 
+protocol DocketRepository: Sendable {
+    func completions(days: [String]) async throws -> [DocketCompletion]
+    func saveCompletion(_ completion: DocketCompletion) async throws
+    func deleteCompletion(id: String) async throws
+}
+
 protocol ReadinessEngine: Sendable {
     func assess(_ input: ReadinessInput) async throws -> ReadinessAssessment
 }

@@ -152,6 +152,27 @@ actor PreviewProtocolRepository: ProtocolRepository {
     }
 }
 
+actor PreviewDocketRepository: DocketRepository {
+    private var saved: [DocketCompletion] = []
+
+    func completions(days: [String]) async throws -> [DocketCompletion] {
+        let wanted = Set(days)
+        return saved.filter { wanted.contains($0.day) }
+    }
+
+    func saveCompletion(_ completion: DocketCompletion) async throws {
+        saved.removeAll {
+            $0.day == completion.day && $0.kind == completion.kind
+                && $0.sourceID == completion.sourceID
+        }
+        saved.append(completion)
+    }
+
+    func deleteCompletion(id: String) async throws {
+        saved.removeAll { $0.id == id }
+    }
+}
+
 actor PreviewAssessmentRepository: AssessmentRepository {
     private var checkIns: [String: MorningCheckIn] = [:]
     private var profiles: [RestrictionProfile] = []

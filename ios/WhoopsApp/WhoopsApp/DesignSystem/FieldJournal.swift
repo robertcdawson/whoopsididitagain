@@ -83,6 +83,53 @@ struct DrawnCheckmarkView: View {
     }
 }
 
+/// The slightly irregular hand-drawn checkbox square from the docket mockup.
+struct DrawnCheckboxShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let width = rect.width
+        let height = rect.height
+        path.move(to: CGPoint(x: 0.17 * width, y: 0.21 * height))
+        path.addCurve(
+            to: CGPoint(x: 0.17 * width, y: 0.83 * height),
+            control1: CGPoint(x: 0.12 * width, y: 0.42 * height),
+            control2: CGPoint(x: 0.12 * width, y: 0.63 * height)
+        )
+        path.addLine(to: CGPoint(x: 0.83 * width, y: 0.87 * height))
+        path.addCurve(
+            to: CGPoint(x: 0.83 * width, y: 0.17 * height),
+            control1: CGPoint(x: 0.88 * width, y: 0.63 * height),
+            control2: CGPoint(x: 0.88 * width, y: 0.38 * height)
+        )
+        path.closeSubpath()
+        return path
+    }
+}
+
+/// Checkbox with the drawn-stroke completion animation: the green check draws
+/// itself in and overflows the box slightly, like a pen mark.
+struct DrawnCheckbox: View {
+    var isChecked: Bool
+    var size: CGFloat = 24
+
+    var body: some View {
+        ZStack {
+            DrawnCheckboxShape()
+                .stroke(Color.journalInk, lineWidth: 2)
+            DrawnCheckmark()
+                .trim(from: 0, to: isChecked ? 1 : 0)
+                .stroke(
+                    Color.journalGreen,
+                    style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
+                )
+                .scaleEffect(1.35)
+                .animation(.easeOut(duration: 0.35), value: isChecked)
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
 /// Rounded-full bordered chip; the selected chip fills with ink (or the provided
 /// fill) and flips to paper-colored text. Tap targets stay at least 44 points tall.
 struct JournalChip: View {
