@@ -5,6 +5,7 @@ struct RestrictionManagementView: View {
 
     @State private var profiles: [RestrictionProfile] = []
     @State private var editingProfile: RestrictionProfile?
+    @State private var profilePendingDeletion: RestrictionProfile?
     @State private var errorMessage: String?
 
     var body: some View {
@@ -34,7 +35,7 @@ struct RestrictionManagementView: View {
                     }
                     .swipeActions {
                         Button("Delete", role: .destructive) {
-                            Task { await delete(profile) }
+                            profilePendingDeletion = profile
                         }
                     }
                 }
@@ -71,12 +72,32 @@ struct RestrictionManagementView: View {
         } message: {
             Text(errorMessage ?? "Unknown error")
         }
+        .confirmationDialog(
+            "Delete this restriction?",
+            isPresented: deletionIsPresented,
+            titleVisibility: .visible,
+            presenting: profilePendingDeletion
+        ) { profile in
+            Button("Delete restriction", role: .destructive) {
+                Task { await delete(profile) }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("This removes the restriction and its injury entry. This cannot be undone.")
+        }
     }
 
     private var errorIsPresented: Binding<Bool> {
         Binding(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
+        )
+    }
+
+    private var deletionIsPresented: Binding<Bool> {
+        Binding(
+            get: { profilePendingDeletion != nil },
+            set: { if !$0 { profilePendingDeletion = nil } }
         )
     }
 
@@ -104,6 +125,7 @@ struct RestrictionManagementView: View {
     private func delete(_ profile: RestrictionProfile) async {
         do {
             try await repository.deleteRestriction(id: profile.id)
+            profilePendingDeletion = nil
             profiles = try await repository.restrictions()
         } catch {
             errorMessage = error.localizedDescription
@@ -113,6 +135,7 @@ struct RestrictionManagementView: View {
 
 private struct RestrictionEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State private var profile: RestrictionProfile
     let onSave: (RestrictionProfile) async -> Void
 
@@ -129,12 +152,16 @@ private struct RestrictionEditorView: View {
             Form {
                 Section("Injury") {
                     TextField("Name", text: $profile.injuryName)
+                        .formKeyboardField()
                     TextField("Body region", text: $profile.bodyRegion)
+                        .formKeyboardField()
                     TextField("Side", text: $profile.side)
+                        .formKeyboardField()
                 }
                 Section("Restriction") {
                     Toggle("Active", isOn: $profile.isActive)
                     TextField("Movement or demand", text: $profile.movementTag)
+                        .formKeyboardField()
                     Picker("Level", selection: $profile.level) {
                         ForEach(RestrictionLevel.allCases) { level in
                             Text(level.displayName).tag(level)
@@ -146,15 +173,21 @@ private struct RestrictionEditorView: View {
                         in: 0...10
                     )
                     TextField("Rationale", text: $profile.rationale, axis: .vertical)
+                        .formKeyboardField(dismissOnSubmit: false)
                 }
             }
             .navigationTitle("Restriction")
+            .formKeyboardScope($focusedField)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        focusedField = nil
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        focusedField = nil
                         Task {
                             await onSave(profile)
                             dismiss()

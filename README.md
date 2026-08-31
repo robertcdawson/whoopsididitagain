@@ -28,7 +28,7 @@ something more interesting with it than scroll the official app.
 
 ## Status
 
-✅ **Milestone 5 trends and weekly review.** The Train tab accepts raw
+✅ **Milestone 6 Personal Experiment Laboratory.** The Train tab accepts raw
 CrossFit, weightlifting, and conditioning text; produces a schema-validated,
 editable plan; reports unresolved ambiguity instead of inventing details; and
 checks canonical movement demands against active restrictions. Candidate
@@ -36,6 +36,10 @@ substitutions explain the stimulus they preserve and the specificity they trade
 away. Planned work and actual completion are stored separately, including
 session RPE, movement modifications, and pain response. The deterministic
 parser works locally without an LLM.
+
+The current phone build uses the improved built-in workout parser. Apple-model research is retained
+in the repository but cannot be enabled in normal app runs while its accuracy gate remains unmet.
+See [parser evaluation and rollout status](docs/APPLE_WORKOUT_PARSER.md).
 
 The app now merges its bundled catalog with a personal, on-device movement
 library. Stable facts such as names, aliases, category, equipment, supported
@@ -48,6 +52,23 @@ history, and descriptive pain-by-movement summaries. Its versioned weekly
 review always reports sample size or insufficient data, uses association—not
 causal—language, and works without an LLM. JSON and CSV sharing excludes
 credentials and raw API payloads.
+
+An off-by-default experimental feature now adds a local Personal Experiment
+Laboratory. It records intervention and comparison days, resolves supported
+outcomes from existing WHOOP, Apple Health, workout, and morning check-in
+history, and withholds the difference until both conditions meet the configured
+minimum. One daily check-in can update every active experiment. Conditions are
+explicitly described as what actually happened, and each experiment visibly
+uses either the same-day or following-day outcome. Excluded days remain
+auditable, and every result is labeled as a descriptive association rather than
+a causal or medical conclusion. Logged experiment days and whole experiments
+can be permanently deleted with confirmation.
+
+Redesign phases 1–2 are integrated with that foundation: Train also accepts PT
+protocols through photo, paste, or on-device dictation and offers tap-chip review;
+Today generates a daily docket from protocol recurrence, planned workouts, and
+sleep wind-down. The four-tab navigation and existing experiment and workout
+editing flows remain available. See [branch integration and safe Xcode update](docs/BRANCH_INTEGRATION.md).
 
 ## Architecture
 
@@ -83,17 +104,17 @@ npm run dev
 The health endpoint does not require credentials. WHOOP connection routes do.
 Open
 `ios/WhoopsApp/WhoopsApp.xcodeproj` in Xcode and run the `WhoopsApp` scheme.
-The Today tab can call a backend running at `http://localhost:3000`. The iOS
-Simulator uses that URL by default. For a physical iPhone, set the
-`WHOOPS_BACKEND_URL` scheme environment variable to an HTTPS URL reachable by
-the phone.
+Installed builds call `https://whoopsididitagain-backend.vercel.app`. Local development can
+override that endpoint with the `WHOOPS_BACKEND_URL` scheme environment variable.
 
 On the iPhone, open Settings in the app and choose **Allow Apple Health read
 access**. Every requested category is optional; importing continues for any
 categories you allow. After the system permission sheet is completed, the app
 shows **Connected**; that means the read-only connection was set up, not that
 Apple disclosed permission for every category. The integration never writes to
-Apple Health.
+Apple Health. The initial import covers the latest 180 days and commits anchored
+results in bounded pages so a large Apple Health store is never materialized in
+one in-memory result set.
 
 For daily planning, review the seeded restrictions and sleep schedule in the
 app's Settings tab, then complete the morning check-in on Today. The resulting

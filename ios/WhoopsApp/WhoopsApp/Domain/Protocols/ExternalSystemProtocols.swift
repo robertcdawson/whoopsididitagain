@@ -25,7 +25,15 @@ protocol HealthKitRepository: Sendable {
     func requestReadAuthorization() async throws
     func synchronize() async throws -> HealthKitSyncSummary
     func history() async throws -> HealthKitHistorySnapshot
+    func history(metrics: [HealthMetric]) async throws -> HealthKitHistorySnapshot
+    func includedMetrics() async -> Set<HealthMetric>
+    func setMetric(_ metric: HealthMetric, included: Bool) async
     func startObserving() async
+}
+
+protocol HealthMetricInclusionStoring: Sendable {
+    func includedMetrics() -> Set<HealthMetric>
+    func setMetric(_ metric: HealthMetric, included: Bool)
 }
 
 protocol HealthKitReading: Sendable {
@@ -62,6 +70,7 @@ protocol WorkoutRepository: Sendable {
     func deletePlan(id: String) async throws
     func completedWorkouts() async throws -> [CompletedWorkout]
     func saveCompletedWorkout(_ workout: CompletedWorkout) async throws
+    func deleteCompletedWorkout(id: String) async throws
 }
 
 protocol MovementLibraryRepository: Sendable {
@@ -100,6 +109,7 @@ protocol AssessmentRepository: Sendable {
     func checkIn(for day: String) async throws -> MorningCheckIn?
     func checkIns() async throws -> [MorningCheckIn]
     func saveCheckIn(_ checkIn: MorningCheckIn) async throws
+    func deleteCheckIn(day: String) async throws
     func restrictions() async throws -> [RestrictionProfile]
     func saveRestriction(_ restriction: RestrictionProfile) async throws
     func deleteRestriction(id: String) async throws
@@ -114,6 +124,17 @@ protocol AssessmentRepository: Sendable {
         recommendation: ReadinessAssessment.Recommendation?,
         note: String?
     ) async throws
+}
+
+protocol ExperimentRepository: Sendable {
+    func experiments(includeArchived: Bool) async throws -> [ExperimentDefinition]
+    func saveExperiment(_ experiment: ExperimentDefinition) async throws
+    func deleteExperiment(id: String) async throws
+    func observations(experimentID: String) async throws -> [ExperimentObservation]
+    func saveObservation(_ observation: ExperimentObservation) async throws
+    func replaceObservation(id: String, with observation: ExperimentObservation) async throws
+    func saveObservations(_ observations: [ExperimentObservation]) async throws
+    func deleteObservation(id: String) async throws
 }
 
 protocol InsightNarrator: Sendable {

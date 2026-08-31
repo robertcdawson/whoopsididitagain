@@ -70,6 +70,7 @@ struct DocketView: View {
         }
         .sensoryFeedback(.success, trigger: completionCount)
         .task(id: sleepDeadline) { await reload() }
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("docket-card")
     }
 

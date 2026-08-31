@@ -89,22 +89,138 @@ struct HealthKitPersistenceResult: Sendable {
     let linkedWorkoutCount: Int
 }
 
-@MainActor
 final class HealthKitPersistence: @unchecked Sendable {
-    private let context: ModelContext
+    private struct DailyAccumulator {
+        var restingHeartRateTotal = 0.0
+        var restingHeartRateCount = 0
+        var hrvTotal = 0.0
+        var hrvCount = 0
+        var respiratoryRateTotal = 0.0
+        var respiratoryRateCount = 0
+        var oxygenSaturationTotal = 0.0
+        var oxygenSaturationCount = 0
+        var sleepMinutes = 0.0
+        var hasSleep = false
+        var activeEnergy = 0.0
+        var hasActiveEnergy = false
+        var exerciseMinutes = 0.0
+        var hasExerciseMinutes = false
+        var workoutCount = 0
+        var sources: Set<String> = []
+
+        mutating func add(_ record: HealthKitSourceRecord) {
+            sources.insert(record.sourceName)
+            guard let metric = HealthMetric(rawValue: record.metric) else { return }
+            switch metric {
+            case .restingHeartRate:
+                Self.addAverage(
+                    record.value,
+                    total: &restingHeartRateTotal,
+                    count: &restingHeartRateCount
+                )
+            case .hrvSDNN:
+                Self.addAverage(record.value, total: &hrvTotal, count: &hrvCount)
+            case .respiratoryRate:
+                Self.addAverage(
+                    record.value,
+                    total: &respiratoryRateTotal,
+                    count: &respiratoryRateCount
+                )
+            case .oxygenSaturation:
+                Self.addAverage(
+                    record.value,
+                    total: &oxygenSaturationTotal,
+                    count: &oxygenSaturationCount
+                )
+            case .sleepAnalysis:
+                Self.addSum(record.value, total: &sleepMinutes, hasValue: &hasSleep)
+            case .activeEnergy:
+                Self.addSum(record.value, total: &activeEnergy, hasValue: &hasActiveEnergy)
+            case .exerciseTime:
+                Self.addSum(
+                    record.value,
+                    total: &exerciseMinutes,
+                    hasValue: &hasExerciseMinutes
+                )
+            case .workout:
+                workoutCount += 1
+            case .heartRate, .walkingRunningDistance, .cyclingDistance, .vo2Max, .bodyMass,
+                .sleepingWristTemperature:
+                break
+            }
+        }
+
+        func summary(day: String) -> HealthKitDailySummary {
+            HealthKitDailySummary(
+                id: day,
+                day: day,
+                restingHeartRate: average(restingHeartRateTotal, restingHeartRateCount),
+                hrvSDNNMilliseconds: average(hrvTotal, hrvCount),
+                respiratoryRate: average(respiratoryRateTotal, respiratoryRateCount),
+                oxygenSaturationPercent: average(
+                    oxygenSaturationTotal,
+                    oxygenSaturationCount
+                ),
+                sleepMinutes: hasSleep ? Int(sleepMinutes.rounded()) : nil,
+                activeEnergyKilocalories: hasActiveEnergy ? activeEnergy : nil,
+                exerciseMinutes: hasExerciseMinutes ? exerciseMinutes : nil,
+                workoutCount: workoutCount,
+                sources: sources.sorted()
+            )
+        }
+
+        private func average(_ total: Double, _ count: Int) -> Double? {
+            count == 0 ? nil : total / Double(count)
+        }
+
+        private static func addAverage(
+            _ value: Double?,
+            total: inout Double,
+            count: inout Int
+        ) {
+            guard let value else { return }
+            total += value
+            count += 1
+        }
+
+        private static func addSum(
+            _ value: Double?,
+            total: inout Double,
+            hasValue: inout Bool
+        ) {
+            guard let value else { return }
+            total += value
+            hasValue = true
+        }
+    }
+
+    private static let historyPageSize = 500
+    private let container: ModelContainer
 
     init(container: ModelContainer) {
-        context = ModelContext(container)
-        context.autosaveEnabled = false
+        self.container = container
     }
 
     func apply(
         _ batch: HealthKitChangeBatch,
-        importedAt: Date
+        importedAt: Date,
+        linkWorkouts: Bool = true
     ) throws -> HealthKitPersistenceResult {
-        let existing = try context.fetch(FetchDescriptor<HealthKitSourceRecord>())
-        var recordsByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+        let context = ModelContext(container)
+        context.autosaveEnabled = false
         var deletedCount = 0
+        let requestedRecordIDs = Array(
+            Set(
+                batch.samples.map { HealthKitSourceRecord.recordID(for: $0.id) }
+                    + batch.deletedSampleIDs.map(HealthKitSourceRecord.recordID(for:))
+            )
+        )
+        let existingRecords = try context.fetch(
+            FetchDescriptor<HealthKitSourceRecord>(
+                predicate: #Predicate { requestedRecordIDs.contains($0.id) }
+            )
+        )
+        var recordsByID = Dictionary(uniqueKeysWithValues: existingRecords.map { ($0.id, $0) })
 
         for sampleID in batch.deletedSampleIDs {
             let recordID = HealthKitSourceRecord.recordID(for: sampleID)
@@ -119,14 +235,15 @@ final class HealthKitPersistence: @unchecked Sendable {
             if let record = recordsByID[recordID] {
                 record.update(from: snapshot, importedAt: importedAt)
             } else {
-                let record = HealthKitSourceRecord(snapshot: snapshot, importedAt: importedAt)
-                context.insert(record)
-                recordsByID[recordID] = record
+                context.insert(HealthKitSourceRecord(snapshot: snapshot, importedAt: importedAt))
             }
         }
 
         try context.save()
-        let linkedWorkoutCount = try linkLikelyDuplicateWorkouts(at: importedAt)
+        let linkedWorkoutCount =
+            linkWorkouts
+            ? try linkLikelyDuplicateWorkouts(at: importedAt, in: context)
+            : try context.fetchCount(FetchDescriptor<WorkoutSourceLink>())
         return HealthKitPersistenceResult(
             importedCount: batch.samples.count,
             deletedCount: deletedCount,
@@ -134,43 +251,70 @@ final class HealthKitPersistence: @unchecked Sendable {
         )
     }
 
-    func history(limit: Int = 180) throws -> HealthKitHistorySnapshot {
-        let records = try context.fetch(FetchDescriptor<HealthKitSourceRecord>())
-        let links = try context.fetch(FetchDescriptor<WorkoutSourceLink>())
-        let grouped = Dictionary(grouping: records, by: \.localDay)
-        let days = grouped.keys.sorted(by: >).prefix(limit).map { day in
-            let dailyRecords = grouped[day, default: []]
-            return HealthKitDailySummary(
-                id: day,
-                day: day,
-                restingHeartRate: Self.average(dailyRecords, metric: .restingHeartRate),
-                hrvSDNNMilliseconds: Self.average(dailyRecords, metric: .hrvSDNN),
-                respiratoryRate: Self.average(dailyRecords, metric: .respiratoryRate),
-                oxygenSaturationPercent: Self.average(dailyRecords, metric: .oxygenSaturation),
-                sleepMinutes: Self.sum(dailyRecords, metric: .sleepAnalysis).map {
-                    Int($0.rounded())
+    func history(
+        limit: Int = 180,
+        metrics: [HealthMetric] = HealthMetric.summaryMetrics
+    ) throws -> HealthKitHistorySnapshot {
+        let metadataContext = ModelContext(container)
+        let cutoff =
+            Calendar.autoupdatingCurrent.date(byAdding: .day, value: -limit, to: .now)
+            ?? .distantFuture
+
+        var grouped: [String: DailyAccumulator] = [:]
+        let metricNames = Array(Set(metrics)).map(\.rawValue)
+        var lastRecordID = ""
+        while true {
+            let context = ModelContext(container)
+            var descriptor = FetchDescriptor<HealthKitSourceRecord>(
+                predicate: #Predicate {
+                    $0.startAt >= cutoff && metricNames.contains($0.metric)
+                        && $0.id > lastRecordID
                 },
-                activeEnergyKilocalories: Self.sum(dailyRecords, metric: .activeEnergy),
-                exerciseMinutes: Self.sum(dailyRecords, metric: .exerciseTime),
-                workoutCount: dailyRecords.filter { $0.metric == HealthMetric.workout.rawValue }
-                    .count,
-                sources: Array(Set(dailyRecords.map(\.sourceName))).sorted()
+                sortBy: [SortDescriptor(\.id)]
             )
+            descriptor.fetchLimit = Self.historyPageSize
+            let records = try context.fetch(descriptor)
+            for record in records {
+                grouped[record.localDay, default: DailyAccumulator()].add(record)
+            }
+            guard records.count == Self.historyPageSize, let finalID = records.last?.id else {
+                break
+            }
+            lastRecordID = finalID
         }
+        let days = grouped.keys.sorted(by: >).prefix(limit).map {
+            grouped[$0, default: DailyAccumulator()].summary(day: $0)
+        }
+
+        var lastSyncDescriptor = FetchDescriptor<HealthKitSourceRecord>(
+            sortBy: [SortDescriptor(\.lastImportedAt, order: .reverse)]
+        )
+        lastSyncDescriptor.fetchLimit = 1
 
         return HealthKitHistorySnapshot(
             days: days,
-            lastSyncAt: records.map(\.lastImportedAt).max(),
-            recordCount: records.count,
-            linkedWorkoutCount: links.count
+            lastSyncAt: try metadataContext.fetch(lastSyncDescriptor).first?.lastImportedAt,
+            recordCount: try metadataContext.fetchCount(FetchDescriptor<HealthKitSourceRecord>()),
+            linkedWorkoutCount: try metadataContext.fetchCount(FetchDescriptor<WorkoutSourceLink>())
         )
     }
 
-    private func linkLikelyDuplicateWorkouts(at linkedAt: Date) throws -> Int {
-        let healthKitWorkouts = try context.fetch(FetchDescriptor<HealthKitSourceRecord>())
-            .filter { $0.metric == HealthMetric.workout.rawValue }
-        let whoopWorkouts = try context.fetch(FetchDescriptor<WhoopSourceRecord>())
-            .filter { $0.resourceType == WhoopResourceType.workout.rawValue }
+    private func linkLikelyDuplicateWorkouts(
+        at linkedAt: Date,
+        in context: ModelContext
+    ) throws -> Int {
+        let workoutMetric = HealthMetric.workout.rawValue
+        let whoopWorkoutType = WhoopResourceType.workout.rawValue
+        let healthKitWorkouts = try context.fetch(
+            FetchDescriptor<HealthKitSourceRecord>(
+                predicate: #Predicate { $0.metric == workoutMetric }
+            )
+        )
+        let whoopWorkouts = try context.fetch(
+            FetchDescriptor<WhoopSourceRecord>(
+                predicate: #Predicate { $0.resourceType == whoopWorkoutType }
+            )
+        )
         let existingLinks = try context.fetch(FetchDescriptor<WorkoutSourceLink>())
         var linkIDs = Set(existingLinks.map(\.id))
 
@@ -209,23 +353,5 @@ final class HealthKitPersistence: @unchecked Sendable {
 
         try context.save()
         return linkIDs.count
-    }
-
-    private static func average(
-        _ records: [HealthKitSourceRecord],
-        metric: HealthMetric
-    ) -> Double? {
-        let values = records.filter { $0.metric == metric.rawValue }.compactMap(\.value)
-        guard !values.isEmpty else { return nil }
-        return values.reduce(0, +) / Double(values.count)
-    }
-
-    private static func sum(
-        _ records: [HealthKitSourceRecord],
-        metric: HealthMetric
-    ) -> Double? {
-        let values = records.filter { $0.metric == metric.rawValue }.compactMap(\.value)
-        guard !values.isEmpty else { return nil }
-        return values.reduce(0, +)
     }
 }

@@ -2,16 +2,24 @@ import SwiftUI
 
 struct MorningCheckInView: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State private var checkIn: MorningCheckIn
     @State private var isSaving = false
+    @State private var isConfirmingDeletion = false
+    let isExisting: Bool
     let onSave: (MorningCheckIn) async -> Bool
+    let onDelete: (String) async -> Bool
 
     init(
         checkIn: MorningCheckIn,
-        onSave: @escaping (MorningCheckIn) async -> Bool
+        isExisting: Bool,
+        onSave: @escaping (MorningCheckIn) async -> Bool,
+        onDelete: @escaping (String) async -> Bool
     ) {
         _checkIn = State(initialValue: checkIn)
+        self.isExisting = isExisting
         self.onSave = onSave
+        self.onDelete = onDelete
     }
 
     var body: some View {
@@ -37,16 +45,34 @@ struct MorningCheckInView: View {
 
                 Section("Optional context") {
                     TextField("Notes", text: $checkIn.notes, axis: .vertical)
+                        .formKeyboardField(dismissOnSubmit: false)
+                        .accessibilityIdentifier("check-in-notes")
                         .lineLimit(2...5)
+                }
+
+                if isExisting {
+                    Section {
+                        Button("Delete this check-in", role: .destructive) {
+                            focusedField = nil
+                            isConfirmingDeletion = true
+                        }
+                    } footer: {
+                        Text("Deleting removes your symptom answers for this day.")
+                    }
                 }
             }
             .navigationTitle("Morning Check-In")
+            .formKeyboardScope($focusedField)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        focusedField = nil
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        focusedField = nil
                         Task {
                             isSaving = true
                             checkIn.timestamp = .now
@@ -56,6 +82,20 @@ struct MorningCheckInView: View {
                     }
                     .disabled(isSaving)
                 }
+            }
+            .confirmationDialog(
+                "Delete this morning check-in?",
+                isPresented: $isConfirmingDeletion,
+                titleVisibility: .visible
+            ) {
+                Button("Delete check-in", role: .destructive) {
+                    Task {
+                        if await onDelete(checkIn.day) { dismiss() }
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Your answers will be removed. This cannot be undone.")
             }
         }
     }
@@ -81,19 +121,23 @@ struct MorningCheckInView: View {
 
 struct AssessmentOverrideView: View {
     @Environment(\.dismiss) private var dismiss
+    @FocusState private var focusedField: UUID?
     @State private var recommendation: ReadinessAssessment.Recommendation
     @State private var note: String
     @State private var isSaving = false
-    let onSave: (ReadinessAssessment.Recommendation, String) async -> Bool
+    @State private var isConfirmingRemoval = false
+    let hasSavedOverride: Bool
+    let onSave: (ReadinessAssessment.Recommendation?, String?) async -> Bool
 
     init(
         assessment: ReadinessAssessment,
-        onSave: @escaping (ReadinessAssessment.Recommendation, String) async -> Bool
+        onSave: @escaping (ReadinessAssessment.Recommendation?, String?) async -> Bool
     ) {
         _recommendation = State(
             initialValue: assessment.userOverride ?? assessment.recommendation
         )
         _note = State(initialValue: assessment.overrideNote ?? "")
+        hasSavedOverride = assessment.userOverride != nil || assessment.overrideNote != nil
         self.onSave = onSave
     }
 
@@ -107,16 +151,32 @@ struct AssessmentOverrideView: View {
                         }
                     }
                     TextField("Why are you overriding it?", text: $note, axis: .vertical)
+                        .formKeyboardField(dismissOnSubmit: false)
                         .lineLimit(2...5)
+                }
+                if hasSavedOverride {
+                    Section {
+                        Button("Remove override", role: .destructive) {
+                            focusedField = nil
+                            isConfirmingRemoval = true
+                        }
+                    } footer: {
+                        Text("The app will use its calculated recommendation again.")
+                    }
                 }
             }
             .navigationTitle("Override Recommendation")
+            .formKeyboardScope($focusedField)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        focusedField = nil
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
+                        focusedField = nil
                         Task {
                             isSaving = true
                             if await onSave(recommendation, note) { dismiss() }
@@ -125,6 +185,22 @@ struct AssessmentOverrideView: View {
                     }
                     .disabled(isSaving || note.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+            }
+            .confirmationDialog(
+                "Remove your override?",
+                isPresented: $isConfirmingRemoval,
+                titleVisibility: .visible
+            ) {
+                Button("Remove override", role: .destructive) {
+                    Task {
+                        isSaving = true
+                        if await onSave(nil, nil) { dismiss() }
+                        isSaving = false
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Your override and note will be deleted.")
             }
         }
     }

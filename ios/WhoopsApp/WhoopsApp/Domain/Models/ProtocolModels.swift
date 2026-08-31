@@ -213,7 +213,7 @@ struct ProtocolReviewItem: Equatable, Identifiable, Sendable {
             loadValue: loadValue,
             loadUnit: loadUnit,
             percentageOfOneRepMax: nil,
-            durationSeconds: durationSeconds,
+            durationSeconds: durationSeconds.map(Double.init),
             tempo: nil,
             notes: notes
         )

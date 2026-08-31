@@ -376,12 +376,74 @@ lines should become interval structure through `restSeconds`, not manual
 movement rows. Heart-rate targets and intended RPE ranges should be preserved
 as editable workout context and must not be treated as movements.
 
+Leading list bullets, spelled-out AMRAP, and pound-symbol load notation should be accepted without
+changing the source text. Explicit reported-result lines such as `Score:` stay separate from planned
+movements, rounds, durations, and stimulus targets. An unambiguous rounds-plus-reps score populates
+editable Completed rounds and Additional reps fields. In one rep-based AMRAP/rounds segment, code
+calculates movement totals in written order and prefills actual repetitions for review; mixed-unit,
+multi-segment, or inconsistent scores require manual totals. Unsupported scores remain in notes.
+Each movement's reported total is editable independently of prescribed reps and the round/repetition
+score. Explicit corrections (including zero) survive score changes and saving, are labeled as edited,
+and can be reset to the calculated count. Keep corrections outside parser output, keyed by movement
+identity on the reviewed plan; a duplicated prescription does not copy a manual correction. Actual-work
+logging uses corrected counts first, calculated counts second, and leaves unknown totals blank.
+Parsing a reported score must not silently record actual completion. Explicit overhead/American
+kettlebell swings are recognized separately from unspecified swing variants; unknown movements
+must remain visibly unevaluated against active restrictions.
+
 Recovery has two mutually exclusive representations. On a non-rest segment,
 `restSeconds` is one uniform recovery applied between its repeated rounds or
 efforts. A dedicated rest segment instead uses `durationSeconds`, contains no
 movements or rounds, and cannot also set `restSeconds`. Variable recovery is
 represented with separate rest segments in sequence rather than conflicting
 values on one segment.
+
+Workout time caps, segment/rest durations, and movement durations are edited and displayed in minutes
+with up to two decimal places. Fractional seconds remain lossless in storage. Load-unit editors offer
+lbs and kg, storing canonical `lb` and `kg`; changing the unit corrects its label, not the load number.
+Duplicating a movement inserts an independent prescription immediately after its source, with all
+fields copied and a new identity. Movement order must survive saving because partial-round totals
+depend on it. Existing whole-second records remain readable without deleting the app's data.
+
+Both planned and completed workout details must expose an Edit action. Completed sessions remain
+editable after saving: title, date/start/end, decimal-minute duration, RPE, post-session pain, notes,
+score, and every actual movement value. Allow actual movement addition, duplication, removal, and
+reordering. Save updates the same record; Cancel discards the draft. Moving a start preserves elapsed
+duration, changing an end updates duration, and changing duration moves the end. Never regenerate
+saved actual values from a plan or overwrite movement totals when a score is edited. Keep generated
+identities, source provenance, and calculated restriction assessments system-managed. See
+`WORKOUT_EDITING.md` for the complete field audit and edit semantics.
+
+### On-device parser prototype (August 30, 2026)
+
+Apple Foundation Models is the selected optional provider for workout extraction. Use the system
+on-device model on supported iOS versions, without sending workouts or health history to a server.
+The staged model analyzes exactly one source line per fresh, sequential session, returning one
+explicit label (for example `exercise_line` versus `strength_header`). Code maps that label to
+role/format fields. Deterministic code extracts source-quoted quantities, owns source IDs/order and
+segment assembly, verifies evidence, converts units, resolves the merged movement catalog, validates
+the domain payload, and performs all restriction checks. Explicit reported results remain separate
+from prescriptions.
+
+Keep the current parser and manual editor available. Show which parser produced a draft and explain
+fallback when the model is unavailable, takes too long, produces invalid output, or drops source
+quantities/lines. Initial live testing failed the accuracy gate; keep Apple parsing experimental and
+unavailable in normal app runs. For this phone update, normal app wiring uses only the built-in parser,
+ignores any old Apple opt-in preference, and hides the Apple controls. Synthetic simulator tests retain
+the opt-in/cancel/review workflow; the standalone Mac harness retains live-model evaluation.
+Evaluate live model accuracy on synthetic workouts separately from mocked boundary tests,
+then confirm latency and memory on the physical iPhone. No automated rewrite of saved workouts,
+cloud parsing, fine-tuning, or generative readiness advice is included in this slice.
+
+Do not enable the prototype on the phone until a revised extraction design passes live quality
+checks. Built-in-parser phone updates can proceed with the prototype inaccessible. The first
+single-pass candidate matched 3 of 30 synthetic fixtures; smaller prompt variants
+did not improve the six-case targeted sample. This measures this prototype, not overall Apple model
+quality. See `docs/APPLE_WORKOUT_PARSER.md` for reproducible evaluation and acceptance status.
+The staged replacement retains a single 20-second deadline across at most 16 parts, with 40 response
+tokens per part. Failed parts discard the entire draft and trigger an explained built-in fallback.
+Do not let mocked staged-assembly success or deterministic quantity extraction conceal model
+classification errors. Compare the original fixture expectations plus independent new examples.
 
 ### Movement Taxonomy
 
@@ -1322,6 +1384,12 @@ Request only the types actually used by enabled features.
 
 Use anchored queries for incremental retrieval and observer queries for background change notification.
 
+Observer registration must be idempotent before its first suspension point. Manual refreshes and
+observer callbacks share one cancellation-aware import queue covering query, persistence, and
+anchor advancement across all pages. History reads remain available while a query is suspended,
+and notifications consumed by the UI are delivered on the main actor. Preserve existing history,
+permissions, and anchors when addressing startup failures; see `HEALTHKIT_STABILITY.md`.
+
 ## 11.5 Source Precedence
 
 Use explicit source rules rather than indiscriminately blending records.
@@ -2102,6 +2170,11 @@ Support:
 - Plain-language summaries
 - Accessible charts with textual equivalents
 
+Text-entry screens should own their SwiftUI focus state and clear it when saving, cancelling,
+leaving the screen, or backgrounding the app. Presenting and dismissing a sheet must not restore
+focus to its underlying text field. Provide a keyboard Done action and scroll dismissal, retain
+newlines in multiline notes, and avoid global responder broadcasts or tap gestures that steal input.
+
 ### 18.3 Data Freshness
 
 Every important screen should show:
@@ -2327,7 +2400,8 @@ whoops-i-did-it-again/
 - A Rest segment has one required duration and cannot contain movements, rounds, or another rest
   value.
 - Saved planned workouts and recent completed workouts can be tapped to inspect their full,
-  read-only structure and recorded values without entering an edit flow.
+  read-only structure and recorded values without entering an edit flow. Both detail screens also
+  expose an Edit action for corrections; saving updates the existing record rather than a copy.
 
 ---
 
@@ -2402,6 +2476,95 @@ The existing narration boundary remains optional and downstream of the structure
 ---
 
 ## Milestone 6: Advanced Personal Analytics
+
+**Implementation status:** Initial slice complete as of August 22, 2026, with the acceptance-driven
+logging and outcome-timing simplification defined below. The initial shippable scope is the
+feature-flagged Personal Experiment Laboratory; the remaining candidates stay deferred until their
+data requirements and validation thresholds are met.
+
+### Initial Deliverables
+
+- Local experiment definitions with a question, hypothesis, intervention, comparison condition,
+  primary outcome, secondary outcomes, inclusion and exclusion criteria, minimum observations,
+  potential confounders, analysis method, dates, and status.
+- One daily experiment check-in that can classify the day across every active experiment in one
+  save, while still allowing an individual day to be backfilled or corrected from an experiment.
+- Low-friction condition observations that reuse an outcome already stored by the app rather than
+  requiring the user to transcribe WHOOP or Apple Health values.
+- Deterministic intervention-versus-comparison summaries with separate sample sizes, means, an
+  observed difference, an evidence-status label, and explicit caveats.
+- Editable inclusion state, exclusion reason, confounders, and notes so a day can be corrected or
+  excluded without deleting its audit trail.
+- A local feature flag, disabled by default, with a plain-language experimental-data warning.
+
+### Initial Definition of Done
+
+- An experiment and its observations survive app relaunch.
+- Supported outcomes resolve by local calendar day from normalized WHOOP, Apple Health, completed
+  workout, or morning check-in history, using an explicit same-day or following-day measurement
+  rule; missing values remain visibly missing.
+- The analysis requires the configured minimum included observations in both conditions before
+  showing an observed difference.
+- Results use association language, report both condition counts, identify missing outcomes, and do
+  not calculate or imply causality, treatment efficacy, diagnosis, or medical advice.
+- Excluding an observation retains it with its reason and immediately removes it from analysis.
+- A logged condition day can be permanently deleted and immediately leaves the analysis. Deleting
+  an experiment also deletes the condition days owned by it after explicit confirmation.
+- Feature-disabled installations do not expose the laboratory in normal navigation.
+- Models, persistence, outcome resolution, analysis, feature gating, and the primary UI path have
+  automated coverage.
+- The app explains that a condition classifies what actually happened on the selected day rather
+  than scheduling a future action.
+- Condition-day summaries show the experiment's actual condition text, not generic intervention
+  and comparison labels.
+- The configured minimum is visibly described as a per-condition requirement and the detail view
+  states how many usable days remain in each condition. Logged assignments remain visibly distinct
+  from assignments with a resolved outcome, including a source-specific explanation when an
+  outcome is unavailable.
+
+### Simplified implementation contract
+
+- `experiments-1.1.0` is a deterministic local calculation. It reports arithmetic means and the
+  intervention mean minus the comparison mean in the selected metric's native unit.
+- `minimumObservations` means the minimum number of included observations with resolved outcomes
+  required **per condition**. Before that threshold, the result is `Insufficient data` and no
+  difference is displayed. The user-selectable minimum begins at two, so the smallest complete
+  comparison contains four usable condition days.
+- A condition assignment is retrospective: it records which condition actually occurred on the
+  selected local day. It is not a promise, reminder, or scheduled assignment.
+- Each experiment explicitly measures its outcome on either the condition day or the following
+  local day. Morning physiology, sleep, and morning check-in outcomes default to the following day;
+  completed-workout session load defaults to the same day. The choice remains visible and editable.
+- One observation represents one experiment, local calendar day, and assigned condition. Saving the
+  same experiment and day intentionally updates that observation instead of creating a duplicate.
+- Changing an existing condition day's date moves that observation instead of creating a copy. A
+  move to a date that already has an observation is blocked rather than overwriting either entry.
+- The primary logging path presents all active experiments in one daily check-in and saves their
+  selected conditions in one action. It is available from Today and Experiment Lab. `Not recorded`
+  leaves that experiment unchanged. Individual day editing remains available for backfill,
+  correction, context, and exclusion.
+- New experiments start active so their conditions immediately appear in the daily check-in; the
+  user may deliberately change the status to draft, completed, or archived.
+- Standalone user-entered history has a plain-language, confirmed delete or clear action. Shared
+  movement definitions remain archivable because saved workouts may refer to them; the app states
+  why it keeps those definitions.
+- The first supported primary outcomes are WHOOP Recovery, WHOOP resting heart rate, WHOOP HRV
+  RMSSD, sleep duration with WHOOP-first Apple Health fallback, Apple HRV SDNN, respiratory rate,
+  oxygen saturation, completed-workout session load, and morning pain with movement.
+- Automatic values are snapshots of normalized local history at analysis time. Experiment records
+  contain the assignment and user context, not copies of raw vendor payloads or credentials.
+- Condition days load and save independently from outcome analysis. Analysis reads only the local
+  repository source required by the selected outcome and does not scan unrelated health samples.
+- Evidence status is descriptive: `Insufficient data` until the threshold is met, `Exploratory`
+  afterward, and `More observations recommended` when condition counts are materially imbalanced.
+  No p-value or confidence interval is presented in this first version.
+- Other Milestone 6 candidates remain out of scope for this slice: predictive dose-response,
+  interval pacing, anomaly notifications, natural-language queries, webhooks, new equipment,
+  clinical export, and matched-day causal adjustment.
+
+The implemented `experiments-1.1.0` engine, SwiftData repository, Settings flag, and native
+Experiment Lab satisfy this initial contract. Personal-device acceptance remains before the flag
+should be considered for default enablement.
 
 ### Candidate Deliverables
 
@@ -2508,14 +2671,14 @@ Simulator success is not sufficient.
 
 The MVP is complete when all of the following are true:
 
-- [ ] The app builds and runs on the owner’s iPhone.
-- [ ] WHOOP can be connected through OAuth.
-- [ ] The WHOOP client secret never appears in the iOS binary or repository.
-- [ ] WHOOP token rotation is handled securely and atomically.
-- [ ] At least 180 days of available WHOOP history can be imported.
-- [ ] WHOOP synchronization is paginated, incremental, and idempotent.
-- [ ] Selected Apple Health data can be imported with partial permissions.
-- [ ] WHOOP HRV and Apple Health SDNN remain distinct.
+- [x] The app builds and runs on the owner’s iPhone.
+- [x] WHOOP can be connected through OAuth.
+- [x] The WHOOP client secret never appears in the iOS binary or repository.
+- [x] WHOOP token rotation is handled securely and atomically.
+- [x] At least 180 days of available WHOOP history can be imported.
+- [x] WHOOP synchronization is paginated, incremental, and idempotent.
+- [x] Selected Apple Health data can be imported with partial permissions.
+- [x] WHOOP HRV and Apple Health SDNN remain distinct.
 - [ ] Imported data remains available offline.
 - [ ] The user can record morning pain, energy, stiffness, and motivation.
 - [ ] The app calculates personal baselines.

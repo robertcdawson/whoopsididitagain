@@ -1,6 +1,6 @@
 import Foundation
 
-enum HealthMetric: String, Codable, CaseIterable, Identifiable, Sendable {
+enum HealthMetric: String, Codable, CaseIterable, Hashable, Identifiable, Sendable {
     case heartRate
     case restingHeartRate
     case hrvSDNN
@@ -17,6 +17,19 @@ enum HealthMetric: String, Codable, CaseIterable, Identifiable, Sendable {
     case sleepingWristTemperature
 
     var id: String { rawValue }
+
+    static let summaryMetrics: [HealthMetric] = [
+        .restingHeartRate,
+        .hrvSDNN,
+        .respiratoryRate,
+        .oxygenSaturation,
+        .sleepAnalysis,
+        .activeEnergy,
+        .exerciseTime,
+        .workout,
+    ]
+
+    static let userSelectableMetrics: [HealthMetric] = summaryMetrics
 
     var displayName: String {
         switch self {
@@ -36,6 +49,28 @@ enum HealthMetric: String, Codable, CaseIterable, Identifiable, Sendable {
         case .sleepingWristTemperature: "Sleeping wrist temperature"
         }
     }
+
+    var inclusionDescription: String {
+        switch self {
+        case .restingHeartRate: "Used for readiness and recovery trends."
+        case .hrvSDNN: "Kept separate from WHOOP HRV RMSSD."
+        case .respiratoryRate: "Used for readiness and recovery trends."
+        case .oxygenSaturation: "Used for recovery trends."
+        case .sleepAnalysis: "Used only when direct WHOOP sleep is unavailable."
+        case .activeEnergy: "Available for daily activity summaries."
+        case .exerciseTime: "Available for daily activity summaries."
+        case .workout: "Used to link likely duplicate WHOOP workouts."
+        case .heartRate, .walkingRunningDistance, .cyclingDistance, .vo2Max, .bodyMass,
+            .sleepingWristTemperature:
+            "Retained for future source-specific analysis."
+        }
+    }
+}
+
+extension Notification.Name {
+    static let healthMetricInclusionDidChange = Notification.Name(
+        "whoops.healthMetricInclusionDidChange"
+    )
 }
 
 enum HealthKitAuthorizationState: String, Equatable, Sendable {
@@ -64,6 +99,7 @@ struct HealthKitChangeBatch: Equatable, Sendable {
     let samples: [HealthSampleSnapshot]
     let deletedSampleIDs: [UUID]
     let anchorData: Data
+    let hasMore: Bool
 }
 
 struct HealthKitDailySummary: Identifiable, Equatable, Sendable {

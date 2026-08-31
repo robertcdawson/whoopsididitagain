@@ -190,6 +190,24 @@ final class ProtocolIntakeTests: XCTestCase {
         XCTAssertTrue(evaluation.conflicts.contains { $0.severity == .hard })
     }
 
+    func testTimedProtocolPreservesDurationThroughWorkoutRestrictionBridge() async throws {
+        let parsed = try await DeterministicProtocolParser(catalog: ptCatalog).parse(
+            rawText: "Isometric tricep hold 5×30s daily", source: .paste
+        )
+        let review = ProtocolReviewItem(
+            parsed: try XCTUnwrap(parsed.items.first), defaultCadence: .daily
+        )
+        let saved = try XCTUnwrap(review.savedItem(order: 1))
+        let plan = try XCTUnwrap(
+            ProtocolRestrictionCheck.evaluationPlan(title: "Timed protocol", items: [review])
+        )
+        XCTAssertEqual(saved.sets, 5)
+        XCTAssertEqual(saved.durationSeconds, 30)
+        XCTAssertEqual(plan.movements.first?.durationSeconds, 30.0)
+        XCTAssertNil(plan.movements.first?.repetitions)
+        XCTAssertNil(plan.reportedResult)
+    }
+
     func testCadenceCodableRoundTrip() throws {
         let encoder = JSONEncoder()
         let decoder = JSONDecoder()

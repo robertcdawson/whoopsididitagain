@@ -6,6 +6,7 @@ struct SleepScheduleSettingsView: View {
     @State private var settings = SleepScheduleSettings.standard
     @State private var isSaving = false
     @State private var saved = false
+    @State private var isConfirmingReset = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -55,6 +56,14 @@ struct SleepScheduleSettingsView: View {
                     if isSaving { ProgressView() } else { Text(saved ? "Saved" : "Save schedule") }
                 }
                 .disabled(isSaving)
+                Button("Reset to default schedule", role: .destructive) {
+                    isConfirmingReset = true
+                }
+                .disabled(isSaving)
+            } footer: {
+                Text(
+                    "A schedule is needed to calculate your sleep deadline. Resetting removes your entries and restores the defaults."
+                )
             }
         }
         .navigationTitle("Sleep Schedule")
@@ -63,6 +72,18 @@ struct SleepScheduleSettingsView: View {
             Button("OK", role: .cancel) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "Unknown error")
+        }
+        .confirmationDialog(
+            "Reset your sleep schedule?",
+            isPresented: $isConfirmingReset,
+            titleVisibility: .visible
+        ) {
+            Button("Reset to defaults", role: .destructive) {
+                Task { await reset() }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your saved times will be replaced by the default schedule.")
         }
     }
 
@@ -111,6 +132,12 @@ struct SleepScheduleSettingsView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    @MainActor
+    private func reset() async {
+        settings = .standard
+        await save()
     }
 
     private static func duration(_ minutes: Int) -> String {

@@ -1,7 +1,7 @@
 import Foundation
 
 struct DeterministicWorkoutScalingEngine: WorkoutScalingEngine {
-    static let rulesetVersion = "workout-scaling-1.0.0"
+    static let rulesetVersion = "workout-scaling-1.0.1"
     let catalog: MovementCatalog
 
     init(catalog: MovementCatalog = .standard) {
@@ -16,7 +16,25 @@ struct DeterministicWorkoutScalingEngine: WorkoutScalingEngine {
         for movement in plan.movements {
             guard let movementID = movement.canonicalMovementID,
                 let item = catalog.item(id: movementID)
-            else { continue }
+            else {
+                for restriction in restrictions where restriction.isActive {
+                    conflicts.append(
+                        WorkoutConflict(
+                            id: "\(movement.id):\(restriction.id):unmapped",
+                            movementID: movement.id,
+                            restrictionID: restriction.id,
+                            severity: .caution,
+                            explanation:
+                                "\(movement.displayName) is not mapped to a reviewed movement, so it cannot be evaluated against the \(restriction.injuryName) restriction.",
+                            preservedStimulus:
+                                "Map or manually review this movement before relying on an automatic recommendation.",
+                            compromise: "The workout evaluation is incomplete for this movement.",
+                            substitutionCandidates: []
+                        )
+                    )
+                }
+                continue
+            }
             for restriction in restrictions where restriction.isActive {
                 if item.tags.isEmpty {
                     conflicts.append(

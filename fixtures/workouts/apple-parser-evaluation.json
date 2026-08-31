@@ -1,0 +1,1087 @@
+[
+  {
+    "id": "amrap_1",
+    "text": "AMRAP 8 minutes\n4 Burpees\n12 Overhead Kettlebell Swings (35#)\nScore: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_2",
+    "text": "Complete as many rounds as possible in 8 minutes\n•4 Burpees\n•12 Overhead Kettlebell Swings (35#)\nResult: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_3",
+    "text": "As many rounds and reps as possible in 8 minutes\n- 4 Burpees\n- 12 Overhead Kettlebell Swings (35#)\nScore: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_4",
+    "text": "AMRAP 8 minutes\n● 4 Burpees\n● 12 Overhead Kettlebell Swings (35#)\nResult: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_5",
+    "text": "Complete as many rounds as possible in 8 minutes\n4 Burpees\n12 Overhead Kettlebell Swings (35#)\nScore: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_6",
+    "text": "As many rounds and reps as possible in 8 minutes\n•4 Burpees\n•12 Overhead Kettlebell Swings (35#)\nResult: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_7",
+    "text": "AMRAP 8 minutes\n- 4 Burpees\n- 12 Overhead Kettlebell Swings (35#)\nScore: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_8",
+    "text": "Complete as many rounds as possible in 8 minutes\n● 4 Burpees\n● 12 Overhead Kettlebell Swings (35#)\nResult: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_9",
+    "text": "As many rounds and reps as possible in 8 minutes\n4 Burpees\n12 Overhead Kettlebell Swings (35#)\nScore: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_10",
+    "text": "AMRAP 8 minutes\n•4 Burpees\n•12 Overhead Kettlebell Swings (35#)\nResult: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_11",
+    "text": "Complete as many rounds as possible in 8 minutes\n- 4 Burpees\n- 12 Overhead Kettlebell Swings (35#)\nScore: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "amrap_12",
+    "text": "As many rounds and reps as possible in 8 minutes\n● 4 Burpees\n● 12 Overhead Kettlebell Swings (35#)\nResult: 5 rounds, 3 reps",
+    "expected": {
+      "format": "amrap",
+      "timeCap": 480,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": 480,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 4,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "overhead_kettlebell_swing",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "for_time_1",
+    "text": "For time\n400 m Row\n6 Strict Press 30 lb\nTime cap: 12 minutes",
+    "expected": {
+      "format": "for_time",
+      "timeCap": 720,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": 400,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "strict_press",
+              "reps": 6,
+              "distance": null,
+              "calories": null,
+              "load": 30,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "for_time_2",
+    "text": "For time\n500 m Row\n7 Strict Press 35 lb\nTime cap: 12 minutes",
+    "expected": {
+      "format": "for_time",
+      "timeCap": 720,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": 500,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "strict_press",
+              "reps": 7,
+              "distance": null,
+              "calories": null,
+              "load": 35,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "for_time_3",
+    "text": "For time\n600 m Row\n8 Strict Press 40 lb\nTime cap: 12 minutes",
+    "expected": {
+      "format": "for_time",
+      "timeCap": 720,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": 600,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "strict_press",
+              "reps": 8,
+              "distance": null,
+              "calories": null,
+              "load": 40,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "for_time_4",
+    "text": "For time\n700 m Row\n9 Strict Press 45 lb\nTime cap: 12 minutes",
+    "expected": {
+      "format": "for_time",
+      "timeCap": 720,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": 700,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "strict_press",
+              "reps": 9,
+              "distance": null,
+              "calories": null,
+              "load": 45,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "for_time_5",
+    "text": "For time\n800 m Row\n10 Strict Press 50 lb\nTime cap: 12 minutes",
+    "expected": {
+      "format": "for_time",
+      "timeCap": 720,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": 800,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "strict_press",
+              "reps": 10,
+              "distance": null,
+              "calories": null,
+              "load": 50,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "for_time_6",
+    "text": "For time\n900 m Row\n11 Strict Press 55 lb\nTime cap: 12 minutes",
+    "expected": {
+      "format": "for_time",
+      "timeCap": 720,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": 900,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "strict_press",
+              "reps": 11,
+              "distance": null,
+              "calories": null,
+              "load": 55,
+              "unit": "lb",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "rounds_1",
+    "text": "3 rounds\n8 Burpees\n12 Goblet Squat 20 kg",
+    "expected": {
+      "format": "rounds",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 3,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 8,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "goblet_squat",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 20,
+              "unit": "kg",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "rounds_2",
+    "text": "4 rounds\n8 Burpees\n12 Goblet Squat 20 kg",
+    "expected": {
+      "format": "rounds",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 4,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 8,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "goblet_squat",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 20,
+              "unit": "kg",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "rounds_3",
+    "text": "5 rounds\n8 Burpees\n12 Goblet Squat 20 kg",
+    "expected": {
+      "format": "rounds",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 5,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 8,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "goblet_squat",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 20,
+              "unit": "kg",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "rounds_4",
+    "text": "6 rounds\n8 Burpees\n12 Goblet Squat 20 kg",
+    "expected": {
+      "format": "rounds",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 6,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 8,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            },
+            {
+              "id": "goblet_squat",
+              "reps": 12,
+              "distance": null,
+              "calories": null,
+              "load": 20,
+              "unit": "kg",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "strength_1",
+    "text": "Strength\n3 sets\n5 Deadlift at 70% of 1RM",
+    "expected": {
+      "format": "strength",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 3,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "deadlift",
+              "reps": 5,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": 70
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "strength_2",
+    "text": "Strength\n4 sets\n5 Deadlift at 70% of 1RM",
+    "expected": {
+      "format": "strength",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 4,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "deadlift",
+              "reps": 5,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": 70
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "strength_3",
+    "text": "Strength\n5 sets\n5 Deadlift at 70% of 1RM",
+    "expected": {
+      "format": "strength",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": 5,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "deadlift",
+              "reps": 5,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": 70
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "manual_load",
+    "text": "10 Strict Press 20 kg",
+    "expected": {
+      "format": "manual",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "strict_press",
+              "reps": 10,
+              "distance": null,
+              "calories": null,
+              "load": 20,
+              "unit": "kg",
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "manual_distance",
+    "text": "0.5 km Row",
+    "expected": {
+      "format": "manual",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": 500,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "manual_duration",
+    "text": "Row for 45 seconds",
+    "expected": {
+      "format": "manual",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": 45,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "unknown_movement",
+    "text": "6 Moon hops",
+    "expected": {
+      "format": "manual",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": null,
+              "reps": 6,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "explicit_rest",
+    "text": "For time\n400 m Row\nRest 90 seconds\n10 Burpees",
+    "expected": {
+      "format": "for_time",
+      "timeCap": null,
+      "segments": [
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "row",
+              "reps": null,
+              "distance": 400,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        },
+        {
+          "kind": "rest",
+          "rounds": null,
+          "duration": 90,
+          "rest": null,
+          "movements": []
+        },
+        {
+          "kind": "work",
+          "rounds": null,
+          "duration": null,
+          "rest": null,
+          "movements": [
+            {
+              "id": "burpee",
+              "reps": 10,
+              "distance": null,
+              "calories": null,
+              "load": null,
+              "unit": null,
+              "duration": null,
+              "percentage": null
+            }
+          ]
+        }
+      ]
+    }
+  }
+]

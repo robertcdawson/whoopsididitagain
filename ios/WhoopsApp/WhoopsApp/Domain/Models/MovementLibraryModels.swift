@@ -155,6 +155,7 @@ struct MovementDefinition: Codable, Equatable, Identifiable, Sendable {
         case "box_jump": ["Box"]
         case "sled_push": ["Sled"]
         case "goblet_squat": ["Dumbbell", "Kettlebell"]
+        case "overhead_kettlebell_swing": ["Kettlebell"]
         case "wall_ball": ["Medicine ball"]
         case "push_up", "burpee", "run": []
         default: ["Barbell"]
@@ -168,6 +169,7 @@ struct MovementDefinition: Codable, Equatable, Identifiable, Sendable {
         switch item.id {
         case "row", "run", "air_bike": [.distance, .calories, .duration]
         case "sled_push": [.distance, .load, .duration]
+        case "overhead_kettlebell_swing": [.repetitions, .load, .duration]
         case "double_under", "box_jump", "burpee", "push_up", "pull_up", "kipping_pull_up",
             "ring_row", "wall_ball":
             [.repetitions, .duration]

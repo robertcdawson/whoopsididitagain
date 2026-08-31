@@ -1,7 +1,7 @@
 import Foundation
 
 struct VersionedWorkoutParser: WorkoutParser {
-    static let parserVersion = "deterministic-1.2.0"
+    static let parserVersion = "deterministic-1.5.0"
     let catalog: MovementCatalog
 
     init(catalog: MovementCatalog = .standard) {
@@ -13,21 +13,44 @@ struct VersionedWorkoutParser: WorkoutParser {
         guard !trimmed.isEmpty else { throw WorkoutValidationError.emptyRawText }
 
         let lines = rawText.components(separatedBy: .newlines).map(Self.normalizedLine)
-        let normalizedText = lines.joined(separator: "\n")
+        let header = Self.workoutHeader(in: lines)
+        // Result metadata must never supply the planned format, round count, or time cap.
+        let normalizedText = lines.enumerated().filter { index, line in
+            index != header?.index && Self.reportedResult(from: line) == nil
+                && Self.contextMetadata(from: line) == nil
+        }.map(\.element).joined(separator: "\n")
         let format = Self.format(in: normalizedText)
         let timeCap = Self.timeCap(in: normalizedText, format: format)
         let rounds = Self.rounds(in: normalizedText)
-        let header = Self.workoutHeader(in: lines)
         var blocks = [WorkBlock()]
         var ambiguities: [WorkoutAmbiguity] = []
         var context: [String] = []
+        var structureNotes: [String] = []
+        var reportedResults: [String] = []
         var candidateLineCount = 0
 
         for (index, normalizedLine) in lines.enumerated() {
             let line = normalizedLine.trimmingCharacters(in: .whitespacesAndNewlines)
             if header?.index == index { continue }
+            if let result = Self.reportedResult(from: line) {
+                reportedResults.append(result)
+                continue
+            }
             if let metadata = Self.contextMetadata(from: line) {
                 context.append(metadata)
+                continue
+            }
+            if Self.isTimeCapInstruction(line) {
+                structureNotes.append(line)
+                if Self.timeCap(in: line, format: .manual) == nil {
+                    ambiguities.append(
+                        .init(
+                            id: "unparsed-cap-\(index + 1)", line: index + 1,
+                            originalText: line,
+                            message:
+                                "The time cap needs a single duration with valid units or mm:ss. Review it manually."
+                        ))
+                }
                 continue
             }
             if let restSeconds = Self.restDuration(from: line) {
@@ -71,14 +94,15 @@ struct VersionedWorkoutParser: WorkoutParser {
                 }
 
                 let quantities = Self.quantities(in: prescription)
-                if quantities.hasNoPrescription {
+                if quantities.hasNoPrescription || quantities.hasAmbiguousNumbers {
                     ambiguities.append(
                         WorkoutAmbiguity(
                             id: "missing-quantity-\(index + 1)-\(candidateLineCount)",
                             line: index + 1,
                             originalText: prescription,
-                            message:
-                                "No repetitions, distance, calories, duration, or load were found."
+                            message: quantities.hasAmbiguousNumbers
+                                ? "A range, alternative, or negative quantity needs manual review; no value was chosen from it."
+                                : "No repetitions, distance, calories, duration, or load were found."
                         )
                     )
                 }
@@ -126,23 +150,30 @@ struct VersionedWorkoutParser: WorkoutParser {
                 format: format,
                 rounds: rounds,
                 timeCap: timeCap,
-                context: context
+                context: context + structureNotes + reportedResults
             ),
             ambiguities: ambiguities,
             parserConfidence: confidence,
             parserVersion: Self.parserVersion,
-            modelVersion: nil
+            modelVersion: nil,
+            reportedResult: WorkoutReportedResult.parse(rawText)
         )
         return try result.validated(catalog: catalog)
     }
 
     private struct WorkBlock {
         var movements: [MovementPrescription] = []
-        var followingRestSeconds: Int?
+        var followingRestSeconds: Double?
     }
 
     private static func normalizedLine(_ value: String) -> String {
         value.precomposedStringWithCompatibilityMapping
+            .replacingOccurrences(
+                of: #"^\s*(?:[•●▪◦‣∙·]\s*|[-*–—]\s+)"#,
+                with: "",
+                options: .regularExpression
+            )
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func workoutHeader(in lines: [String]) -> (index: Int, title: String)? {
@@ -153,6 +184,7 @@ struct VersionedWorkoutParser: WorkoutParser {
         else { return nil }
         let line = first.element.trimmingCharacters(in: .whitespacesAndNewlines)
         guard line.hasSuffix(":"), contextMetadata(from: line) == nil,
+            reportedResult(from: line) == nil,
             restDuration(from: line) == nil, !isInstructionLine(line)
         else { return nil }
         let title = String(line.dropLast()).trimmingCharacters(in: .whitespacesAndNewlines)
@@ -169,7 +201,24 @@ struct VersionedWorkoutParser: WorkoutParser {
         return line
     }
 
-    private static func restDuration(from line: String) -> Int? {
+    private static func reportedResult(from line: String) -> String? {
+        guard
+            line.range(
+                of: #"(?i)^(?:score|result|completed)\s*:"#,
+                options: .regularExpression
+            ) != nil
+        else { return nil }
+        return "Reported result (not a prescription): \(line)"
+    }
+
+    private static func isAMRAPInstruction(_ text: String) -> Bool {
+        text.range(
+            of: #"(?i)\b(?:amrap|as many (?:rounds(?: and reps)?|reps|repetitions) as possible)\b"#,
+            options: .regularExpression
+        ) != nil
+    }
+
+    private static func restDuration(from line: String) -> Double? {
         let lower = line.lowercased()
         guard
             lower.range(
@@ -177,34 +226,27 @@ struct VersionedWorkoutParser: WorkoutParser {
                 options: .regularExpression
             ) != nil
         else { return nil }
-        let clockGroups = captureGroups(#"(?i)\b(\d+):(\d{2})\b"#, in: line)
-        if clockGroups.count == 2, let minutes = Int(clockGroups[0]),
-            let seconds = Int(clockGroups[1])
-        {
-            return minutes * 60 + seconds
-        }
-        if let seconds = captureDouble(#"(?i)(\d+)\s*(?:sec|secs|seconds?)\b"#, in: line) {
-            return Int(seconds)
-        }
-        if let minutes = captureDouble(#"(?i)(\d+(?:\.\d+)?)\s*(?:min|minutes?)\b"#, in: line) {
-            return Int((minutes * 60).rounded())
-        }
-        return nil
+        return duration(in: line)
     }
 
     private static func segments(
         from blocks: [WorkBlock],
         format: WorkoutFormat,
         rounds: Int?,
-        timeCap: Int?,
+        timeCap: Double?,
         context: [String]
     ) -> [WorkoutSegment] {
         let restValues = blocks.dropLast().compactMap(\.followingRestSeconds)
+        let firstMovementID = blocks.first?.movements.first?.canonicalMovementID
         let canCoalesce =
             blocks.count > 1
-            && blocks.allSatisfy { $0.movements.count == 1 }
+            && firstMovementID != nil
+            && blocks.allSatisfy {
+                $0.movements.count == 1 && $0.movements[0].canonicalMovementID == firstMovementID
+            }
             && restValues.count == blocks.count - 1
             && Set(restValues).count == 1
+            && blocks.last?.followingRestSeconds == nil
         let notes = context.joined(separator: "\n")
 
         if canCoalesce {
@@ -258,9 +300,14 @@ struct VersionedWorkoutParser: WorkoutParser {
 
     private static func format(in text: String) -> WorkoutFormat {
         let lower = text.lowercased()
-        if lower.contains("amrap") { return .amrap }
+        if isAMRAPInstruction(lower) { return .amrap }
         if lower.contains("emom") || lower.contains("every minute") { return .emom }
         if lower.contains("for time") || lower.contains("complete for time") { return .forTime }
+        if lower.components(separatedBy: .newlines).contains(where: isStrengthInstruction)
+            || lower.range(of: #"(?m)^\s*\d+\s+sets?\b"#, options: .regularExpression) != nil
+        {
+            return .strength
+        }
         if lower.contains("rounds") { return .rounds }
         if lower.contains("interval") || lower.contains("rest") { return .intervals }
         if lower.contains("build to") || lower.contains("one rep max") || lower.contains("1rm") {
@@ -269,53 +316,74 @@ struct VersionedWorkoutParser: WorkoutParser {
         return .manual
     }
 
-    private static func timeCap(in text: String, format: WorkoutFormat) -> Int? {
-        let patterns: [String]
-        switch format {
-        case .amrap, .emom:
-            patterns = [
-                #"(?i)(?:amrap|emom)[ \t]*(\d+)"#,
-                #"(?i)(\d+)[ \t]*(?:min|minutes)"#,
-            ]
-        default:
-            patterns = [#"(?i)time\s*cap:?\s*(\d+)\s*(?:min|minutes)?"#]
-        }
-        for pattern in patterns {
-            if let minutes = captureDouble(pattern, in: text) { return Int(minutes * 60) }
+    private static func timeCap(in text: String, format: WorkoutFormat) -> Double? {
+        let lines = text.components(separatedBy: .newlines)
+        if let cap = lines.first(where: isTimeCapInstruction) { return duration(in: cap) }
+        guard format == .amrap || format == .emom else { return nil }
+        for line in lines
+        where isAMRAPInstruction(line)
+            || line.range(of: #"(?i)\b(?:emom|every minute)\b"#, options: .regularExpression) != nil
+        {
+            if let seconds = duration(in: line) { return seconds }
+            // Preserve the established shorthand AMRAP 8 / EMOM 8 (minutes).
+            if let minutes = captureDouble(
+                #"(?i)^\s*(?:amrap|emom)\s+(\d+(?:\.\d+)?)\s*:?[ \t]*$"#, in: line)
+            {
+                return validDuration(minutes * 60)
+            }
         }
         return nil
     }
 
     private static func rounds(in text: String) -> Int? {
-        captureDouble(#"(?i)(\d+)\s+rounds?"#, in: text).map(Int.init)
+        positiveInteger(captureDouble(#"(?im)^\s*(\d+)\s+(?:rounds?|sets?)\b"#, in: text))
+    }
+
+    private static func isTimeCapInstruction(_ line: String) -> Bool {
+        line.range(of: #"(?i)^\s*time\s*cap\b"#, options: .regularExpression) != nil
+    }
+
+    private static func isStrengthInstruction(_ line: String) -> Bool {
+        line.range(
+            of: #"(?i)^\s*(?:strength|strength work|weightlifting)\s*(?::|$)"#,
+            options: .regularExpression) != nil
     }
 
     private static func isInstructionLine(_ line: String) -> Bool {
-        let lower = line.lowercased()
+        let lower = line.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: " :"))
         return lower == "complete for time"
             || lower == "for time"
-            || lower.hasPrefix("time cap")
-            || lower.contains("amrap")
+            || isTimeCapInstruction(lower)
+            || isStrengthInstruction(lower)
+            || isAMRAPInstruction(lower)
             || lower.contains("emom")
-            || lower.range(of: #"^(\d+\s+)?(rounds?|amrap|emom)\b"#, options: .regularExpression)
+            || lower.range(
+                of: #"^(\d+\s+)?(rounds?|sets?|amrap|emom)\b"#, options: .regularExpression)
                 != nil
     }
 
     private static func prescriptionContent(from line: String) -> String? {
         let lower = line.lowercased()
-        if let colon = line.firstIndex(of: ":") {
+        if isTimeCapInstruction(line) { return nil }
+        if let colon = line.indices.first(where: {
+            line[$0] == ":"
+                && !(line.index(after: $0) < line.endIndex
+                    && line[line.index(after: $0)].isNumber
+                    && $0 > line.startIndex && line[line.index(before: $0)].isNumber)
+        }) {
             let prefix = String(line[..<colon]).lowercased()
-            if prefix.contains("round") || prefix.contains("amrap") || prefix.contains("emom")
-                || prefix.contains("time cap")
+            if prefix.contains("round") || isAMRAPInstruction(prefix) || prefix.contains("emom")
+                || isStrengthInstruction(prefix)
+                || prefix.range(of: #"^\d+\s+sets?\b"#, options: .regularExpression) != nil
             {
                 let content = line[line.index(after: colon)...]
                     .trimmingCharacters(in: .whitespaces)
                 return content.isEmpty ? nil : content
             }
         }
-        if lower.range(of: #"^\d+\s+rounds?\s+"#, options: .regularExpression) != nil {
+        if lower.range(of: #"^\d+\s+(?:rounds?|sets?)\s+"#, options: .regularExpression) != nil {
             let content = line.replacingOccurrences(
-                of: #"(?i)^\d+\s+rounds?\s+"#,
+                of: #"(?i)^\d+\s+(?:rounds?|sets?)\s+(?:of\s+)?"#,
                 with: "",
                 options: .regularExpression
             )
@@ -339,10 +407,10 @@ struct VersionedWorkoutParser: WorkoutParser {
         return "\(movementTitle) · \(format.displayName)"
     }
 
-    private func stimulus(
+    func stimulus(
         for movements: [MovementPrescription],
         format: WorkoutFormat,
-        timeCap: Int?,
+        timeCap: Double?,
         context: [String]
     ) -> WorkoutStimulus {
         let items = movements.compactMap { movement in
@@ -372,7 +440,7 @@ struct VersionedWorkoutParser: WorkoutParser {
         for item in context where !secondary.contains(item) {
             secondary.append(item)
         }
-        let estimatedMinutes = timeCap.map { max(1, $0 / 60) }
+        let estimatedMinutes = timeCap.map { max(1, ($0 / 60).rounded()) }
         return WorkoutStimulus(
             primary: primary,
             secondary: secondary,
@@ -382,18 +450,19 @@ struct VersionedWorkoutParser: WorkoutParser {
     }
 
     private static func manualMovement(line: String, index: Int) -> MovementPrescription {
-        MovementPrescription(
+        let quantities = quantities(in: line)
+        return MovementPrescription(
             id: UUID().uuidString.lowercased(),
             canonicalMovementID: nil,
             displayName: line,
             originalText: line,
-            repetitions: nil,
-            distanceMeters: nil,
-            calories: nil,
-            loadValue: nil,
-            loadUnit: nil,
-            percentageOfOneRepMax: nil,
-            durationSeconds: nil,
+            repetitions: quantities.repetitions,
+            distanceMeters: quantities.distanceMeters,
+            calories: quantities.calories,
+            loadValue: quantities.loadValue,
+            loadUnit: quantities.loadUnit,
+            percentageOfOneRepMax: quantities.percentageOfOneRepMax,
+            durationSeconds: quantities.durationSeconds,
             tempo: nil,
             notes: "Review line \(index + 1)"
         )
@@ -406,7 +475,8 @@ struct VersionedWorkoutParser: WorkoutParser {
         let loadValue: Double?
         let loadUnit: String?
         let percentageOfOneRepMax: Double?
-        let durationSeconds: Int?
+        let durationSeconds: Double?
+        let hasAmbiguousNumbers: Bool
 
         var hasNoPrescription: Bool {
             repetitions == nil && distanceMeters == nil && calories == nil && loadValue == nil
@@ -415,6 +485,8 @@ struct VersionedWorkoutParser: WorkoutParser {
     }
 
     private static func quantities(in line: String) -> Quantities {
+        let original = line
+        let line = removingAmbiguousNumbers(line)
         let distanceValue = captureDouble(
             #"(?i)(\d+(?:\.\d+)?)\s*(km|kilometers?|m|meters?)\b"#,
             in: line
@@ -423,49 +495,102 @@ struct VersionedWorkoutParser: WorkoutParser {
             #"(?i)\d+(?:\.\d+)?\s*(km|kilometers?|m|meters?)\b"#,
             in: line
         )?.lowercased()
-        let distanceMeters = distanceValue.map {
-            Int(($0 * ((distanceUnit?.hasPrefix("k") == true) ? 1_000 : 1)).rounded())
-        }
+        let distanceMeters = positiveInteger(
+            distanceValue.map {
+                $0 * ((distanceUnit?.hasPrefix("k") == true) ? 1_000 : 1)
+            }, maximum: 1_000_000)
         let calories = captureDouble(#"(?i)(\d+)\s*(?:cal|cals|calories)\b"#, in: line)
-            .map(Int.init)
+            .flatMap { positiveInteger($0) }
         let loadValue = captureDouble(
-            #"(?i)(\d+(?:\.\d+)?)\s*(?:lb|lbs|kg|kgs|#)\b"#,
+            #"(?i)(\d+(?:\.\d+)?)\s*(?:(?:lbs?|kgs?)\b|#(?!\w))"#,
             in: line
         )
         let loadUnitRaw = captureString(
-            #"(?i)\d+(?:\.\d+)?\s*(lb|lbs|kg|kgs|#)\b"#,
+            #"(?i)\d+(?:\.\d+)?\s*((?:lbs?|kgs?)\b|#(?!\w))"#,
             in: line
         )?.lowercased()
         let loadUnit: String? = loadUnitRaw.map { $0.hasPrefix("k") ? "kg" : "lb" }
         let percentage = captureDouble(#"(?i)(\d+(?:\.\d+)?)\s*%"#, in: line)
-        let colonMinutes = captureGroups(#"(?i)\b(\d+):(\d{2})\b"#, in: line)
-        let durationSeconds: Int?
-        if colonMinutes.count == 2,
-            let minutes = Int(colonMinutes[0]), let seconds = Int(colonMinutes[1])
-        {
-            durationSeconds = minutes * 60 + seconds
-        } else if let seconds = captureDouble(#"(?i)(\d+)\s*(?:sec|seconds?)\b"#, in: line) {
-            durationSeconds = Int(seconds)
-        } else {
-            durationSeconds = nil
-        }
+        let durationSeconds = duration(in: line)
         let repetitions = captureDouble(
-            #"(?i)^\s*(\d+)\s+(?!m\b|meters?\b|km\b|cal|sec|minutes?\b|lb\b|kg\b)"#,
+            #"(?i)^\s*(\d+)\s+(?!m\b|met(?:er|re)s?\b|k(?:m|ilomet(?:er|re)s?)\b|cal|s\b|sec|mins?\b|minutes?\b|h\b|hours?\b|lbs?\b|kgs?\b)"#,
             in: line
-        ).map(Int.init)
+        ).flatMap { positiveInteger($0) }
         return Quantities(
             repetitions: repetitions,
             distanceMeters: distanceMeters,
             calories: calories,
             loadValue: loadValue,
-            loadUnit: loadUnit,
-            percentageOfOneRepMax: percentage,
-            durationSeconds: durationSeconds
+            loadUnit: loadValue == nil ? nil : loadUnit,
+            percentageOfOneRepMax: percentage.flatMap { $0 <= 100 ? $0 : nil },
+            durationSeconds: durationSeconds,
+            hasAmbiguousNumbers: original != line
         )
     }
 
+    private static func removingAmbiguousNumbers(_ text: String) -> String {
+        text.replacingOccurrences(
+            of:
+                #"\d+(?:\.\d+)?[ \t]*(?:/|[-–])[ \t]*\d+(?:\.\d+)?(?:[ \t]*(?:/|[-–])[ \t]*\d+(?:\.\d+)?)*"#,
+            with: "[review quantity]", options: .regularExpression
+        ).replacingOccurrences(
+            of: #"(?<!\w)-[ \t]*\d+(?:\.\d+)?"#,
+            with: "[review quantity]", options: .regularExpression)
+    }
+
+    /// Literal source tokens for the staged parser. Apple classifies line roles only; it never
+    /// supplies quantities. Unit conversion and bounds are validated by the extraction assembler.
+    static func quotedQuantities(in text: String) -> [String: String] {
+        let text = removingAmbiguousNumbers(normalizedLine(text))
+        let patterns: [String: String] = [
+            "reps":
+                #"(?i)^\s*(\d+)\s+(?!m\b|met(?:er|re)s?\b|k(?:m|ilomet(?:er|re)s?)\b|cal|s\b|sec|mins?\b|minutes?\b|h\b|hours?\b|lbs?\b|kgs?\b|rounds?\b|sets?\b|efforts?\b)"#,
+            "distance": #"(?i)(\d+(?:\.\d+)?\s*(?:km|kilomet(?:er|re)s?|m|met(?:er|re)s?)\b)"#,
+            "calories": #"(?i)(\d+\s*(?:cal|cals|calories)\b)"#,
+            "load": #"(?i)(\d+(?:\.\d+)?\s*(?:(?:lbs?|kgs?|pounds?|kilograms?)\b|#(?!\w)))"#,
+            "percentage": #"(\d+(?:\.\d+)?\s*%)"#,
+            "rounds": #"(?i)^\s*(\d+\s*(?:rounds?|sets?|efforts?)\b)"#,
+            "duration":
+                #"(?i)(?<![\d.:])(\d+:\d{2})(?![\d:])|(?<![\d.])(\d+(?:\.\d+)?[ \t]*(?:s|sec|secs|seconds?|min|mins|minutes?|h|hours?)\b)"#,
+        ]
+        return patterns.reduce(into: [:]) { result, item in
+            if let quote = captureGroups(item.value, in: text).first(where: { !$0.isEmpty }) {
+                result[item.key] = quote
+            }
+        }
+    }
+
+    private static func positiveInteger(_ value: Double?, maximum: Int = 100_000) -> Int? {
+        guard let value, value.isFinite, value >= 1, value <= Double(maximum) else { return nil }
+        return Int(value.rounded())
+    }
+
+    private static func duration(in text: String) -> Double? {
+        guard removingAmbiguousNumbers(text) == text else { return nil }
+        let clock = captureGroups(#"(?<![\d.:])(\d+):(\d{2})(?![\d:])"#, in: text)
+        if clock.count == 2 {
+            guard let minutes = Double(clock[0]), let seconds = Double(clock[1]), seconds < 60
+            else { return nil }
+            return validDuration(minutes * 60 + seconds)
+        }
+        let quantity = captureGroups(
+            #"(?i)(?<![\d.])(\d+(?:\.\d+)?)[ \t]*(s|sec|secs|seconds?|min|mins|minutes?|h|hours?)\b"#,
+            in: text)
+        guard quantity.count == 2, let value = Double(quantity[0]) else { return nil }
+        let unit = quantity[1].lowercased()
+        let multiplier = unit.hasPrefix("h") ? 3_600.0 : unit.hasPrefix("m") ? 60.0 : 1.0
+        return validDuration(value * multiplier)
+    }
+
+    private static func validDuration(_ seconds: Double) -> Double? {
+        seconds.isFinite && seconds > 0 && seconds <= 86_400 ? seconds : nil
+    }
+
     private static func captureDouble(_ pattern: String, in text: String) -> Double? {
-        captureGroups(pattern, in: text).first.flatMap(Double.init)
+        guard let value = captureGroups(pattern, in: text).first.flatMap(Double.init),
+            value.isFinite, value > 0, value <= 100_000
+        else { return nil }
+        return value
     }
 
     private static func captureString(_ pattern: String, in text: String) -> String? {

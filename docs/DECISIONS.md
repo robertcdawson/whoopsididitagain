@@ -60,18 +60,46 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
 - **Rationale:** The daily recommendation must remain available without an LLM, must never let a high
   recovery score erase a local injury constraint, and must be auditable when data is sparse or the
   user disagrees.
+- **Amended August 28, 2026:** `readiness-1.0.1` caps a completed check-in's tissue score at 39 when
+  an active `avoid` restriction exists. It preserves lower symptom-derived scores and leaves the
+  tissue score missing when the check-in is missing; the independent hard override remains intact.
 
 ## ADR-007: Keep workout parsing local-first and schema-gated
 
 - **Date:** August 16, 2026
 - **Status:** Accepted
-- **Decision:** `deterministic-1.2.0` is the default parser. It preserves raw text, applies Unicode
+- **Decision:** `deterministic-1.5.0` is the default parser. It preserves raw text, applies Unicode
   compatibility normalization, maps only approved
   aliases, and reports unknown or incomplete prescriptions as explicit ambiguities. Parsed payloads
   must pass the versioned workout JSON Schema and domain validation, including mutually exclusive
   work-segment recovery and dedicated Rest segments. Manual entry remains available.
 - **Rationale:** Core workout planning must work offline, missing quantities must never be invented,
   and a future LLM should be an optional structured-input producer rather than an authority.
+- **Amended August 29, 2026:** Normalize leading list bullets and `#` load notation, recognize
+  spelled-out AMRAP, and exclude explicit reported-result lines from prescription inference.
+  Preserve reported scores in existing, editable segment notes without automatically recording
+  actual work or adding a storage schema. Add explicit overhead swing aliases without guessing
+  the range of motion of an unspecified swing. Unmapped movements retain restriction-review
+  cautions. No AI provider or model is connected by this change; a future optional parser requires
+  representative evaluations and the same validation, review, and deterministic safety boundaries.
+- **Amended August 30, 2026:** Fix time-cap metadata, standalone strength sets, missing quantities on
+  unmapped movements, and explicit rest structure. Preserve uncertain ranges/alternatives for review
+  instead of selecting a number; recognize bounded clock-format durations.
+- **Editor amendment August 30, 2026:** Store unambiguous reported round/repetition results separately
+  from prescriptions and expose editable result fields. Code derives partial-round movement totals
+  only for a single rep-based AMRAP/rounds segment, in written order. Saving a plan never creates a
+  completion. Completion values are prefilled for explicit review; uncertain totals stay blank.
+  Use Double seconds in the domain and additive optional precision columns in SwiftData, falling back
+  to legacy integer columns. This supports hundredths of a minute without rounding subsecond values
+  or changing existing attribute types. Persist explicit movement order and optional result snapshots.
+  Duplicate prescriptions with fresh IDs; preserve their movement-library links. Unit pickers expose
+  only lbs/kg, retain canonical lb/kg storage, and do not silently convert load values.
+- **Reported-total correction amendment August 30, 2026:** Allow independent, visibly labeled manual
+  movement totals, including zero, with a reset to calculated totals. Store overrides on the reviewed
+  plan by movement ID, not in parser output or prescribed reps. Preserve them when the score changes,
+  do not copy them when duplicating prescriptions, and remove them with deleted movements. Use an
+  additive optional JSON column; old records need no reparse. Completion prefill prefers corrections
+  without changing the separate reported score or previously saved completions.
 
 ## ADR-008: Preserve planned and actual training as separate records
 
@@ -108,8 +136,160 @@ Decisions in `PROJECT_PLAN.md` remain settled. This log captures implementation-
   behavior testable; and reduces the chance of exporting credentials or unnecessarily sensitive raw
   vendor payloads.
 
+## ADR-011: Make personal experiments assignment-light and threshold-gated
+
+- **Date:** August 22, 2026
+- **Status:** Accepted
+- **Decision:** `experiments-1.0.0` stores one intervention or comparison assignment per local day
+  and resolves its outcome from normalized local history at analysis time. It reports arithmetic
+  means and intervention-minus-comparison only after both conditions meet the configured minimum.
+  Exclusions remain auditable, and the off-by-default feature never claims causation or treatment
+  efficacy.
+- **Rationale:** Re-entering WHOOP or Apple Health measurements creates needless daily work and
+  inconsistent copies. Threshold gating, source reuse, sample counts, missing-value disclosure, and
+  preserved exclusions make an N-of-1 comparison inspectable without overstating an early personal
+  signal or introducing an immature predictive model.
+
+## ADR-012: Log experiment conditions once and make outcome timing explicit
+
+- **Date:** August 22, 2026
+- **Status:** Accepted
+- **Decision:** `experiments-1.1.0` treats a condition as a retrospective statement about what
+  actually happened on a local day. One daily check-in can update all active experiments in one
+  save. Each experiment explicitly resolves its outcome on either the condition day or the following
+  day, with following-day defaults for morning physiology, sleep, and morning check-ins and a
+  same-day default for completed-workout load. Individual day editing remains available for
+  correction, exclusion, and context.
+- **Rationale:** Separate per-experiment logging creates unnecessary daily work, while same-day-only
+  matching can place a morning outcome before the behavior it is intended to follow. A single daily
+  workflow and visible timing rule reduce interaction cost and make the temporal interpretation
+  auditable without pretending arbitrary condition text can always be inferred from a workout.
+
+## ADR-013: Delete standalone entries and preserve referenced definitions
+
+- **Date:** August 22, 2026
+- **Status:** Accepted
+- **Decision:** User-entered standalone records expose a confirmed delete or clear action from the
+  screen where they are viewed. Parent deletion removes records owned only by that parent, such as
+  an experiment's condition days or a completed workout's actual movements. Stable movement
+  definitions are archived instead of deleted because saved workouts may refer to them; the app
+  explains this exception in plain language. Required singleton configuration, currently the sleep
+  schedule, resets to defaults and explains why it cannot remain absent.
+- **Rationale:** A personal health log should not trap corrections or accidental entries. Explicit
+  ownership rules make deletion predictable, while archiving shared definitions keeps historical
+  workouts readable and avoids dangling references.
+
+## ADR-014: Bound HealthKit imports and advance anchors after durable pages
+
+- **Date:** August 27, 2026
+- **Status:** Accepted
+- **Decision:** HealthKit anchored queries cover the latest 180 days and return at most 500 samples
+  per page. The app persists each page in a fresh SwiftData context before saving that page's anchor
+  and requesting the next page. History projections aggregate recent records in similarly bounded
+  pages, and record counts use store-level counts rather than materializing every source record.
+- **Rationale:** The first physical-device import was terminated while HealthKit attempted to return
+  an unlimited result set, before any row reached SwiftData. Bounded queries and per-page anchors cap
+  peak memory, preserve resumability after interruption, and retain idempotent deletion and upsert
+behavior without weakening source fidelity.
+
+## ADR-015: Build projections from source-specific, keyset-paged history
+
+- **Date:** August 27, 2026
+- **Status:** Accepted
+- **Decision:** Keep normalized source records as the local source of truth, but build UI projections
+  only from the metrics and repositories they require. HealthKit history uses metric-filtered,
+  stable-ID keyset pages over the existing unique index and a cache invalidated by every committed
+  sync page. Experiment
+  condition days load independently from analysis, and condition-day saves do not wait for analysis
+  refresh. Experiment results display logged counts separately from counts with resolved outcomes.
+- **Rationale:** A physical-device import produced 85,126 HealthKit records, of which 66,724 were
+  raw heart-rate samples not used by the current daily projection. Repeatedly scanning and sorting
+  that full table on the main actor made experiment loading and saving appear stalled. Source-specific
+  projections preserve deterministic semantics and source fidelity while making cost proportional
+  to the data actually needed.
+
+## ADR-016: Exclude Apple Health inputs at the repository projection boundary
+
+- **Date:** August 27, 2026
+- **Status:** Accepted
+- **Decision:** Settings exposes a reversible inclusion toggle for every Apple Health metric used by
+  the app. Disabled metrics remain imported and auditable but are filtered at the HealthKit
+  repository boundary before Today, readiness, trends, or experiment analysis receives them.
+  Synchronization continues so re-enabling an input is immediate and does not require a destructive
+  re-import. New metric types default to included.
+- **Rationale:** Authorization and local retention are different from analytical inclusion. A stale,
+  partial, or unwanted source such as Apple Health HRV SDNN should be removable from every
+  downstream calculation without disconnecting Apple Health, losing other useful metrics, or
+  deleting recoverable source records.
+
+## ADR-017: Use Apple's on-device model as a bounded workout extractor
+
+- **Date:** August 30, 2026
+- **Status:** Prototype implemented; live accuracy gate failed; not approved as the default parser
+- **Decision:** Use Foundation Models as an optional, request-only workout extraction provider.
+  Preserve the current deterministic parser, manual editor, merged movement catalog, restriction
+  engine, and explicit save review. No cloud provider, API key, backend change, custom adapter, or
+  downloadable third-party weights are part of this slice. After live testing found substantial
+  extraction errors, the phone-update boundary supplies no model and hides the experimental Train
+  toggle in normal runs, even if an old opt-in remains stored. Only DEBUG simulator synthetic-provider
+  runs expose test controls; the standalone Mac harness retains real-model evaluation. The research
+  code can be committed without enabling it on the phone. Do not promote this prototype based on
+  mock tests alone.
+- **Boundary:** The staged model chooses one explicit label per source line (such as `exercise_line`
+  or `strength_header`); code maps that label to role/format fields. Code owns
+  quantity extraction, source IDs, ordering, and assembly. Code checks evidence,
+  converts units, maps movement IDs, calculates stimulus, and applies restrictions. Reported results
+  are removed before generation and restored as separate notes. Generated demand tags, safety
+  decisions, calculated training loads, and automatic actual-workout creation are prohibited.
+- **Reliability:** Bound input, output, and time; serialize model sessions; discard late/cancelled
+  results; show deterministic fallback provenance. Model unavailability must not block the rest of
+  the app. Preserve iOS 18 compatibility with runtime availability checks.
+- **Verification:** Mock-based unit/UI tests exercise failure boundaries separately from a
+  standalone, production-code live-model evaluation over synthetic fixtures. Neither mocked tests
+  nor Mac results substitute for phone latency/memory and user acceptance. OS updates require
+  reevaluation because the system model may change.
+- **Quality finding:** The first 30-case synthetic evaluation matched only 3 expected structures.
+  Required-string fields and a smaller freeform JSON prompt each failed all six targeted cases.
+  These experiments do not establish Apple's general capabilities, but this broad, single-pass
+  extractor is not sufficient. The replacement staged hybrid uses fresh, sequential sessions and
+  one unambiguous generated label per line. A failed or unverified part discards the assembled draft.
+  The entire attempt retains its 20-second deadline, with at most 16 parts and 40 response tokens
+  per part. The updated live accuracy gate remains separate from mocked assembly tests; see
+  `APPLE_WORKOUT_PARSER.md` for measured results. No default-on or phone rollout is implied.
+
+## ADR-018: Screen-scoped keyboard focus
+
+- **Date:** August 30, 2026
+- **Status:** Implemented
+- **Decision:** Use SwiftUI `FocusState` scoped to each input screen and explicit focus clearing at
+  navigation, save/cancel, sheet, and background boundaries. Give repeated fields independent IDs,
+  provide a Done action and immediate scroll dismissal, and preserve multiline Return behavior.
+  Clear the Train paste field before presenting review so it cannot regain focus on dismissal.
+- **Scope:** All current text-entry forms and movement searches. No global UIKit responder
+  broadcast, delayed dismissal, or catch-all tap gesture. Domain values and persistence are unchanged.
+- **Verification:** UI regressions assert keyboard disappearance through nested editing, sheet
+  dismissal, save/cancel, tab changes, and background/foreground; multiline notes remain editable.
+- **Reference:** [Apple FocusState documentation](https://developer.apple.com/documentation/swiftui/focusstate).
+
+## ADR-019: Serialize HealthKit import transactions across suspension points
+
+- **Date:** August 30, 2026
+- **Status:** Implemented
+- **Decision:** Use one cancellation-aware FIFO import permit per HealthKit repository, shared by
+  manual and observer-triggered refreshes. Hold it from anchor read through all query pages and
+  persistence/anchor advancement. Keep history reads outside this permit. Claim observer startup
+  atomically before awaiting delivery registration; publish source-selection changes on `MainActor`.
+- **Rationale:** Actor isolation alone does not serialize an entire asynchronous transaction.
+  Synthetic tests reproduced overlapping queries with stale anchors, duplicate observer startup,
+  and off-main notifications. The import permit also removes the concurrent HealthKit activation
+  pattern present in a simulator startup crash, without clearing stores or serializing all UI work.
+- **Limit:** The precise cause of the framework's predicate-formatting crash remains unproven.
+  See `HEALTHKIT_STABILITY.md`; passing retries alone are not proof of a framework fix.
+- **Reference:** [Apple actor reentrancy guidance](https://developer.apple.com/videos/play/wwdc2021/10133/).
+
 ## Open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final
 bundle identifier, Apple signing team, production domains, PostgreSQL provider, credential
-encryption mechanism, and LLM provider.
+encryption mechanism. The workout parsing provider is resolved by ADR-017; any future narration or
+historical-query provider remains a separate decision.

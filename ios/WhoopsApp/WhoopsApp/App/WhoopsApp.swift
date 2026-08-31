@@ -15,11 +15,14 @@ struct WhoopsApp: App {
     private let protocolParser: any ProtocolParser
     private let protocolRepository: any ProtocolRepository
     private let docketRepository: any DocketRepository
+    private let experimentRepository: any ExperimentRepository
     private let modelContainer: ModelContainer
 
     init() {
         let configuredURL = ProcessInfo.processInfo.environment["WHOOPS_BACKEND_URL"]
-        let baseURL = URL(string: configuredURL ?? "http://localhost:3000")!
+        let baseURL = URL(
+            string: configuredURL ?? "https://whoopsididitagain-backend.vercel.app"
+        )!
         let sessionStore = KeychainSessionStore()
         let container = try! ModelContainer(
             for: WhoopSourceRecord.self,
@@ -38,7 +41,9 @@ struct WhoopsApp: App {
             MovementDefinitionRecord.self,
             TherapyProtocolRecord.self,
             TherapyProtocolItemRecord.self,
-            DocketCompletionRecord.self
+            DocketCompletionRecord.self,
+            ExperimentRecord.self,
+            ExperimentObservationRecord.self
         )
         let client = BackendClient(baseURL: baseURL, sessionStore: sessionStore)
         let healthKitClient = HealthKitClient()
@@ -58,12 +63,20 @@ struct WhoopsApp: App {
         readinessEngine = VersionedReadinessEngine()
         let library = MovementLibraryPersistence(container: container)
         movementLibrary = library
-        workoutParser = LibraryWorkoutParser(library: library)
+        workoutParser = LibraryWorkoutParser(
+            library: library,
+            model: FeatureFlags.appleWorkoutParserTestModeEnabled()
+                ? AppleWorkoutModelClient() : nil,
+            isAIEnabled: {
+                UserDefaults.standard.bool(forKey: "appleWorkoutParsingEnabled")
+            }
+        )
         workoutScalingEngine = LibraryWorkoutScalingEngine(library: library)
         workoutRepository = WorkoutPersistence(container: container)
         protocolParser = LibraryProtocolParser(library: library)
         protocolRepository = ProtocolPersistence(container: container)
         docketRepository = DocketPersistence(container: container)
+        experimentRepository = ExperimentPersistence(container: container)
     }
 
     var body: some Scene {
@@ -80,7 +93,8 @@ struct WhoopsApp: App {
                 movementLibrary: movementLibrary,
                 protocolParser: protocolParser,
                 protocolRepository: protocolRepository,
-                docketRepository: docketRepository
+                docketRepository: docketRepository,
+                experimentRepository: experimentRepository
             )
             .modelContainer(modelContainer)
             .task { await healthKitRepository.startObserving() }

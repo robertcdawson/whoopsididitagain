@@ -13,6 +13,7 @@ struct AppTabView: View {
     let protocolParser: any ProtocolParser
     let protocolRepository: any ProtocolRepository
     let docketRepository: any DocketRepository
+    let experimentRepository: any ExperimentRepository
 
     var body: some View {
         TabView {
@@ -24,7 +25,8 @@ struct AppTabView: View {
                 readinessEngine: readinessEngine,
                 workoutRepository: workoutRepository,
                 protocolRepository: protocolRepository,
-                docketRepository: docketRepository
+                docketRepository: docketRepository,
+                experimentRepository: experimentRepository
             )
             .tabItem {
                 Label("Today", systemImage: "sun.max")
@@ -47,7 +49,8 @@ struct AppTabView: View {
                 whoopRepository: whoopRepository,
                 healthKitRepository: healthKitRepository,
                 assessmentRepository: assessmentRepository,
-                workoutRepository: workoutRepository
+                workoutRepository: workoutRepository,
+                experimentRepository: experimentRepository
             )
             .tabItem {
                 Label("Trends", systemImage: "chart.xyaxis.line")
@@ -79,6 +82,7 @@ struct AppTabView: View {
         movementLibrary: PreviewMovementLibraryRepository(),
         protocolParser: DeterministicProtocolParser(),
         protocolRepository: PreviewProtocolRepository(),
-        docketRepository: PreviewDocketRepository()
+        docketRepository: PreviewDocketRepository(),
+        experimentRepository: PreviewExperimentRepository()
     )
 }

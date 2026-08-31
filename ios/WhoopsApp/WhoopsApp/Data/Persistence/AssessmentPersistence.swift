@@ -194,6 +194,15 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
         try context.save()
     }
 
+    func deleteCheckIn(day: String) async throws {
+        if let checkIn = try context.fetch(FetchDescriptor<SymptomCheckInRecord>())
+            .first(where: { $0.day == day })
+        {
+            context.delete(checkIn)
+        }
+        try context.save()
+    }
+
     func restrictions() async throws -> [RestrictionProfile] {
         let injuries = try context.fetch(FetchDescriptor<InjuryRecord>())
         let injuriesByID = Dictionary(uniqueKeysWithValues: injuries.map { ($0.id, $0) })

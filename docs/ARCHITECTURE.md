@@ -1,11 +1,22 @@
 # Architecture
 
-**Status:** Milestone 5 trends and weekly review implemented; redesign phases 1–2 (protocol
-intake, tap-chip review, recurrence and docket generation) implemented
-**Last updated:** August 31, 2026
+**Status:** Milestones 5–6 (trends and Personal Experiment Lab), workout/HealthKit stability
+improvements, and redesign phases 1–2 (protocol intake, tap-chip review, recurrence and docket
+generation) integrated
+
+**Last updated:** August 30, 2026
 
 `PROJECT_PLAN.md` is the product source of truth. This document records the architecture that is
 currently implemented.
+
+The combined app keeps one SwiftData container with all 19 record types from both development
+lines: source history, assessment/configuration, planned/actual work, movement definitions,
+experiments, protocols, and docket completions. Existing entity names and legacy whole-second
+workout fields are retained; precise duration/result fields remain additive and optional.
+`scripts/verify-store-upgrades.mjs` generates synthetic disk-backed stores from each pre-integration
+schema and verifies their fields against the combined schema. This macOS storage check complements
+iOS tests; it does not read phone data or replace physical-device acceptance. See
+`BRANCH_INTEGRATION.md` for the branch checkpoints and update procedure.
 
 ## System boundary
 
@@ -23,9 +34,43 @@ The backend is the only component that receives the WHOOP client secret, access 
 token. The app receives a separate signed app session and stores it in Keychain. WHOOP health
 payloads pass through the backend response but are persisted only on the phone.
 
+Installed iPhone builds use `https://whoopsididitagain-backend.vercel.app`; local schemes can
+override the backend with `WHOOPS_BACKEND_URL`. Production OAuth state, encrypted credentials, and
+sync checkpoints persist in the Vercel-linked Neon PostgreSQL database.
+
 HealthKit access is read-only and never passes through the backend. The app requests each selected
 sample type independently, so categories the user denies behave as empty sources while allowed
 categories continue synchronizing.
+
+HealthKit observer registration is claimed under a lock before the first `await`. Manual and
+observer-triggered imports share a suspending FIFO permit in `LiveHealthKitRepository`; the permit
+covers query, persistence, and anchor advancement for all pages of one metric. This prevents actor
+reentrancy from activating parallel anchored queries or committing results based on stale anchors.
+Cancellation removes queued waiters promptly; an active query settles before releasing the permit,
+and cancelled batches are not committed. Cached history reads do not wait for that permit.
+Metric-inclusion notifications publish on `MainActor`. See `HEALTHKIT_STABILITY.md` for the
+reproduced races, regression coverage, and limits of the original simulator crash diagnosis.
+
+Direct WHOOP sleep is authoritative when available. Primary overnight sleep is assigned to its
+wake day, and duration is the rounded sum of light, slow-wave, and REM stages. Apple Health sleep
+is used only as a fallback for a day without a completed primary WHOOP sleep.
+
+## Form keyboard focus
+
+Text-entry screens own a `FocusState<UUID?>` and install `formKeyboardScope`. Fields opt into that
+scope with `formKeyboardField`, using stable per-view IDs so repeated labels do not share focus.
+The scope dismisses the keyboard as scrolling begins and clears semantic focus on the user-driven
+scroll phase, so the keyboard accessory cannot revive it. It offers one keyboard Done action and
+clears focus on screen disappearance or app inactivity. Single-line Return submits dismiss focus;
+multiline notes retain Return/newline behavior. Search fields use SwiftUI's `searchFocused` with
+the same scope.
+
+Save, cancel, duplicate, and destructive-confirmation actions clear their screen's focus before
+proceeding. Train additionally clears its paste-field focus before parsing or presenting editors
+or protocol capture, and when those presentations close, so dismissal cannot revive the underlying keyboard. The
+pattern is used across workout entry/review/completion, movement management, check-ins, overrides,
+restrictions, and experiment editing. Do not reintroduce process-wide responder broadcasts, timed
+keyboard workarounds, or whole-form tap gestures that interfere with input and controls.
 
 ## WHOOP connection
 
@@ -55,10 +100,23 @@ per-resource checkpoints.
 
 HealthKit synchronization uses one archived `HKQueryAnchor` per sample type. New samples are
 upserted by HealthKit UUID and deleted-object callbacks remove only the matching local source
-record. Observer queries trigger the same anchored path; background delivery is opportunistic.
-Every sample stores its source, source bundle, source-time-zone identifier, UTC offset, and local
-calendar day. This keeps historical day grouping stable when the phone later travels or crosses a
-DST boundary.
+record. The initial query window is 180 days. Each sample type is read in pages of at most 500;
+each page is committed in a fresh SwiftData context before its anchor advances. A page prefetches
+its stable record IDs in one bounded query rather than issuing one lookup per sample. Daily history
+aggregates only the metrics used by the requested projection, using bounded stable-ID keyset pages
+over the existing unique record index outside the main UI actor. Repository caches are keyed by
+the requested metric set and are
+invalidated whenever an anchored page is committed. Observer queries trigger the same anchored
+path; background delivery is opportunistic. Every sample stores its
+source, source bundle, source-time-zone identifier, UTC offset, and local calendar day. This keeps
+historical day grouping stable when the phone later travels or crosses a DST boundary.
+
+Apple Health authorization, local retention, and analytical inclusion are separate concerns.
+Settings stores exclusions as metric identifiers, while new metrics default to included. The live
+repository intersects every requested projection with this preference before returning data, clears
+its projection cache after a preference change, and notifies visible Today and Trends views to
+reload. Synchronization and normalized storage continue for excluded metrics so the choice remains
+instant and reversible.
 
 WHOOP and HealthKit workout records remain independent. A separate link records likely duplicates
 when start time and duration are close. WHOOP HRV RMSSD and Apple Health HRV SDNN are also separate
@@ -72,51 +130,143 @@ assessment. A calculation record retains its ruleset version, component scores, 
 codes, and strongest signals. A user override and annotation are stored alongside, rather than
 replacing, the calculated recommendation.
 
-`readiness-1.0.0` uses robust 28-day medians and median absolute deviations for source-specific
+`readiness-1.0.1` uses robust 28-day medians and median absolute deviations for source-specific
 physiology trends. WHOOP HRV RMSSD and Apple Health HRV SDNN never share a baseline. Fewer than 14
 observations suppress strong baseline claims and reduce confidence. Missing current physiology,
 sleep, check-in, or restriction context likewise reduces confidence and produces an explicit reason
 code.
 
 The engine calculates systemic, sleep, and tissue components before selecting a recommendation.
-An active `avoid` restriction is a hard constraint and forces `Modify` even when recovery is high.
-The Today screen presents the strongest reasons and the effective recommendation. Sleep deadlines
-are derived locally from wake time, sleep target, expected latency, and wind-down duration.
+An active `avoid` restriction caps a completed check-in's tissue score at 39, the upper bound of the
+existing low-tissue band, and remains a hard constraint that forces `Modify` even when recovery is
+high. The cap never raises a lower symptom-derived score, and a missing check-in still produces no
+tissue score. The Today screen presents the strongest reasons and the effective recommendation.
+Sleep deadlines are derived locally from wake time, sleep target, expected latency, and wind-down
+duration.
 
 ## Workout planning and completion
 
-Workout processing is local and deterministic in `deterministic-1.2.0`. The parser preserves the
+Workout processing is local. The deterministic fallback, `deterministic-1.5.0`, preserves the
 raw text, normalizes known aliases through a canonical movement catalog, extracts only quantities it
 can identify, and creates an explicit ambiguity for anything unknown or incomplete. The complete
 payload boundary is defined by `contracts/workout-parser.schema.json`; the same domain validator
 rejects invalid confidence, nonpositive quantities, empty segments, and unknown canonical IDs. A
-future LLM may propose this payload, but cannot bypass validation or the manual-entry fallback.
+model may propose this payload, but cannot bypass validation or the manual-entry fallback.
+
+The optional `apple-extraction-2.0.0` prototype uses Apple's on-device Foundation Models framework
+on iOS 26 and later. `LibraryWorkoutParser` takes one merged movement-catalog snapshot. Normal app
+wiring supplies no model, regardless of any stored opt-in, and Train hides the experimental controls
+because the live-model accuracy gate failed. Only DEBUG simulator runs with an explicit synthetic
+test-provider mode expose those controls; the standalone Mac harness evaluates the real model.
+The staged extractor splits numbered source lines in code, removes
+explicit reported results, and sends exactly one line to each fresh session, sequentially. Apple
+returns one explicit label such as `exercise_line` or `strength_header`; code maps that label to
+role/format fields. Apple never supplies quantities or line IDs. It receives no health history or
+restrictions, has no tools, and never calls a cloud model or the backend. Model sessions are created on demand and
+serialized; a cancelled or timed-out session cannot overlap another model allocation.
+
+Code extracts literal quantity tokens from each original line. The adapter verifies those quotations,
+converts units in code, resolves canonical IDs from source lines against the catalog, and validates the resulting
+domain payload. It rejects invented values, invalid source references, duplicated movement lines,
+and rest without source evidence. Omitted lines and quantities remain visible as review notes.
+The app also falls back when an AI draft drops source numbers or leaves source lines unstructured;
+the standalone evaluation bypasses that routing so fallback cannot mask model errors.
+The current bounded schema handles one movement per source line; complex or unsupported syntax may
+need the deterministic fallback or manual correction. Only the exact string `null` is normalized to
+absence for optional quantity fields to accommodate observed system-model output.
+
+AI input is limited to 2,400 numbered-source UTF-8 bytes and 16 parts, each generation to 40 response
+tokens, and the entire attempt to 20 seconds (not 20 seconds per part). Code owns source order,
+segment assembly, and completeness checks. A failed part discards the entire staged draft; the app
+does not mix successful AI fragments with silently guessed replacements. Conflicting formats or
+ambiguous repeat scope require fallback. Failure returns the deterministic draft with a visible explanation;
+user cancellation returns no draft. The UI snapshots input and rejects late results, keeps manual
+entry available, and cancels on navigation away or backgrounding. Parser provenance and OS/build-based
+model identity are retained; Apple does not expose an exact stable model weight revision. The Apple
+prototype itself adds no storage fields. See [Apple parser verification](APPLE_WORKOUT_PARSER.md)
+for the live-model evaluation; the editor's additive persistence changes are described below.
 
 Compatibility Unicode is normalized before classification, so mathematical-bold programming parses
 like ordinary text. A standalone heading becomes the plan title. Repeated one-movement efforts with
 a common explicit rest are represented as one interval segment with `restSeconds`; heart-rate and
 intended-RPE targets remain editable context rather than becoming movement rows.
+Version 1.4 keeps time caps out of movement rows, recognizes strength/set headings, preserves
+unmapped movement quantities, supports clock durations, and retains separate rest between different
+movements or at the end. Numeric alternatives, ranges, and negative quantities require review.
+
+Leading list bullets are removed for classification and quantity extraction while `rawText` retains
+the complete paste. Spelled-out "as many rounds as possible" is recognized as AMRAP; parenthesized
+and bare `#` loads are normalized to pounds. `Score:`, `Result:`, and `Completed:` lines are excluded
+from format, round-count, and duration detection and preserved as explicitly labeled reported-result
+notes on the first segment. They do not become movement rows, stimulus targets, or completed-workout
+records. Version 1.5 also extracts one unambiguous round-plus-repetition score into an optional
+`WorkoutReportedResult`. The editor shows completed rounds and additional reps separately from
+prescribed rounds. For one rep-based AMRAP/rounds segment, deterministic totals multiply per-round
+reps by completed rounds, then distribute extras in movement order. Mixed-unit or multi-segment
+workouts and extras reaching another full round require manual totals. Actual-work logging prefills
+these totals for review but never saves a completion automatically. The raw source remains unchanged;
+unsupported result syntax stays in notes. Legacy plans retain their existing notes without automatic
+reinterpretation; re-paste or add a reported result to populate structured fields. A cleared saved
+snapshot does not reparse stale text.
+
+The review editor also exposes a per-movement Reported total reps field. User corrections live in
+`WorkoutPlan.reportedRepetitionOverrides`, keyed by prescription ID, outside parsed prescriptions.
+An additive optional `WorkoutPlanRecord.reportedRepetitionOverridesData` JSON snapshot preserves
+them; absent data means no overrides for older stores. Counts are whole numbers from 0 through
+100,000. Corrected counts take precedence for display and completion prefill without rewriting the
+score or per-round reps. Score changes retain explicit corrections; Use calculated total removes
+one. Duplicates receive no copied correction, and deleting a movement/segment removes its orphaned
+corrections. Unknown actual reps stay blank if the plan contains reported work but cannot calculate
+that movement's total. Editing a plan never changes an already-recorded completion.
+
+All workout duration editors use decimal minutes (at most two decimal places), with fractional
+seconds in domain models. Existing integer SwiftData columns remain intact; additive optional
+Double columns store precision and take precedence when present. Plan and completion records have
+optional result snapshots, while movement records gain explicit ordering. The lbs/kg pickers store
+canonical lb/kg without converting the entered load. Duplicate actions copy every prescription field
+with a new UUID and insert immediately after the source; edits and deletion remain independent.
+
+The bundled library includes an explicit overhead/American kettlebell swing, with kettlebell
+equipment and repetition/load/duration measurements. Generic or Russian swing wording is not
+silently mapped to the overhead variation. Its overhead and elbow-extension tags conservatively
+represent the straight-arm overhead finish described by the
+[CrossFit movement standard](https://games.crossfit.com/workouts/regionals/2011?division=11);
+these are editable application heuristics, not individualized medical clearance.
 
 For a non-rest segment, `restSeconds` means one uniform recovery between repeated rounds or efforts.
 A dedicated `rest` segment instead stores its required recovery length in `durationSeconds` and has
 no movements, rounds, or secondary `restSeconds`. This makes variable recovery an explicit sequence
 of work and rest segments and prevents either representation from silently overriding the other.
 
-`workout-scaling-1.0.0` intersects movement-demand tags with active restriction demands. An `Avoid`
+`workout-scaling-1.0.1` intersects movement-demand tags with active restriction demands. An `Avoid`
 match is a hard conflict and returns `Modify`; softer matches return `Proceed with limits`. Candidate
 substitutions come only from the approved catalog and are filtered so they do not retain the matched
 restricted demand. Explanations state the intended stimulus being preserved and the movement
 specificity that may be lost.
+An unmapped movement produces an explicit incomplete-evaluation caution for each active restriction
+instead of being silently skipped. It does not receive automatic substitution candidates.
 
 SwiftData stores workout plans, segments, and prescriptions independently from completed workouts
 and completed movements. Completion starts as an editable copy of the plan, then saves actual
-repetitions, distance, load, duration, modifications, movement pain, session RPE, and post-session
-pain without rewriting the planned values.
+repetitions, distance, calories, load, duration, modifications, movement pain, session RPE, and
+post-session pain without rewriting the planned values. Completion fields retain visible labels
+after values are populated, matching the review flow.
 
 The Train screen treats saved cards as navigable records. A planned-workout detail view reads the
 stored overview, stimulus, restriction evaluation, segment structure, prescriptions, and original
 source without mutating them. Recent completed-workout rows similarly open the actual session values;
-editing and completion remain separate explicit actions.
+both detail screens expose an explicit Edit action. `WorkoutCompletionView` has distinct creation
+and existing-record initializers: editing copies the saved completion, never refills it from a plan,
+and updates the detail snapshot after a successful save. A cancelled or failed save keeps persisted
+values intact. The repository validates before mutation and rejects movement IDs owned by another
+completion. Existing-record upserts preserve identity and ordering, avoiding duplicate workouts.
+
+Completed session duration is derived from start/end timestamps. Start edits shift the end by the
+same elapsed duration; duration edits move the end; end edits refresh the duration input. Session
+and movement fields, scores, and movement membership/order are editable, while source identities
+and parser provenance remain system-managed. Planned details also expose schedule, duration-range,
+and structural edits. Estimated stimulus durations accept decimal minutes in their existing JSON
+snapshot and continue to decode older integer values. See `WORKOUT_EDITING.md` for the field audit.
 
 The effective movement catalog is a deterministic merge of bundled definitions and local personal
 records. Plans and completions reference stable movement identifiers, while repetitions, load,
@@ -200,6 +350,48 @@ structure; CSV uses one record-type column and stable flattened fields. Raw WHOO
 credentials, app sessions, Keychain contents, backend environment values, and encryption material
 are outside the export boundary.
 
-Experiments, predictive dose-response modeling, free-form historical questions, and generated
-explanations remain outside Milestone 5. Parsing, scaling, readiness, trends, weekly review, and
-export do not depend on an LLM.
+## Personal Experiment Laboratory
+
+Milestone 6 introduces a separate local repository for experiment definitions and condition-day
+observations. One observation is upserted per experiment and local calendar day. A single daily
+check-in can save condition choices for every active experiment, avoiding a separate navigation and
+save flow per experiment. Today exposes that check-in when the feature is enabled and at least one
+experiment is active; Experiment Lab retains setup, backfill, correction, and analysis. New
+definitions start active unless the user deliberately chooses another status. Excluding a day
+retains its assignment, reason, confounders, and notes;
+the repository never copies vendor payloads or credentials into experiment records.
+
+Experiment detail loads saved condition days before starting outcome analysis. Analysis requests
+only the repository source required by the selected outcome: WHOOP history for WHOOP metrics,
+the matching Apple Health metric for Apple outcomes, completed workouts for session load, or
+morning check-ins for pain. Saving updates the visible condition-day list immediately after the
+durable write and refreshes analysis independently. The UI reports both logged assignments and
+usable assignments with resolved outcomes; the configured minimum continues to apply only to
+usable values in each condition.
+
+User-entered records follow a deletion rule at the repository boundary. Experiment observations,
+experiments, morning check-ins, restrictions, workout plans, completed workouts, and readiness
+overrides can be removed from their owning screen after plain-language confirmation. Deleting an
+experiment cascades only to its condition-day observations. Deleting a completed workout removes
+its actual movement rows and returns its linked plan to planned when no other completion refers to
+that plan. Movement definitions are the exception: saved workouts may refer to their stable IDs, so
+the library archives them and tells the user that past workout details are being preserved.
+The sleep schedule is required to calculate deadlines, so its removal action restores documented
+defaults and explains why an empty state is not supported.
+
+`experiments-1.1.0` consumes the already normalized `TrendsSnapshot` plus morning check-ins. A
+condition records what actually happened on its local day. The experiment explicitly resolves its
+outcome on that same day or the following local day, preventing morning physiology from being
+silently attributed to a later behavior. It then compares included intervention and comparison
+means in the metric's native unit. A difference is withheld until both conditions meet the
+configured per-condition minimum. The output always reports both custom condition names, sample
+sizes, missing outcomes, remaining days, evidence status, and a non-causal caveat.
+
+The laboratory is behind an off-by-default `UserDefaults` feature flag exposed in Settings. A launch
+environment override exists for UI automation. The UI uses native NavigationStack, List, Form,
+Picker, Toggle, DatePicker, and sheet patterns, with Dynamic Type and VoiceOver-compatible labels.
+
+Predictive dose-response modeling, interval pacing, anomaly notifications, natural-language
+historical questions, webhooks, additional equipment integrations, clinical export, and matched-day
+causal adjustment remain deferred. Parsing, scaling, readiness, trends, experiments, weekly review,
+and export do not depend on an LLM.

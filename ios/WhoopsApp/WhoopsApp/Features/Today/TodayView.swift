@@ -9,7 +9,9 @@ struct TodayView: View {
     let workoutRepository: any WorkoutRepository
     let protocolRepository: any ProtocolRepository
     let docketRepository: any DocketRepository
+    let experimentRepository: any ExperimentRepository
 
+    @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
     @State private var backendState = "Not checked"
     @State private var isCheckingBackend = false
     @State private var isSyncing = false
@@ -22,12 +24,15 @@ struct TodayView: View {
     @State private var healthHistory = HealthKitHistorySnapshot(
         days: [], lastSyncAt: nil, recordCount: 0, linkedWorkoutCount: 0
     )
+    @State private var includedHealthMetrics = Set(HealthMetric.allCases)
     @State private var assessment: ReadinessAssessment?
     @State private var checkIn: MorningCheckIn?
     @State private var sleepSettings = SleepScheduleSettings.standard
     @State private var sleepDeadline: SleepDeadline?
     @State private var isShowingCheckIn = false
     @State private var isShowingOverride = false
+    @State private var isShowingExperimentLog = false
+    @State private var activeExperiments: [ExperimentDefinition] = []
     @State private var assessmentError: String?
 
     var body: some View {
@@ -52,7 +57,7 @@ struct TodayView: View {
 
                             assessmentRow("Systemic readiness", score: assessment.systemicScore)
                             assessmentRow("Sleep sufficiency", score: assessment.sleepScore)
-                            assessmentRow("Tissue readiness", score: assessment.tissueScore)
+                            tissueReadinessRow(assessment)
                             LabeledContent("Confidence", value: assessment.confidence.displayName)
 
                             Divider()
@@ -88,6 +93,22 @@ struct TodayView: View {
                         sleepDeadline: sleepDeadline
                     )
 
+                    if FeatureFlags.experimentLabEnabled(storedValue: experimentLabEnabled),
+                        !activeExperiments.isEmpty
+                    {
+                        FoundationCard(title: "Experiment Check-in") {
+                            Text(
+                                "Once today, record what actually happened across your active experiments."
+                            )
+                            .foregroundStyle(.secondary)
+                            Button("Log experiment day") {
+                                isShowingExperimentLog = true
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .accessibilityIdentifier("today-experiment-check-in")
+                        }
+                    }
+
                     FoundationCard(title: "Daily Physiology") {
                         metricRow(
                             "Recovery",
@@ -114,20 +135,25 @@ struct TodayView: View {
                             value: latestHealthDay?.hrvSDNNMilliseconds.map {
                                 "\($0.formatted(.number.precision(.fractionLength(1)))) ms"
                             } ?? "—",
-                            source: "Apple Health"
+                            source: includedHealthMetrics.contains(.hrvSDNN)
+                                ? "Apple Health" : "Excluded in Settings"
                         )
                         metricRow(
                             "Respiratory rate",
                             value: latestHealthDay?.respiratoryRate.map {
                                 "\($0.formatted(.number.precision(.fractionLength(1)))) /min"
                             } ?? "—",
-                            source: "Apple Health"
+                            source: includedHealthMetrics.contains(.respiratoryRate)
+                                ? "Apple Health" : "Excluded in Settings"
                         )
                         metricRow(
                             "Sleep",
-                            value: latestHealthDay?.sleepMinutes.map(Self.duration)
-                                ?? latestWhoopSleep?.sleepMinutes.map(Self.duration) ?? "—",
-                            source: latestHealthDay?.sleepMinutes == nil ? "WHOOP" : "Apple Health"
+                            value: latestWhoopSleep?.sleepMinutes.map(Self.duration)
+                                ?? latestHealthDay?.sleepMinutes.map(Self.duration) ?? "—",
+                            source: latestWhoopSleep?.sleepMinutes != nil
+                                ? "WHOOP"
+                                : latestHealthDay?.sleepMinutes != nil
+                                    ? "Apple Health" : "WHOOP / Apple Health"
                         )
                         if let sources = latestHealthDay?.sources, !sources.isEmpty {
                             Text("Apple Health sources: \(sources.joined(separator: ", "))")
@@ -204,16 +230,33 @@ struct TodayView: View {
             }
             .navigationTitle("Today")
             .task { await refreshOnLaunch() }
+            .onReceive(
+                NotificationCenter.default.publisher(for: .healthMetricInclusionDidChange)
+            ) { _ in
+                Task { await loadHistory() }
+            }
             .sheet(isPresented: $isShowingCheckIn) {
-                MorningCheckInView(checkIn: checkIn ?? MorningCheckIn.empty(day: currentDay)) {
-                    value in
-                    await saveCheckIn(value)
-                }
+                MorningCheckInView(
+                    checkIn: checkIn ?? MorningCheckIn.empty(day: currentDay),
+                    isExisting: checkIn != nil,
+                    onSave: { value in await saveCheckIn(value) },
+                    onDelete: { day in await deleteCheckIn(day: day) }
+                )
             }
             .sheet(isPresented: $isShowingOverride) {
                 if let assessment {
                     AssessmentOverrideView(assessment: assessment) { recommendation, note in
                         await saveOverride(recommendation: recommendation, note: note)
+                    }
+                }
+            }
+            .sheet(isPresented: $isShowingExperimentLog) {
+                NavigationStack {
+                    DailyExperimentLogView(
+                        experiments: activeExperiments,
+                        experimentRepository: experimentRepository
+                    ) {
+                        await loadActiveExperiments()
                     }
                 }
             }
@@ -242,6 +285,24 @@ struct TodayView: View {
 
     private func assessmentRow(_ title: String, score: Int?) -> some View {
         LabeledContent(title, value: score.map { "\($0)/100" } ?? "Unavailable")
+    }
+
+    @ViewBuilder
+    private func tissueReadinessRow(_ assessment: ReadinessAssessment) -> some View {
+        if assessment.reasons.contains(where: { reason in
+            if case .restriction = reason.direction { return true }
+            return false
+        }) {
+            LabeledContent("Tissue readiness") {
+                Label("Restricted", systemImage: "hand.raised.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Tissue readiness")
+            .accessibilityValue("Restricted because an active Avoid restriction applies")
+        } else {
+            assessmentRow("Tissue readiness", score: assessment.tissueScore)
+        }
     }
 
     private func statusRow(_ title: String, value: String) -> some View {
@@ -336,8 +397,13 @@ struct TodayView: View {
             let history = try await whoopRepository.history()
             whoopHistory = history
             latestRecovery = history.recoveries.first
-            latestWhoopSleep = history.sleeps.first(where: { !$0.isNap })
+            latestWhoopSleep = TodaySleepSelector.primarySleep(
+                for: currentDay,
+                in: history.sleeps,
+                timeZone: .autoupdatingCurrent
+            )
             healthHistory = try await healthKitRepository.history()
+            includedHealthMetrics = await healthKitRepository.includedMetrics()
             let lastSyncAt = [history.lastSyncAt, healthHistory.lastSyncAt].compactMap { $0 }.max()
             if let lastSyncAt {
                 syncState =
@@ -357,10 +423,25 @@ struct TodayView: View {
             assessmentError = error.localizedDescription
         }
         await loadHistory()
+        await loadActiveExperiments()
         let status = try? await whoopRepository.connectionStatus()
         let healthState = await healthKitRepository.authorizationState()
         if status?.connected == true || healthState == .requested {
             await synchronizeSources()
+        }
+    }
+
+    @MainActor
+    private func loadActiveExperiments() async {
+        guard FeatureFlags.experimentLabEnabled(storedValue: experimentLabEnabled) else {
+            activeExperiments = []
+            return
+        }
+        do {
+            activeExperiments = try await experimentRepository.experiments(includeArchived: false)
+                .filter { $0.status == .active }
+        } catch {
+            assessmentError = error.localizedDescription
         }
     }
 
@@ -400,7 +481,7 @@ struct TodayView: View {
                             ? appleRestingHeartRates.dropFirst()
                             : whoopRestingHeartRates.dropFirst()).reversed()
                     ),
-                    sleepMinutes: latestHealthDay?.sleepMinutes ?? latestWhoopSleep?.sleepMinutes
+                    sleepMinutes: latestWhoopSleep?.sleepMinutes ?? latestHealthDay?.sleepMinutes
                 ),
                 checkIn: checkIn,
                 activeRestrictions: restrictions,
@@ -427,9 +508,22 @@ struct TodayView: View {
     }
 
     @MainActor
+    private func deleteCheckIn(day: String) async -> Bool {
+        do {
+            try await assessmentRepository.deleteCheckIn(day: day)
+            checkIn = nil
+            await calculateAssessment()
+            return true
+        } catch {
+            assessmentError = error.localizedDescription
+            return false
+        }
+    }
+
+    @MainActor
     private func saveOverride(
-        recommendation: ReadinessAssessment.Recommendation,
-        note: String
+        recommendation: ReadinessAssessment.Recommendation?,
+        note: String?
     ) async -> Bool {
         guard let assessment else { return false }
         do {
@@ -447,6 +541,19 @@ struct TodayView: View {
     }
 }
 
+enum TodaySleepSelector {
+    static func primarySleep(
+        for day: String,
+        in sleeps: [SleepHistoryItem],
+        timeZone: TimeZone
+    ) -> SleepHistoryItem? {
+        sleeps.first {
+            !$0.isNap
+                && HealthDayKey.day(containing: $0.end ?? $0.start, timeZone: timeZone) == day
+        }
+    }
+}
+
 #Preview {
     TodayView(
         healthChecker: PreviewHealthChecker(),
@@ -456,6 +563,7 @@ struct TodayView: View {
         readinessEngine: VersionedReadinessEngine(),
         workoutRepository: PreviewWorkoutRepository(),
         protocolRepository: PreviewProtocolRepository(),
-        docketRepository: PreviewDocketRepository()
+        docketRepository: PreviewDocketRepository(),
+        experimentRepository: PreviewExperimentRepository()
     )
 }
