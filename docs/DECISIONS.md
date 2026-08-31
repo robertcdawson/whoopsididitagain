@@ -287,6 +287,26 @@ behavior without weakening source fidelity.
   See `HEALTHKIT_STABILITY.md`; passing retries alone are not proof of a framework fix.
 - **Reference:** [Apple actor reentrancy guidance](https://developer.apple.com/videos/play/wwdc2021/10133/).
 
+## ADR-020: Record as prescribed by assertion; snapshot quantities; never backfill
+
+- **Date:** August 30, 2026
+- **Status:** Implemented
+- **Decision:** A one-tap docket completion is the user's assertion that the prescribed sets,
+  repetitions, and hold duration were met, so those prescribed quantities are copied into the
+  stored actual and snapshotted at the moment of completion — editing the protocol afterward
+  cannot rewrite what was already logged. Pain stays absent until a chip is tapped and is stored
+  as nil, never defaulted to zero. Existing completions recorded before this change have no
+  actual at all; they keep their original tap-only meaning and are never backfilled with
+  invented quantities. The new fields are six additive optional columns on the existing
+  `DocketCompletionRecord` rather than a new entity, so the combined store's tracked-model count
+  is unchanged.
+- **Rationale:** ADR-008 already draws the line that completion records must not overwrite
+  planned values; copying an asserted prescription into an actual is the same discipline applied
+  to the docket, not the fabrication phase 2 refused. ADR-013's ownership rules mean the docket's
+  undo/adjust actions must correct or delete a completion the user owns rather than silently
+  rewriting history, which is why a deviation always creates or overwrites one row per
+  (day, kind, source) rather than layering entries.
+
 ## Open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final

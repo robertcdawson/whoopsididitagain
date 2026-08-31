@@ -417,6 +417,45 @@ PT" adherence export remain later phases.
 Live acceptance remains: with the real protocol saved, confirm tomorrow morning's docket lists
 the right items for the day and the week counts advance as items are completed.
 
+## Redesign Phase 3: One-Tap As-Prescribed Recording
+
+Phase 3 of the `docs/DESIGN.md` implementation priority: one-tap "as prescribed" logging with
+editable deviations (the RecordActual pattern), and docket-launched workout recording.
+
+- [x] Add `DocketActual` and snapshot-on-completion `DocketCompletion.asPrescribed(item:day:)`,
+      so a one-tap completion asserts and snapshots the prescription rather than fabricating it.
+- [x] Add six additive optional actual/pain/note/as-prescribed columns to
+      `DocketCompletionRecord`; all-nil marks a legacy phase-2 tap-only completion, never
+      backfilled.
+- [x] Make the (day, kind, source) upsert overwrite a previously recorded actual, so re-logging a
+      correction is idempotent rather than stacking rows.
+- [x] Add `RecordActualDraft`: clamped sets/reps/hold-duration steppers, a tap-only pain scale
+      that stays nil until touched, and a note, seeded from an item's prescription.
+- [x] Add `JournalStepper` and `JournalScaleChip`/`JournalScaleChipRow` to the field-journal
+      design system for deviation and scale entry.
+- [x] Add `RecordActualSheet`: giant "as prescribed" button, steppers and pain chips for logging
+      a deviation, and a note field, matching the `RecordActual` mockup.
+- [x] Wire the docket: row tap logs as prescribed; a trailing "log details" button opens the
+      deviation sheet; the undo bar gains "adjust" to reopen that sheet seeded from the
+      completion just written.
+- [x] Render a deviation aside (e.g. `2×15 · pain 1`) on a completed row only when its actual is
+      not as prescribed.
+- [x] Launch `WorkoutCompletionView` from workout docket rows instead of completing inline, using
+      the same `saveCompletedWorkout` path the Train tab uses.
+- [x] Convert `WorkoutCompletionView`'s session RPE, post-session pain, per-movement pain, and
+      actual-repetitions controls from sliders/steppers/a number-pad field to the chip and
+      stepper components, and rewrite the UI tests those controls previously drove.
+- [x] Convert `MorningCheckInView`'s pain, energy, and motivation sliders to chip rows (T6 — a
+      phase 1 leftover folded into this phase at the user's request, not new phase 3 scope).
+
+Deferred to later phases: widget/notification completion, quick-action pain logging, the
+"bring to PT" adherence export, and the three-zone information architecture (Today/Work/Body +
+gear).
+
+Live acceptance remains: on the real PT protocol, log one item as prescribed and one as a
+deviation; confirm next morning that the deviation aside reads correctly and the times-per-week
+count advanced once, not twice.
+
 ## Milestone 6: Personal Experiment Laboratory
 
 - [x] Define the initial feature-flagged experiment contract and defer unsupported advanced models.
