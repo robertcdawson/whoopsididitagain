@@ -31,22 +31,22 @@ struct WorkoutPlanEditorView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            JournalForm {
                 Section {
                     Label("Review the plan once", systemImage: "checkmark.circle")
-                        .font(.headline)
+                        .font(.journal(.headline))
                     Text(
                         "Check the workout details, edit any movement that needs a change, review restriction warnings, then save. Nothing is confirmed individually."
                     )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.subheadline))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                     Label(
                         plan.parserVersion.hasPrefix("apple-extraction-")
                             ? "Parsed with Apple Intelligence · On device"
                             : "Parsed with the built-in parser or entered manually",
                         systemImage: "iphone"
                     )
-                    .font(.caption)
+                    .font(.journal(.caption))
                     .accessibilityIdentifier("workout-parser-provenance")
                 }
 
@@ -64,8 +64,8 @@ struct WorkoutPlanEditorView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text("Workout details")
                             Text(workoutSummary)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                     }
                 }
@@ -81,21 +81,21 @@ struct WorkoutPlanEditorView: View {
                         Text(
                             "Completed work, not prescribed rounds. Extra reps follow the movement order below. Saving this plan does not record a completed workout."
                         )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                         if !plan.reportedRepetitionOverrides.isEmpty {
                             Text(
                                 "Edited movement totals are kept when the score changes. They do not change the rounds or additional reps above."
                             )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.journal(.caption))
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                         if plan.reportedRepetitionTotals == nil {
                             Text(
                                 "Totals cannot be calculated from this score. Tap each movement to enter its reported total."
                             )
-                            .font(.caption)
-                            .foregroundStyle(.orange)
+                            .font(.journal(.caption))
+                            .foregroundStyle(Color.journalAmberText)
                         }
                     }
                 } else {
@@ -112,10 +112,10 @@ struct WorkoutPlanEditorView: View {
                         ForEach(plan.ambiguities) { ambiguity in
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(ambiguity.originalText)
-                                    .font(.subheadline.weight(.medium))
+                                    .font(.journal(.subheadline, weight: .medium))
                                 Text(ambiguity.message)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.journal(.caption))
+                                    .foregroundStyle(Color.journalInk.opacity(0.7))
                             }
                         }
                     } header: {
@@ -147,10 +147,10 @@ struct WorkoutPlanEditorView: View {
                             evaluation.recommendation.displayName,
                             systemImage: evaluation.recommendation.symbolName
                         )
-                        .font(.headline)
+                        .font(.journal(.headline))
                         if evaluation.conflicts.isEmpty {
                             Text("No active movement restriction conflicts were detected.")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                         ForEach(evaluation.conflicts) { conflict in
                             conflictView(conflict)
@@ -237,16 +237,16 @@ struct WorkoutPlanEditorView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Segment setup")
                     Text(segmentSummary(plan.segments[segmentIndex]))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
             }
             .accessibilityIdentifier("segment-setup-\(segmentIndex)")
             let notes = plan.visibleNotes(plan.segments[segmentIndex].notes)
             if !notes.isEmpty {
                 Text(notes)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.subheadline))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
             }
 
             if plan.segments[segmentIndex].type != .rest {
@@ -269,24 +269,24 @@ struct WorkoutPlanEditorView: View {
                             Text(movement.displayName)
                             if let summary = prescriptionSummary(movement) {
                                 Text(summary)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.journal(.caption))
+                                    .foregroundStyle(Color.journalInk.opacity(0.7))
                             }
                             if let total = plan.effectiveReportedRepetitionTotals[movement.id] {
                                 Text(
                                     "Reported total: \(total) reps\(plan.reportedRepetitionOverrides[movement.id] == nil ? "" : " (edited)") · Edit"
                                 )
-                                .font(.caption)
+                                .font(.journal(.caption))
                                 .foregroundStyle(.tint)
                                 .accessibilityIdentifier(
                                     "reported-total-\(segmentIndex)-\(movementIndex)")
                             } else if plan.hasReportedRepetitions {
                                 Text("Enter reported total")
-                                    .font(.caption)
+                                    .font(.journal(.caption))
                                     .foregroundStyle(.tint)
                             }
                             Label(status.title, systemImage: status.symbolName)
-                                .font(.caption)
+                                .font(.journal(.caption))
                                 .foregroundStyle(status.color)
                         }
                     }
@@ -307,7 +307,7 @@ struct WorkoutPlanEditorView: View {
                         Button("Duplicate", systemImage: "plus.square.on.square") {
                             duplicateMovement(segmentIndex, movementIndex)
                         }
-                        .tint(.blue)
+                        .tint(.journalInk)
                         Button("Delete", role: .destructive) {
                             plan.segments[segmentIndex].movements.remove(at: movementIndex)
                             plan.discardOrphanedReportedRepetitionOverrides()
@@ -354,17 +354,18 @@ struct WorkoutPlanEditorView: View {
                 systemImage: conflict.severity == .hard
                     ? "hand.raised.fill" : "exclamationmark.triangle"
             )
-            .foregroundStyle(conflict.severity == .hard ? .red : .orange)
+            .foregroundStyle(
+                conflict.severity == .hard ? Color.journalRedPen : .journalAmberText)
             Text(conflict.explanation)
             Text(conflict.preservedStimulus)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             Text(conflict.compromise)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             if !conflict.substitutionCandidates.isEmpty {
                 Text("Candidate substitutions")
-                    .font(.caption.weight(.semibold))
+                    .font(.journal(.caption, weight: .semibold))
                 ForEach(conflict.substitutionCandidates) { candidate in
                     Button("Use \(candidate.canonicalName)") {
                         apply(candidate, toMovementID: conflict.movementID)
@@ -513,20 +514,20 @@ struct WorkoutPlanEditorView: View {
             return MovementReviewStatus(
                 title: "Manual or unmapped movement",
                 symbolName: "pencil.circle",
-                color: .orange
+                color: .journalAmberText
             )
         }
         guard prescriptionSummary(movement) != nil else {
             return MovementReviewStatus(
                 title: "No quantity entered",
                 symbolName: "exclamationmark.circle",
-                color: .orange
+                color: .journalAmberText
             )
         }
         return MovementReviewStatus(
             title: "Prescription details present",
             symbolName: "list.bullet.clipboard",
-            color: .secondary
+            color: .journalInk.opacity(0.7)
         )
     }
 
@@ -564,78 +565,116 @@ private struct MovementReviewStatus {
     let color: Color
 }
 
+/// Keeps UIKit's pending edit distinct from the last accepted display/model value.
+/// Reconciliation runs after the control receives its edit, never by rolling back an
+/// onChange callback's possibly stale `previous` value or writing the model again.
+struct WorkoutFieldInput: Equatable {
+    private(set) var text: String
+    private(set) var acceptedText: String
+
+    init(_ text: String) {
+        self.text = text
+        acceptedText = text
+    }
+
+    mutating func receive(_ candidate: String, accepted: Bool) {
+        text = candidate
+        if accepted { acceptedText = candidate }
+    }
+
+    mutating func reconcile() {
+        if text != acceptedText { text = acceptedText }
+    }
+
+    mutating func replace(_ text: String) {
+        self = Self(text)
+    }
+}
+
 struct WorkoutResultCountField: View {
     let title: String
     @Binding var value: Int
-    @State private var text: String
+    @State private var field: WorkoutFieldInput
 
     init(title: String, value: Binding<Int>) {
         self.title = title
         _value = value
-        _text = State(initialValue: String(value.wrappedValue))
+        _field = State(initialValue: WorkoutFieldInput(String(value.wrappedValue)))
     }
 
     var body: some View {
         LabeledFormTextField(
-            title: title, text: $text, keyboardType: .numberPad
+            title: title, text: input, keyboardType: .numberPad
         )
-        .onChange(of: text) { previous, input in
-            guard input.allSatisfy(\.isNumber), let parsed = input.isEmpty ? 0 : Int(input),
-                (0...100_000).contains(parsed)
-            else {
-                text = previous
-                return
-            }
-            value = parsed
-        }
+        .onChange(of: field.text) { _, _ in field.reconcile() }
+    }
+
+    private var input: Binding<String> {
+        Binding(
+            get: { field.text },
+            set: { candidate in
+                let parsed = candidate.isEmpty ? 0 : Int(candidate)
+                let accepted =
+                    candidate.allSatisfy(\.isNumber)
+                    && parsed.map { (0...100_000).contains($0) } == true
+                field.receive(candidate, accepted: accepted)
+                if accepted, let parsed { value = parsed }
+            })
     }
 }
 
 struct WorkoutMinutesField: View {
     let title: String
     @Binding var seconds: Double?
-    @State private var text: String
+    @State private var field: WorkoutFieldInput
 
     init(title: String, seconds: Binding<Double?>) {
         self.title = title
         _seconds = seconds
-        _text = State(
-            initialValue: seconds.wrappedValue.map { WorkoutDurationInput.minutesText(seconds: $0) }
-                ?? "")
+        _field = State(
+            initialValue: WorkoutFieldInput(
+                seconds.wrappedValue.map { WorkoutDurationInput.minutesText(seconds: $0) } ?? ""))
     }
 
     var body: some View {
-        LabeledContent(title) {
-            TextField("", text: $text, prompt: Text("Optional"))
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+            TextField("", text: input, prompt: Text("Optional"))
                 .formKeyboardField()
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .accessibilityIdentifier(title)
-                .onChange(of: text) { previous, value in
-                    let parsed = WorkoutDurationInput.seconds(value)
-                    guard WorkoutDurationInput.accepts(value),
-                        value.isEmpty || value == "." || value == Locale.current.decimalSeparator
-                            || parsed != nil
-                    else {
-                        text = previous
-                        return
-                    }
-                    // Retain a trailing decimal separator while typing; opening an older value
-                    // alone must not round its stored seconds to the displayed hundredth of a minute.
-                    if value.isEmpty { seconds = nil } else if let parsed { seconds = parsed }
-                }
-                .onChange(of: seconds) { _, value in
+                .onChange(of: field.text) { _, _ in field.reconcile() }
+                .onChange(of: seconds) { _, _ in
+                    let value = seconds
                     // Date/time edits can update a duration from outside this field. Preserve
                     // in-progress decimal input when it already represents the new value.
-                    if let value, let parsed = WorkoutDurationInput.seconds(text),
+                    if let value, let parsed = WorkoutDurationInput.seconds(field.acceptedText),
                         abs(value - parsed) < 0.000_001
                     {
                         return
                     }
-                    if value == nil && text.isEmpty { return }
-                    text = value.map { WorkoutDurationInput.minutesText(seconds: $0) } ?? ""
+                    if value == nil && field.acceptedText.isEmpty { return }
+                    field.replace(value.map { WorkoutDurationInput.minutesText(seconds: $0) } ?? "")
                 }
         }
+    }
+
+    private var input: Binding<String> {
+        Binding(
+            get: { field.text },
+            set: { candidate in
+                let parsed = WorkoutDurationInput.seconds(candidate)
+                let accepted =
+                    WorkoutDurationInput.accepts(candidate)
+                    && (candidate.isEmpty || candidate == "."
+                        || candidate == Locale.current.decimalSeparator
+                        || parsed != nil)
+                field.receive(candidate, accepted: accepted)
+                guard accepted else { return }
+                // Preserve partial decimals and never round stored precision merely by opening.
+                if candidate.isEmpty { seconds = nil } else if let parsed { seconds = parsed }
+            })
     }
 }
 
@@ -643,33 +682,40 @@ struct WorkoutDecimalField: View {
     let title: String
     let allowsZero: Bool
     @Binding var value: Double?
-    @State private var text: String
+    @State private var field: WorkoutFieldInput
 
     init(title: String, value: Binding<Double?>, allowsZero: Bool = false) {
         self.title = title
         self.allowsZero = allowsZero
         _value = value
-        _text = State(initialValue: value.wrappedValue.map { WorkoutDecimalInput.text($0) } ?? "")
+        _field = State(
+            initialValue: WorkoutFieldInput(
+                value.wrappedValue.map { WorkoutDecimalInput.text($0) } ?? ""))
     }
 
     var body: some View {
-        LabeledFormTextField(title: title, text: $text, keyboardType: .decimalPad)
-            .onChange(of: text) { previous, input in
-                guard WorkoutDecimalInput.accepts(input) else {
-                    text = previous
-                    return
-                }
-                value = parsedValue
-            }
-            .onChange(of: value) { _, updated in
+        LabeledFormTextField(title: title, text: input, keyboardType: .decimalPad)
+            .onChange(of: field.text) { _, _ in field.reconcile() }
+            .onChange(of: value) { _, _ in
+                let updated = value
                 // Do not rewrite partial input such as "12." while the user types.
                 guard updated != parsedValue else { return }
-                text = updated.map { WorkoutDecimalInput.text($0) } ?? ""
+                field.replace(updated.map { WorkoutDecimalInput.text($0) } ?? "")
             }
     }
 
+    private var input: Binding<String> {
+        Binding(
+            get: { field.text },
+            set: { candidate in
+                let accepted = WorkoutDecimalInput.accepts(candidate)
+                field.receive(candidate, accepted: accepted)
+                if accepted { value = parsedValue }
+            })
+    }
+
     private var parsedValue: Double? {
-        WorkoutDecimalInput.number(text).flatMap { allowsZero || $0 > 0 ? $0 : nil }
+        WorkoutDecimalInput.number(field.acceptedText).flatMap { allowsZero || $0 > 0 ? $0 : nil }
     }
 }
 
@@ -696,8 +742,8 @@ struct WorkoutLoadUnitPicker: View {
             Text(
                 "Stored unit: \(unit). Choose lbs or kg to correct it; changing units does not convert the number."
             )
-            .font(.caption)
-            .foregroundStyle(.orange)
+            .font(.journal(.caption))
+            .foregroundStyle(Color.journalAmberText)
         }
     }
 }
@@ -709,12 +755,18 @@ private struct LabeledFormTextField: View {
     var keyboardType: UIKeyboardType = .default
 
     var body: some View {
-        LabeledContent(title) {
-            TextField("", text: $text, prompt: Text(prompt))
-                .formKeyboardField()
-                .keyboardType(keyboardType)
-                .multilineTextAlignment(.trailing)
-                .accessibilityIdentifier(title)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+            TextField(
+                "", text: $text, prompt: Text(prompt),
+                axis: keyboardType == .default ? .vertical : .horizontal
+            )
+            .formKeyboardField(singleLineText: keyboardType == .default ? $text : nil)
+            .keyboardType(keyboardType)
+            .lineLimit(1...4)
+            .multilineTextAlignment(keyboardType == .default ? .leading : .trailing)
+            .accessibilityLabel(title)
+            .accessibilityIdentifier(title)
         }
     }
 }
@@ -727,8 +779,8 @@ private struct LabeledFormMultilineField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.journal(.subheadline))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             TextField("", text: $text, prompt: Text(prompt), axis: .vertical)
                 .formKeyboardField(dismissOnSubmit: false)
                 .lineLimit(1...4)
@@ -750,7 +802,7 @@ private struct WorkoutDetailsEditor: View {
     }
 
     var body: some View {
-        Form {
+        JournalForm {
             Section("Structure") {
                 Picker("Format", selection: $plan.format) {
                     ForEach(WorkoutFormat.allCases) { format in
@@ -786,12 +838,11 @@ private struct WorkoutDetailsEditor: View {
                     Text(
                         "Estimates must be positive, with the minimum no greater than the maximum."
                     )
-                    .font(.caption).foregroundStyle(.orange)
+                    .font(.journal(.caption)).foregroundStyle(Color.journalAmberText)
                 }
             }
         }
         .navigationTitle("Workout Details")
-        .navigationBarTitleDisplayMode(.inline)
         .formKeyboardScope($focusedField, doneIdentifier: "dismiss-workout-keyboard")
     }
 
@@ -810,7 +861,7 @@ private struct WorkoutSegmentEditor: View {
     @State private var isConvertingToRest = false
 
     var body: some View {
-        Form {
+        JournalForm {
             Section("Segment") {
                 Picker("Type", selection: typeBinding) {
                     ForEach(WorkoutSegmentType.allCases) { type in
@@ -825,15 +876,15 @@ private struct WorkoutSegmentEditor: View {
                     Text(
                         "This recovery occurs once at this point in the workout. Add separate Rest segments when recovery times vary."
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                     if hasIncompatibleRestContent {
                         Label(
                             "This older Rest segment contains incompatible work details.",
                             systemImage: "exclamationmark.triangle"
                         )
-                        .font(.caption)
-                        .foregroundStyle(.orange)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalAmberText)
                         Button("Remove incompatible work details", role: .destructive) {
                             focusedField = nil
                             isConvertingToRest = true
@@ -845,8 +896,8 @@ private struct WorkoutSegmentEditor: View {
                         title: "Duration in minutes", seconds: $segment.durationSeconds)
                     WorkoutMinutesField(title: restFieldTitle, seconds: $segment.restSeconds)
                     Text(restExplanation)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
                 LabeledFormMultilineField(
                     title: "Notes and targets",
@@ -855,7 +906,6 @@ private struct WorkoutSegmentEditor: View {
             }
         }
         .navigationTitle("Segment Setup")
-        .navigationBarTitleDisplayMode(.inline)
         .formKeyboardScope($focusedField, doneIdentifier: "dismiss-workout-keyboard")
         .confirmationDialog(
             "Convert this segment to rest?", isPresented: $isConvertingToRest,
@@ -941,7 +991,7 @@ private struct MovementPrescriptionEditor: View {
     let onDuplicate: () -> Void
 
     var body: some View {
-        Form {
+        JournalForm {
             ReportedMovementTotalSection(
                 calculatedTotal: calculatedTotal,
                 correction: $reportedTotalOverride
@@ -960,8 +1010,8 @@ private struct MovementPrescriptionEditor: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Choose from your movements")
                         Text(selectedMovementName)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.journal(.caption))
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                     }
                 }
                 LabeledFormMultilineField(
@@ -972,8 +1022,8 @@ private struct MovementPrescriptionEditor: View {
                     Text(
                         "A clean movement name entered here will be remembered when you save the workout. Repetitions and load stay with this workout only."
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
             }
             Section("Prescription") {
@@ -1004,7 +1054,6 @@ private struct MovementPrescriptionEditor: View {
             }
         }
         .navigationTitle("Movement")
-        .navigationBarTitleDisplayMode(.inline)
         .formKeyboardScope($focusedField, doneIdentifier: "dismiss-workout-keyboard")
     }
 
@@ -1047,44 +1096,31 @@ private struct MovementPrescriptionEditor: View {
 private struct ReportedMovementTotalSection: View {
     let calculatedTotal: Int?
     @Binding var correction: Int?
-    @State private var text: String
+    @State private var field: WorkoutFieldInput
 
     init(calculatedTotal: Int?, correction: Binding<Int?>) {
         self.calculatedTotal = calculatedTotal
         _correction = correction
-        _text = State(
-            initialValue: (correction.wrappedValue ?? calculatedTotal).map(String.init) ?? "")
+        _field = State(
+            initialValue: WorkoutFieldInput(
+                (correction.wrappedValue ?? calculatedTotal).map(String.init) ?? ""))
     }
 
     var body: some View {
         Section {
             LabeledFormTextField(
-                title: "Reported total reps", text: $text, keyboardType: .numberPad
+                title: "Reported total reps", text: input, keyboardType: .numberPad
             )
-            .onChange(of: text) { previous, input in
-                // Resetting or refreshing a calculated value is not a new manual correction.
-                if input == (correction ?? calculatedTotal).map(String.init) { return }
-                guard !input.isEmpty else {
-                    correction = nil
-                    return
-                }
-                guard input.allSatisfy(\.isNumber), let count = Int(input),
-                    (0...100_000).contains(count)
-                else {
-                    text = previous
-                    return
-                }
-                if count != (correction ?? calculatedTotal) { correction = count }
-            }
+            .onChange(of: field.text) { _, _ in field.reconcile() }
             if let calculatedTotal {
                 LabeledContent("Calculated from score", value: "\(calculatedTotal) reps")
             }
             if correction != nil {
                 Label("Edited total", systemImage: "pencil")
-                    .font(.caption)
+                    .font(.journal(.caption))
                 Button(calculatedTotal == nil ? "Clear edited total" : "Use calculated total") {
                     correction = nil
-                    text = calculatedTotal.map(String.init) ?? ""
+                    field.replace(calculatedTotal.map(String.init) ?? "")
                 }
                 .accessibilityIdentifier("reset-reported-total")
             }
@@ -1096,8 +1132,28 @@ private struct ReportedMovementTotalSection: View {
             )
         }
         .onChange(of: calculatedTotal) { _, count in
-            if correction == nil { text = count.map(String.init) ?? "" }
+            if correction == nil { field.replace(count.map(String.init) ?? "") }
         }
+    }
+
+    private var input: Binding<String> {
+        Binding(
+            get: { field.text },
+            set: { candidate in
+                let count = Int(candidate)
+                let accepted =
+                    candidate.isEmpty
+                    || (candidate.allSatisfy(\.isNumber)
+                        && count.map { (0...100_000).contains($0) } == true)
+                field.receive(candidate, accepted: accepted)
+                guard accepted else { return }
+                if candidate.isEmpty {
+                    correction = nil
+                    return
+                }
+                guard let count else { return }
+                if count != (correction ?? calculatedTotal) { correction = count }
+            })
     }
 }
 
@@ -1112,7 +1168,7 @@ struct MovementSelectionView: View {
     @State private var searchText = ""
 
     var body: some View {
-        List {
+        JournalList {
             Section {
                 Button(
                     remembersNewMovement
@@ -1141,15 +1197,14 @@ struct MovementSelectionView: View {
                             Text(definition.canonicalName)
                                 .foregroundStyle(.primary)
                             Text(definition.category.displayName)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                     }
                 }
             }
         }
         .navigationTitle("Choose Movement")
-        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText, prompt: "Name or alias")
         .searchFocused($focusedField, equals: searchFieldID)
         .formKeyboardScope($focusedField, doneIdentifier: "dismiss-workout-keyboard")

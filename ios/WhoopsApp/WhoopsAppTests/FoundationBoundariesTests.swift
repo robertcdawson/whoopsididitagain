@@ -1,9 +1,57 @@
 import SwiftData
+import SwiftUI
+import UIKit
 import XCTest
 
 @testable import WhoopsApp
 
 final class FoundationBoundariesTests: XCTestCase {
+    @MainActor
+    func testJournalStatusTextAndInputBordersHaveReadablePaperContrast() {
+        func components(_ color: Color) -> (rgb: [Double], alpha: Double) {
+            var red: CGFloat = 0
+            var green: CGFloat = 0
+            var blue: CGFloat = 0
+            var alpha: CGFloat = 0
+            XCTAssertTrue(UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha))
+            return ([Double(red), Double(green), Double(blue)], Double(alpha))
+        }
+        func luminance(_ rgb: [Double]) -> Double {
+            let linear = rgb.map { $0 <= 0.04045 ? $0 / 12.92 : pow(($0 + 0.055) / 1.055, 2.4) }
+            return linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722
+        }
+        let paper = components(.journalPaper).rgb
+        let paperLuminance = luminance(paper)
+        let tokens: [(String, Color, Double)] = [
+            ("positive text", .journalGreenText, 4.5),
+            ("warning text", .journalAmberText, 4.5),
+            ("error text", .journalRedPen, 4.5),
+            ("secondary ink", .journalInk.opacity(0.7), 4.5),
+            ("input border", .journalInk.opacity(0.55), 3),
+            ("focused input border", .journalInk.opacity(0.9), 3),
+        ]
+        for (name, color, minimum) in tokens {
+            let ink = components(color)
+            let composite = zip(ink.rgb, paper).map { $0 * ink.alpha + $1 * (1 - ink.alpha) }
+            let inkLuminance = luminance(composite)
+            let contrast =
+                (max(inkLuminance, paperLuminance) + 0.05)
+                / (min(inkLuminance, paperLuminance) + 0.05)
+            XCTAssertGreaterThanOrEqual(contrast, minimum, name)
+        }
+    }
+
+    @MainActor
+    func testJournalFontsAreBundledAndRegisteredForOfflineUse() throws {
+        for name in ["Literata-Regular", "Literata-Italic", "Caveat-Regular"] {
+            XCTAssertNotNil(UIFont(name: name, size: 19), "Missing journal font: \(name)")
+        }
+        for name in ["Literata", "Literata-Italic", "Caveat"] {
+            XCTAssertNotNil(
+                Bundle.main.url(forResource: name, withExtension: "ttf", subdirectory: "Fonts"))
+        }
+    }
+
     func testWorkoutParserPreservesOriginalText() async throws {
         let rawText = "3 rounds: 500 m row, 10 front squats"
 

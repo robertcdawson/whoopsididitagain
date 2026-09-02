@@ -9,7 +9,7 @@ struct RestrictionManagementView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        List {
+        JournalList {
             Section {
                 ForEach(profiles) { profile in
                     Button {
@@ -20,16 +20,20 @@ struct RestrictionManagementView: View {
                                 Text(profile.injuryName)
                                     .foregroundStyle(.primary)
                                 Text(profile.movementTag)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.journal(.caption))
+                                    .foregroundStyle(Color.journalInk.opacity(0.7))
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: 4) {
                                 Text(profile.level.displayName)
-                                    .foregroundStyle(profile.level.isHard ? .red : .secondary)
+                                    .foregroundStyle(
+                                        profile.level.isHard
+                                            ? Color.journalRedPen : .journalInk.opacity(0.7))
                                 Text(profile.isActive ? "Active" : "Inactive")
-                                    .font(.caption)
-                                    .foregroundStyle(profile.isActive ? .orange : .secondary)
+                                    .font(.journal(.caption))
+                                    .foregroundStyle(
+                                        profile.isActive
+                                            ? Color.journalAmberText : .journalInk.opacity(0.7))
                             }
                         }
                     }
@@ -137,6 +141,7 @@ private struct RestrictionEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: UUID?
     @State private var profile: RestrictionProfile
+    @State private var showsBodyAreaPicker = false
     let onSave: (RestrictionProfile) async -> Void
 
     init(
@@ -149,7 +154,7 @@ private struct RestrictionEditorView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            JournalForm {
                 Section("Injury") {
                     TextField("Name", text: $profile.injuryName)
                         .formKeyboardField()
@@ -157,6 +162,34 @@ private struct RestrictionEditorView: View {
                         .formKeyboardField()
                     TextField("Side", text: $profile.side)
                         .formKeyboardField()
+                }
+                Section {
+                    if profile.affectedAreaIDs.isEmpty {
+                        Text("No areas mapped yet")
+                            .foregroundStyle(Color.journalInk.opacity(0.65))
+                    } else {
+                        ForEach(BodyAreaCatalog.definitions(for: profile.affectedAreaIDs)) { area in
+                            Label(area.label, systemImage: "mappin.and.ellipse")
+                        }
+                    }
+                    Button {
+                        focusedField = nil
+                        showsBodyAreaPicker = true
+                    } label: {
+                        Label(
+                            profile.affectedAreaIDs.isEmpty
+                                ? "Choose affected areas" : "Edit affected areas",
+                            systemImage: "figure.stand"
+                        )
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }
+                    .accessibilityIdentifier("restriction-affected-areas")
+                } header: {
+                    Text("Affected areas")
+                } footer: {
+                    Text(
+                        "You choose these locations directly. The app never guesses anatomy from the name or notes."
+                    )
                 }
                 Section("Restriction") {
                     Toggle("Active", isOn: $profile.isActive)
@@ -178,6 +211,11 @@ private struct RestrictionEditorView: View {
             }
             .navigationTitle("Restriction")
             .formKeyboardScope($focusedField)
+            .sheet(isPresented: $showsBodyAreaPicker) {
+                BodyAreaPicker(initialAreaIDs: profile.affectedAreaIDs) { ids in
+                    profile.affectedAreaIDs = ids
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

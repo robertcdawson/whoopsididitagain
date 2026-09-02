@@ -10,6 +10,16 @@
 **Primary user:** Robert
 **Repository model:** Monorepo containing the native iOS app, backend services, tests, and documentation
 
+**Execution priority update — August 31, 2026:** Make daily use dependable first (scrolling,
+discoverable controls, consistent journal screens, reliable editing, and explicit affected-area
+mapping for restrictions). Hand the corrected build to Robert for approval before continuing the remaining low-friction logging features in
+`DESIGN.md`. Do not expand analytics yet. This sequencing does not remove existing analytics,
+change health calculations, or reopen completed redesign phases 1–3.
+
+**Acceptance update — September 1, 2026:** Robert approved the corrected build on his phone. The
+daily-use dependability gate is closed; continue the remaining low-friction logging work in the
+documented phase order, beginning with widget and local-notification completion.
+
 ---
 
 ## 1. Executive Summary
@@ -1085,7 +1095,10 @@ The following should not block the first usable release:
 
 ## 8. Information Architecture
 
-Use a four-tab MVP structure.
+The original four-tab MVP structure below is retained as historical feature grouping. The current
+native navigation follows `DESIGN.md`: Today / Work / Body, plus a Settings gear. Work owns Train's
+workflows; Body owns Trends, restriction records with explicit affected-area localization,
+experiments, and exports. No data or editing flow is removed by the navigation change.
 
 ## 8.1 Today
 
@@ -1136,8 +1149,8 @@ Supports:
 
 - WHOOP connection
 - Apple Health permissions
-- Active injuries
-- Movement restrictions
+- First-class Restrictions management: create, edit, disable, delete, and explicitly map affected
+  areas
 - User schedule
 - Wake times
 - Training schedule

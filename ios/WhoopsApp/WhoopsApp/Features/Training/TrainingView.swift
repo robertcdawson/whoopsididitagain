@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TrainingView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @FocusState private var focusedField: UUID?
     let parser: any WorkoutParser
     let scalingEngine: any WorkoutScalingEngine
@@ -10,8 +11,12 @@ struct TrainingView: View {
     let movementLibrary: any MovementLibraryRepository
     let protocolParser: any ProtocolParser
     let protocolRepository: any ProtocolRepository
+    var docketRepository: (any DocketRepository)? = nil
 
     @State private var rawText = ""
+    @State private var showingComposer = false
+    @State private var protocolPendingDeletion: TherapyProtocol?
+    @State private var weekCompletions: [DocketCompletion] = []
     @State private var plans: [WorkoutPlan] = []
     @State private var completedWorkouts: [CompletedWorkout] = []
     @State private var therapyProtocols: [TherapyProtocol] = []
@@ -29,41 +34,59 @@ struct TrainingView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    FoundationCard(title: "PT Protocol") {
-                        Text(
-                            "Bring in the PT sheet — photo, paste, or read it aloud. Every item is checked against your restrictions."
-                        )
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        Button {
-                            focusedField = nil
-                            cancelParsing()
-                            isCapturingProtocol = true
-                        } label: {
-                            Label("New protocol from PT sheet", systemImage: "camera.viewfinder")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .accessibilityIdentifier("new-protocol")
-                        ForEach(therapyProtocols) { therapyProtocol in
-                            Divider()
-                            protocolRow(therapyProtocol)
-                        }
+            JournalPage(title: "Work") {
+                if therapyProtocols.isEmpty {
+                    JournalTapeCard {
+                        Text("your PT sheet belongs here").font(.journal(.title2, weight: .bold))
+                        Text("Capture a protocol to put your prescribed work on the docket.")
+                            .font(.journal(.subheadline))
+                        captureProtocolButton
                     }
-
-                    FoundationCard(title: "Plan a Workout") {
+                } else {
+                    ForEach(therapyProtocols) { therapyProtocol in
+                        JournalTapeCard { protocolRow(therapyProtocol) }
+                    }
+                    captureProtocolButton
+                }
+                JournalRule()
+                JournalSection(title: "training") {
+                    if plans.filter({ $0.status != .completed }).isEmpty {
+                        Text("Nothing planned yet.").italic()
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
+                    }
+                    ForEach(plans.filter { $0.status != .completed }) { plan in
+                        planCard(plan)
+                    }
+                }
+                Button {
+                    focusedField = nil
+                    showingComposer.toggle()
+                } label: {
+                    HStack {
+                        Text("Paste a workout")
+                        Spacer()
+                        Image(systemName: showingComposer ? "chevron.down" : "chevron.right")
+                            .font(.journal(.caption, weight: .semibold))
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(JournalLinkButtonStyle())
+                .font(.journal(.subheadline))
+                .accessibilityValue(showingComposer ? "Expanded" : "Collapsed")
+                .accessibilityIdentifier("workout-composer")
+                if showingComposer {
+                    JournalSection(title: "") {
                         Text(
                             "Paste CrossFit, weightlifting, or conditioning text. You’ll review every parsed field before it is saved."
                         )
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.subheadline))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                         TextEditor(text: $rawText)
-                            .formKeyboardField(dismissOnSubmit: false)
                             .frame(minHeight: 150)
-                            .padding(8)
-                            .background(.background, in: RoundedRectangle(cornerRadius: 10))
+                            .scrollContentBackground(.hidden)
+                            .journalInput()
+                            .formKeyboardField(dismissOnSubmit: false)
                             .accessibilityIdentifier("raw-workout-entry")
                             .disabled(isParsing)
                         if FeatureFlags.appleWorkoutParserTestModeEnabled() {
@@ -75,12 +98,12 @@ struct TrainingView: View {
                             Text(
                                 "Synthetic simulator test mode. Apple parsing is unavailable in normal phone runs."
                             )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.journal(.caption))
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                         } else {
                             Text("Parsed locally with the built-in parser.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                         Button {
                             startParsing()
@@ -92,7 +115,7 @@ struct TrainingView: View {
                                     .frame(maxWidth: .infinity)
                             }
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(JournalPrimaryButtonStyle())
                         .disabled(
                             isParsing
                                 || rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -110,90 +133,71 @@ struct TrainingView: View {
                         .frame(maxWidth: .infinity)
                     }
 
-                    FoundationCard(title: "Your Movements") {
-                        Text(
-                            "Search movements you have used, maintain stable details, or import movement names from WOD Lab."
-                        )
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        NavigationLink {
-                            MovementLibraryView(repository: movementLibrary)
-                        } label: {
-                            Label(
-                                "Open movement library",
-                                systemImage: "figure.strengthtraining.traditional"
-                            )
-                            .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityIdentifier("movement-library-link")
-                    }
-
-                    if plans.filter({ $0.status != .completed }).isEmpty {
-                        FoundationCard(title: "Planned") {
-                            ContentUnavailableView(
-                                "No planned workout",
-                                systemImage: "figure.strengthtraining.traditional",
-                                description: Text("Paste a workout above or enter it manually.")
-                            )
-                        }
-                    } else {
-                        ForEach(plans.filter { $0.status != .completed }) { plan in
-                            planCard(plan)
-                        }
-                    }
-
-                    if !completedWorkouts.isEmpty {
-                        FoundationCard(title: "Recent Actual Work") {
-                            ForEach(completedWorkouts) { workout in
-                                NavigationLink {
-                                    CompletedWorkoutDetailView(
-                                        workout: workout, movementLibrary: movementLibrary,
-                                        onSave: { await saveCompleted($0) }
-                                    ) {
-                                        try await workoutRepository.deleteCompletedWorkout(
-                                            id: workout.id
-                                        )
-                                        await load()
-                                    }
-                                } label: {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(workout.title)
-                                                .font(.subheadline.weight(.semibold))
-                                            Text(
-                                                "RPE \(workout.sessionRPE)/10 · Post-session pain \(workout.postSessionPain)/10"
-                                            )
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                        }
-                                        Spacer(minLength: 12)
-                                        VStack(alignment: .trailing, spacing: 6) {
-                                            Text(
-                                                workout.startedAt,
-                                                format: .dateTime.month().day()
-                                            )
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                            Image(systemName: "chevron.forward")
-                                                .font(.caption.weight(.semibold))
-                                                .foregroundStyle(.tertiary)
-                                        }
-                                    }
-                                    .contentShape(Rectangle())
+                }
+                Text("Your workout gets checked against your restrictions.")
+                    .font(.journal(.footnote)).italic().foregroundStyle(Color.journalRedPen)
+                if !completedWorkouts.isEmpty {
+                    JournalSection(title: "Recent Actual Work") {
+                        ForEach(completedWorkouts) { workout in
+                            NavigationLink {
+                                CompletedWorkoutDetailView(
+                                    workout: workout, movementLibrary: movementLibrary,
+                                    onSave: { await saveCompleted($0) }
+                                ) {
+                                    try await workoutRepository.deleteCompletedWorkout(
+                                        id: workout.id
+                                    )
+                                    await load()
                                 }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(
-                                    "View completed workout: \(workout.title)"
-                                )
-                                if workout.id != completedWorkouts.last?.id { Divider() }
+                            } label: {
+                                completedWorkoutRowLayout {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(workout.title)
+                                            .font(.journal(.subheadline, weight: .semibold))
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .accessibilityIdentifier(
+                                                "completed-workout-summary-title-\(workout.id)")
+                                        Text(
+                                            "RPE \(workout.sessionRPE)/10 · Post-session pain \(workout.postSessionPain)/10"
+                                        )
+                                        .font(.journal(.caption))
+                                        .foregroundStyle(Color.journalInk.opacity(0.7))
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    if !dynamicTypeSize.isAccessibilitySize {
+                                        Spacer(minLength: 12)
+                                    }
+                                    completedWorkoutMetadataLayout {
+                                        Text(
+                                            workout.startedAt,
+                                            format: .dateTime.month().day()
+                                        )
+                                        .font(.journal(.caption))
+                                        .foregroundStyle(Color.journalInk.opacity(0.7))
+                                        Image(systemName: "chevron.forward")
+                                            .font(.journal(.caption, weight: .semibold))
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(
+                                "View completed workout: \(workout.title)"
+                            )
+                            if workout.id != completedWorkouts.last?.id { Divider() }
                         }
                     }
                 }
-                .padding()
+                Spacer(minLength: 12)
+                NavigationLink {
+                    MovementLibraryView(repository: movementLibrary)
+                } label: {
+                    Text("your movements →").underline().frame(minHeight: 44)
+                }
+                .accessibilityLabel("Open movement library")
+                .accessibilityIdentifier("movement-library-link")
             }
-            .navigationTitle("Train")
             .formKeyboardScope($focusedField, doneIdentifier: "dismiss-workout-keyboard")
             .onDisappear { cancelParsing() }
             .onChange(of: scenePhase) { _, phase in
@@ -249,49 +253,100 @@ struct TrainingView: View {
             } message: { _ in
                 Text("This removes the plan. Any completed workout stays in your history.")
             }
+            .confirmationDialog(
+                "Delete this PT protocol?",
+                isPresented: Binding(
+                    get: { protocolPendingDeletion != nil },
+                    set: { if !$0 { protocolPendingDeletion = nil } }
+                ), titleVisibility: .visible
+            ) {
+                Button("Delete protocol", role: .destructive) {
+                    if let value = protocolPendingDeletion { Task { await deleteProtocol(value) } }
+                }
+                Button("Cancel", role: .cancel) { protocolPendingDeletion = nil }
+            } message: {
+                Text("The protocol will leave your docket. This cannot be undone.")
+            }
         }
     }
 
-    @ViewBuilder
+    private var captureProtocolButton: some View {
+        Button {
+            focusedField = nil
+            cancelParsing()
+            isCapturingProtocol = true
+        } label: {
+            Label("New protocol from PT sheet", systemImage: "camera.viewfinder")
+                .font(.journal(.subheadline)).frame(minHeight: 44)
+        }
+        .accessibilityIdentifier("new-protocol")
+    }
+
+    private var completedWorkoutRowLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout())
+    }
+
+    private var completedWorkoutMetadataLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(HStackLayout(spacing: 8))
+            : AnyLayout(VStackLayout(alignment: .trailing, spacing: 6))
+    }
+
     private func protocolRow(_ therapyProtocol: TherapyProtocol) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline) {
+        VStack(alignment: .leading, spacing: 10) {
+            protocolHeaderLayout {
                 Text(therapyProtocol.title)
-                    .font(.subheadline.weight(.semibold))
-                Spacer(minLength: 12)
+                    .font(
+                        .journal(
+                            dynamicTypeSize.isAccessibilitySize ? .headline : .title2,
+                            weight: .bold))
+                if !dynamicTypeSize.isAccessibilitySize { Spacer(minLength: 8) }
                 Menu {
                     Button("Delete protocol", role: .destructive) {
-                        Task { await deleteProtocol(therapyProtocol) }
+                        protocolPendingDeletion = therapyProtocol
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .foregroundStyle(.secondary)
+                    Image(systemName: "ellipsis.circle").frame(minWidth: 44, minHeight: 44)
                 }
                 .accessibilityLabel("Protocol actions: \(therapyProtocol.title)")
             }
             Text(protocolSummary(therapyProtocol))
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            ForEach(therapyProtocol.items.prefix(4)) { item in
-                HStack {
-                    Text(item.displayName)
-                    Spacer()
+                .font(.journal(.subheadline)).foregroundStyle(Color.journalInk.opacity(0.75))
+            Text(
+                "Started \(therapyProtocol.startedAt.formatted(date: .abbreviated, time: .omitted))"
+            )
+            .font(.journal(.caption)).foregroundStyle(Color.journalInk.opacity(0.7))
+            JournalRule()
+            ForEach(therapyProtocol.items) { item in
+                HStack(alignment: .firstTextBaseline) {
                     Text(
-                        [item.prescriptionSummary, item.cadence.displayName]
-                            .compactMap { $0 }
-                            .joined(separator: " · ")
-                    )
-                    .foregroundStyle(.secondary)
+                        [item.displayName, item.prescriptionSummary, item.cadence.displayName]
+                            .compactMap { $0 }.joined(separator: " · "))
+                    Spacer(minLength: 4)
+                    if weekCompletions.contains(where: {
+                        $0.sourceID == item.id
+                            && $0.day == DeterministicDocketEngine().day(containing: .now)
+                    }) {
+                        DrawnCheckmarkView().accessibilityHidden(false).accessibilityLabel(
+                            "Completed today")
+                    }
                 }
-                .font(.subheadline)
+                .font(.journal(.subheadline))
             }
-            if therapyProtocol.items.count > 4 {
-                Text("+ \(therapyProtocol.items.count - 4) more")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+            Text(
+                "\(weekCompletions.filter { $0.protocolID == therapyProtocol.id }.count) item completions this calendar week"
+            )
+            .font(.journal(.footnote)).italic().foregroundStyle(Color.journalRedPen)
         }
         .accessibilityIdentifier("therapy-protocol-\(therapyProtocol.id)")
+    }
+
+    private var protocolHeaderLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
     }
 
     private func protocolSummary(_ therapyProtocol: TherapyProtocol) -> String {
@@ -305,86 +360,39 @@ struct TrainingView: View {
         return parts.joined(separator: " · ")
     }
 
-    @ViewBuilder
     private func planCard(_ plan: WorkoutPlan) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 6) {
             NavigationLink {
                 WorkoutPlanDetailView(
                     plan: plan, evaluation: evaluations[plan.id], restrictions: restrictions,
                     scalingEngine: scalingEngine, movementLibrary: movementLibrary,
                     onSave: { await savePlan($0) })
             } label: {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text(plan.title)
-                            .font(.headline)
-                        Spacer(minLength: 12)
-                        Image(systemName: "chevron.forward")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.tertiary)
-                    }
-                    HStack {
-                        Label(plan.format.displayName, systemImage: "list.bullet.rectangle")
-                        Spacer()
-                        Text(plan.scheduledAt, format: .dateTime.month().day().hour().minute())
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Text(plan.intendedStimulus.primary)
-                        .font(.subheadline)
-                    ForEach(plan.movements.prefix(6)) { movement in
-                        HStack {
-                            Text(movement.displayName)
-                            Spacer()
-                            Text(movementSummary(movement))
-                                .foregroundStyle(.secondary)
-                        }
-                        .font(.subheadline)
-                    }
-                    if plan.movements.count > 6 {
-                        Text("+ \(plan.movements.count - 6) more")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    if let evaluation = evaluations[plan.id] {
-                        Divider()
-                        Label(
-                            evaluation.recommendation.displayName,
-                            systemImage: evaluation.recommendation.symbolName
-                        )
-                        .font(.headline)
-                        if let hardConflict = evaluation.conflicts.first(where: {
-                            $0.severity == .hard
-                        }) {
-                            Text(hardConflict.explanation)
-                                .font(.subheadline)
-                                .foregroundStyle(.red)
-                        } else if let conflict = evaluation.conflicts.first {
-                            Text(conflict.explanation)
-                                .font(.subheadline)
-                                .foregroundStyle(.orange)
-                        }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(plan.title).font(.journal(.headline, weight: .semibold))
+                    Text(plan.scheduledAt, format: .dateTime.month().day().hour().minute())
+                        .font(.journal(.caption)).foregroundStyle(Color.journalInk.opacity(0.7))
+                    if let evaluation = evaluations[plan.id], !evaluation.conflicts.isEmpty {
+                        Label(evaluation.recommendation.displayName, systemImage: "hand.raised")
+                            .font(.journal(.caption)).foregroundStyle(Color.journalRedPen)
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("View workout details: \(plan.title)")
             .accessibilityIdentifier("workout-plan-details-\(plan.id)")
-            Divider()
             HStack {
                 Button("Edit") {
                     focusedField = nil
                     editingPlan = plan
                 }
-                .buttonStyle(.bordered)
                 .accessibilityIdentifier("edit-workout-plan-\(plan.id)")
                 Button("Record actual") {
                     focusedField = nil
                     completingPlan = plan
                 }
-                .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("record-actual-workout-\(plan.id)")
                 Spacer()
                 Menu {
@@ -393,13 +401,12 @@ struct TrainingView: View {
                         planPendingDeletion = plan
                     }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "ellipsis.circle").frame(minWidth: 44, minHeight: 44)
                 }
             }
+            .font(.journal(.caption))
+            .buttonStyle(.bordered)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 
     private var errorIsPresented: Binding<Bool> {
@@ -500,6 +507,12 @@ struct TrainingView: View {
 
     @MainActor
     private func load() async {
+        if let docketRepository {
+            do {
+                weekCompletions = try await docketRepository.completions(
+                    days: DeterministicDocketEngine().weekDays(containing: .now))
+            } catch { errorMessage = error.localizedDescription }
+        }
         do {
             try await assessmentRepository.prepareDefaults()
             try await movementLibrary.prepareDefaults()
@@ -526,6 +539,7 @@ struct TrainingView: View {
             let reconciled = try await movementLibrary.reconcile(plan)
             try await workoutRepository.savePlan(reconciled)
             rawText = ""
+            showingComposer = false
             await load()
             return true
         } catch {
@@ -561,6 +575,7 @@ struct TrainingView: View {
     private func deleteProtocol(_ therapyProtocol: TherapyProtocol) async {
         do {
             try await protocolRepository.deleteProtocol(id: therapyProtocol.id)
+            protocolPendingDeletion = nil
             await load()
         } catch {
             errorMessage = error.localizedDescription
@@ -601,7 +616,7 @@ private struct WorkoutPlanDetailView: View {
     }
 
     var body: some View {
-        List {
+        JournalList {
             Section("Workout overview") {
                 LabeledContent("Format", value: plan.format.displayName)
                 LabeledContent("Scheduled") {
@@ -639,7 +654,7 @@ private struct WorkoutPlanDetailView: View {
                 ForEach(Array(plan.intendedStimulus.secondary.enumerated()), id: \.offset) {
                     item in
                     Label(item.element, systemImage: "target")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
             }
 
@@ -649,23 +664,25 @@ private struct WorkoutPlanDetailView: View {
                         evaluation.recommendation.displayName,
                         systemImage: evaluation.recommendation.symbolName
                     )
-                    .font(.headline)
+                    .font(.journal(.headline))
                     if evaluation.conflicts.isEmpty {
                         Text("No active movement restriction conflicts were detected.")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                     }
                     ForEach(evaluation.conflicts) { conflict in
                         VStack(alignment: .leading, spacing: 6) {
                             Text(conflict.severity == .hard ? "Must modify" : "Use caution")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(conflict.severity == .hard ? .red : .orange)
+                                .font(.journal(.subheadline, weight: .semibold))
+                                .foregroundStyle(
+                                    conflict.severity == .hard
+                                        ? Color.journalRedPen : .journalAmberText)
                             Text(conflict.explanation)
                             Text(conflict.preservedStimulus)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                             Text(conflict.compromise)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                     }
                 }
@@ -684,12 +701,12 @@ private struct WorkoutPlanDetailView: View {
                     ForEach(segment.movements) { movement in
                         VStack(alignment: .leading, spacing: 5) {
                             Text(movement.displayName)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.journal(.subheadline, weight: .semibold))
                                 .accessibilityIdentifier(
                                     "planned-movement-name-\(movement.id)"
                                 )
                             Text(prescriptionSummary(movement))
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                                 .accessibilityIdentifier(
                                     "planned-movement-prescription-\(movement.id)"
                                 )
@@ -697,18 +714,18 @@ private struct WorkoutPlanDetailView: View {
                                 Text(
                                     "Reported total: \(total) reps\(plan.reportedRepetitionOverrides[movement.id] == nil ? "" : " (edited)")"
                                 )
-                                .font(.caption)
+                                .font(.journal(.caption))
                             }
                             if movement.originalText != movement.displayName,
                                 !movement.originalText.isEmpty
                             {
                                 Text("Entered as: \(movement.originalText)")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.journal(.caption))
+                                    .foregroundStyle(Color.journalInk.opacity(0.7))
                             }
                             if !movement.notes.isEmpty {
                                 Text(movement.notes)
-                                    .font(.caption)
+                                    .font(.journal(.caption))
                             }
                         }
                     }
@@ -726,8 +743,8 @@ private struct WorkoutPlanDetailView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(ambiguity.originalText)
                             Text(ambiguity.message)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                     }
                 }
@@ -842,8 +859,12 @@ private struct CompletedWorkoutDetailView: View {
     }
 
     var body: some View {
-        List {
+        JournalList {
             Section("Session") {
+                Text(workout.title)
+                    .font(.journal(.headline))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("completed-workout-title")
                 LabeledContent("Started") {
                     Text(
                         workout.startedAt,
@@ -873,24 +894,24 @@ private struct CompletedWorkoutDetailView: View {
             Section("Actual work") {
                 if workout.movements.isEmpty {
                     Text("No movement results were recorded.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
                 ForEach(workout.movements) { movement in
                     VStack(alignment: .leading, spacing: 5) {
                         Text(movement.displayName)
-                            .font(.subheadline.weight(.semibold))
+                            .font(.journal(.subheadline, weight: .semibold))
                         Text(actualSummary(movement))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                         Text("Pain during: \(movement.painDuring)/10")
-                            .font(.caption)
+                            .font(.journal(.caption))
                         if !movement.modification.isEmpty {
                             Text("Modification: \(movement.modification)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                         if !movement.notes.isEmpty {
                             Text(movement.notes)
-                                .font(.caption)
+                                .font(.journal(.caption))
                         }
                     }
                 }

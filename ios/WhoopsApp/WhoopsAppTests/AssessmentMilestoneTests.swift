@@ -4,6 +4,126 @@ import XCTest
 @testable import WhoopsApp
 
 final class AssessmentMilestoneTests: XCTestCase {
+    func testJournalReadinessPresentationUsesExistingScoreBoundaries() {
+        let cases: [(Int?, JournalReadinessMetric.Status, JournalReadinessMetric.Status)] = [
+            (nil, .unavailable, .unavailable), (0, .low, .low), (39, .low, .low),
+            (40, .caution, .low), (64, .caution, .low), (65, .positive, .low),
+            (69, .positive, .low), (70, .positive, .caution), (89, .positive, .caution),
+            (90, .positive, .positive), (100, .positive, .positive),
+        ]
+        for (score, body, sleep) in cases {
+            let assessment = presentationAssessment(score: score)
+            let rows = JournalReadinessMetric.rows(for: assessment)
+            XCTAssertEqual(rows.map(\.title), ["Body", "Sleep", "Tissue"])
+            XCTAssertEqual(rows[0].status, body)
+            XCTAssertEqual(rows[1].status, sleep)
+            XCTAssertEqual(rows[0].value, score.map { "\($0)/100" } ?? "Unavailable")
+            XCTAssertEqual(assessment.recommendation, .proceedWithLimits)
+        }
+    }
+
+    func testJournalTissueRestrictionAndCautionDoNotInventScores() {
+        let hard = ReadinessReason(
+            code: "restriction.avoid.test", message: "Synthetic", direction: .restriction,
+            priority: 100)
+        for score in [nil, 100] as [Int?] {
+            let row = JournalReadinessMetric.rows(
+                for: presentationAssessment(score: score, reasons: [hard]))[2]
+            XCTAssertEqual(row.status, .restricted)
+            XCTAssertEqual(row.value, "Restricted")
+        }
+        for code in [
+            "restriction.limit.test", "restriction.monitor.test", "check-in.movement-pain",
+            "check-in.tissue-signals",
+        ] {
+            let reason = ReadinessReason(
+                code: code, message: "Synthetic", direction: .caution, priority: 60)
+            XCTAssertEqual(
+                JournalReadinessMetric.rows(
+                    for: presentationAssessment(score: 90, reasons: [reason]))[2].status, .caution)
+            XCTAssertEqual(
+                JournalReadinessMetric.rows(
+                    for: presentationAssessment(score: nil, reasons: [reason]))[2].status,
+                .unavailable)
+            XCTAssertEqual(
+                JournalReadinessMetric.rows(
+                    for: presentationAssessment(score: 39, reasons: [reason]))[2].status, .low)
+        }
+        let unrelated = ReadinessReason(
+            code: "whoop.recovery", message: "Synthetic", direction: .caution, priority: 40)
+        XCTAssertEqual(
+            JournalReadinessMetric.rows(
+                for: presentationAssessment(score: 40, reasons: [unrelated]))[2].status, .positive)
+    }
+
+    private func presentationAssessment(score: Int?, reasons: [ReadinessReason] = [])
+        -> ReadinessAssessment
+    {
+        ReadinessAssessment(
+            id: "presentation-test", day: "2026-08-31", computedAt: .distantPast,
+            systemicScore: score, sleepScore: score, tissueScore: score,
+            recommendation: .proceedWithLimits, confidence: .low, reasons: reasons,
+            rulesetVersion: VersionedReadinessEngine.rulesetVersion, userOverride: nil,
+            overrideNote: nil)
+    }
+
+    @MainActor
+    func testDefaultRationaleCleanupPreservesDatesAndRunsOnlyOnce() async throws {
+        let container = try makeContainer()
+        let repository = AssessmentPersistence(container: container)
+        try await repository.prepareDefaults()
+        let context = ModelContext(container)
+        let record = try XCTUnwrap(
+            context.fetch(FetchDescriptor<RestrictionRecord>()).first {
+                $0.id == "right-distal-triceps"
+            })
+        let injury = try XCTUnwrap(
+            context.fetch(FetchDescriptor<InjuryRecord>()).first { $0.id == record.injuryID })
+        XCTAssertEqual(record.rationale, "Known partial distal-triceps injury.")
+        let originalDate = Date(timeIntervalSince1970: 1_600_000_000)
+        record.rationale =
+            "Known partial distal-triceps injury; keep this editable as guidance changes."
+        record.updatedAt = originalDate
+        injury.updatedAt = originalDate
+        record.painThreshold = 4
+        record.isActive = false
+        try context.save()
+
+        let upgraded = AssessmentPersistence(container: container)
+        try await upgraded.prepareDefaults()
+        try await upgraded.prepareDefaults()
+        let refreshed = ModelContext(container)
+        let saved = try XCTUnwrap(
+            refreshed.fetch(FetchDescriptor<RestrictionRecord>()).first { $0.id == record.id })
+        let savedInjury = try XCTUnwrap(
+            refreshed.fetch(FetchDescriptor<InjuryRecord>()).first { $0.id == injury.id })
+        XCTAssertEqual(saved.rationale, "Known partial distal-triceps injury.")
+        XCTAssertEqual(saved.updatedAt, originalDate)
+        XCTAssertEqual(savedInjury.updatedAt, originalDate)
+        XCTAssertEqual(saved.painThreshold, 4)
+        XCTAssertFalse(saved.isActive)
+        XCTAssertEqual(try refreshed.fetchCount(FetchDescriptor<RestrictionRecord>()), 5)
+    }
+
+    @MainActor
+    func testDefaultRationaleCleanupPreservesCustomNotesAndOtherRecords() async throws {
+        let container = try makeContainer()
+        let repository = AssessmentPersistence(container: container)
+        try await repository.prepareDefaults()
+        let profiles = try await repository.restrictions()
+        var custom = try XCTUnwrap(profiles.first { $0.id == "right-distal-triceps" })
+        custom.rationale = "My updated note; keep this editable as guidance changes."
+        try await repository.saveRestriction(custom)
+        var other = try XCTUnwrap(profiles.first { $0.id != "right-distal-triceps" })
+        other.rationale =
+            "Known partial distal-triceps injury; keep this editable as guidance changes."
+        try await repository.saveRestriction(other)
+        try await repository.prepareDefaults()
+        let saved = try await repository.restrictions()
+        XCTAssertEqual(saved.first { $0.id == custom.id }?.rationale, custom.rationale)
+        XCTAssertEqual(saved.first { $0.id == other.id }?.rationale, other.rationale)
+    }
+
     func testRobustBaselineUsesMostRecent28Values() throws {
         let values = [999.0] + (1...28).map(Double.init)
         let baseline = try XCTUnwrap(RobustBaseline.calculate(values))
@@ -126,6 +246,116 @@ final class AssessmentMilestoneTests: XCTestCase {
         let stored = try await repository.assessment(for: assessment.day)
         XCTAssertEqual(stored?.userOverride, .proceedWithLimits)
         XCTAssertEqual(stored?.overrideNote, "Synthetic coaching context")
+    }
+
+    func testBodyAreaCatalogUsesStableValidatedAnatomyIDs() throws {
+        XCTAssertEqual(Set(BodyAreaCatalog.all.map(\.id)).count, BodyAreaCatalog.all.count)
+        let posteriorUpperArm = try XCTUnwrap(
+            BodyAreaCatalog.definition(for: "right.arm.upper-arm.back"))
+        XCTAssertEqual(posteriorUpperArm.focus, BodyMapFocus(region: .arm, side: .right))
+        XCTAssertEqual(posteriorUpperArm.view, .back)
+        XCTAssertEqual(
+            posteriorUpperArm.shortLabel,
+            "Posterior upper arm (triceps area)")
+        XCTAssertEqual(
+            BodyAreaCatalog.definition(for: "right.arm.elbow.back")?.shortLabel,
+            "Back elbow")
+        XCTAssertNil(BodyAreaCatalog.definition(for: "free text that should not be inferred"))
+    }
+
+    func testBodyAreaCatalogCoversPracticalExternalRegions() {
+        let requiredIDs = [
+            "midline.head-neck.face",
+            "midline.head-neck.jaw-chin",
+            "midline.head-neck.neck.left",
+            "midline.torso.chest.left",
+            "midline.torso.collarbone.left",
+            "midline.torso.sternum",
+            "midline.torso.groin.right",
+            "midline.torso.hip.left",
+            "midline.torso.shoulder-blade.left",
+            "midline.torso.sacrum-tailbone",
+            "midline.torso.si-joint.right",
+            "midline.torso.glute.right",
+            "left.arm.armpit",
+            "left.arm.thumb",
+            "right.arm.fingers",
+            "left.leg.knee.inner",
+            "right.leg.lower-leg.back",
+            "left.leg.heel",
+            "left.leg.ball-foot",
+            "right.leg.sole-arch",
+            "right.leg.toes",
+        ]
+
+        XCTAssertTrue(requiredIDs.allSatisfy { BodyAreaCatalog.definition(for: $0) != nil })
+        for focus in BodyAreaCatalog.focuses(for: .front) {
+            XCTAssertEqual(
+                BodyAreaCatalog.all.filter { $0.focus == focus && $0.isWholeFocus }.count,
+                1,
+                "Every focus should have exactly one broad selection: \(focus.id)"
+            )
+        }
+
+        let rightArm = BodyMapFocus(region: .arm, side: .right)
+        XCTAssertEqual(BodyAreaCatalog.figureAreas(for: rightArm, view: .front).count, 5)
+        XCTAssertEqual(BodyAreaCatalog.figureAreas(for: rightArm, view: .back).count, 5)
+        XCTAssertFalse(
+            BodyAreaCatalog.all.contains { $0.id.contains(".leg.hip") },
+            "Hip, groin, and glute areas should have one canonical torso focus"
+        )
+    }
+
+    @MainActor
+    func testAffectedAreasRoundTripWithoutInferringFromRestrictionText() async throws {
+        let repository = AssessmentPersistence(container: try makeContainer())
+        try await repository.prepareDefaults()
+
+        let seeded = try await repository.restrictions()
+        var restriction = try XCTUnwrap(
+            seeded.first { $0.id == "right-distal-triceps" })
+        XCTAssertTrue(restriction.affectedAreaIDs.isEmpty)
+
+        restriction.affectedAreaIDs = [
+            "right.arm.elbow.back",
+            "not-a-catalog-area",
+            "right.arm.upper-arm.back",
+            "right.arm.elbow.back",
+        ]
+        try await repository.saveRestriction(restriction)
+
+        let roundTripped = try await repository.restrictions()
+        let saved = try XCTUnwrap(roundTripped.first { $0.id == restriction.id })
+        XCTAssertEqual(
+            saved.affectedAreaIDs,
+            ["right.arm.upper-arm.back", "right.arm.elbow.back"])
+        XCTAssertEqual(saved.bodyRegion, "Elbow / upper arm")
+        XCTAssertEqual(saved.side, "Right")
+    }
+
+    @MainActor
+    func testInvalidOrLegacyAffectedAreaPayloadRemainsUnmapped() async throws {
+        let container = try makeContainer()
+        let repository = AssessmentPersistence(container: container)
+        try await repository.prepareDefaults()
+        let context = ModelContext(container)
+        let injury = try XCTUnwrap(
+            context.fetch(FetchDescriptor<InjuryRecord>()).first {
+                $0.id == "injury:right-distal-triceps"
+            })
+
+        injury.affectedAreaIDsJSON = "[\"right.arm.upper-arm.back\",\"unknown\"]"
+        try context.save()
+        var saved = try await repository.restrictions()
+        XCTAssertEqual(
+            saved.first { $0.id == "right-distal-triceps" }?.affectedAreaIDs,
+            ["right.arm.upper-arm.back"])
+
+        injury.affectedAreaIDsJSON = "not json"
+        try context.save()
+        saved = try await repository.restrictions()
+        XCTAssertTrue(
+            saved.first { $0.id == "right-distal-triceps" }?.affectedAreaIDs.isEmpty == true)
     }
 
     @MainActor

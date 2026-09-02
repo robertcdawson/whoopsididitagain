@@ -28,27 +28,27 @@ struct DocketView: View {
     private let engine = DeterministicDocketEngine()
 
     var body: some View {
-        FoundationCard(title: "The Docket") {
+        JournalSection(title: "The Docket") {
             if let docket {
                 if docket.items.isEmpty {
                     Text("nothing committed today.")
-                        .font(.system(.body, design: .serif))
+                        .font(.journal(.body))
                         .italic()
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 } else {
                     ForEach(docket.items) { item in
                         docketRow(item)
                     }
                     if docket.items.allSatisfy(\.isCompleted) {
                         Text("all done. the slow game thanks you.")
-                            .font(.system(.callout, design: .serif))
+                            .font(.journal(.callout))
                             .italic()
                             .foregroundStyle(Color.journalRedPen)
                     } else {
                         Text("That's the whole day. Go live it.")
-                            .font(.system(.callout, design: .serif))
+                            .font(.journal(.callout))
                             .italic()
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                     }
                 }
             } else {
@@ -64,7 +64,7 @@ struct DocketView: View {
                             "done: \(lastCompleted.title) — undo",
                             systemImage: "arrow.uturn.backward"
                         )
-                        .font(.system(.footnote, design: .serif))
+                        .font(.journal(.footnote))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, minHeight: 38)
                     }
@@ -74,7 +74,7 @@ struct DocketView: View {
                     Button("adjust") {
                         recordActualTarget = lastCompleted
                     }
-                    .font(.system(.footnote, design: .serif))
+                    .font(.journal(.footnote))
                     .frame(minHeight: 38)
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("docket-adjust")
@@ -82,8 +82,8 @@ struct DocketView: View {
             }
             if let errorMessage {
                 Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
+                    .font(.journal(.footnote))
+                    .foregroundStyle(Color.journalRedPen)
             }
         }
         .sensoryFeedback(.success, trigger: completionCount)
@@ -170,14 +170,14 @@ struct DocketView: View {
             DrawnCheckbox(isChecked: item.isCompleted)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.title)
-                    .font(.system(.title3, design: .serif))
+                    .font(.journal(.title3))
                     .strikethrough(item.isCompleted, color: Color.journalInk.opacity(0.55))
                     .foregroundStyle(
                         item.isCompleted ? Color.journalInk.opacity(0.55) : Color.journalInk
                     )
                 if let aside = deviationAside(for: item) {
                     Text(aside)
-                        .font(.system(.footnote, design: .serif))
+                        .font(.journal(.footnote))
                         .italic()
                         .foregroundStyle(Color.journalInk.opacity(0.55))
                 }
@@ -185,7 +185,7 @@ struct DocketView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             if let tag = item.tag {
                 Text(tag)
-                    .font(.system(.footnote, design: .serif))
+                    .font(.journal(.footnote))
                     .italic()
                     .foregroundStyle(Color.journalRedPen.opacity(0.85))
             }

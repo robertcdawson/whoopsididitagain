@@ -7,6 +7,7 @@ final class InjuryRecord {
     var name: String
     var bodyRegion: String
     var side: String
+    var affectedAreaIDsJSON: String?
     var status: String
     var createdAt: Date
     var updatedAt: Date
@@ -16,6 +17,7 @@ final class InjuryRecord {
         name: String,
         bodyRegion: String,
         side: String,
+        affectedAreaIDsJSON: String?,
         status: String,
         createdAt: Date,
         updatedAt: Date
@@ -24,6 +26,7 @@ final class InjuryRecord {
         self.name = name
         self.bodyRegion = bodyRegion
         self.side = side
+        self.affectedAreaIDsJSON = affectedAreaIDsJSON
         self.status = status
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -164,6 +167,19 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
                 try await saveRestriction(profile)
             }
         }
+        // Correct only the exact shipped copy. This is not a clinical record update:
+        // user-authored notes, restriction settings, and historical dates remain untouched.
+        let originalRationale =
+            "Known partial distal-triceps injury; keep this editable as guidance changes."
+        let defaultID = "right-distal-triceps"
+        let descriptor = FetchDescriptor<RestrictionRecord>(
+            predicate: #Predicate {
+                $0.id == defaultID && $0.rationale == originalRationale
+            })
+        if let original = try context.fetch(descriptor).first {
+            original.rationale = "Known partial distal-triceps injury."
+            try context.save()
+        }
         if try context.fetchCount(FetchDescriptor<SleepScheduleRecord>()) == 0 {
             context.insert(SleepScheduleRecord(settings: .standard))
             try context.save()
@@ -216,6 +232,7 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
                     injuryName: injury.name,
                     bodyRegion: injury.bodyRegion,
                     side: injury.side,
+                    affectedAreaIDs: Self.affectedAreaIDs(from: injury.affectedAreaIDsJSON),
                     movementTag: restriction.movementTag,
                     level: level,
                     painThreshold: restriction.painThreshold,
@@ -235,6 +252,7 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
             injury.name = profile.injuryName
             injury.bodyRegion = profile.bodyRegion
             injury.side = profile.side
+            injury.affectedAreaIDsJSON = Self.affectedAreaIDsJSON(from: profile.affectedAreaIDs)
             injury.status = profile.isActive ? "active" : "managed"
             injury.updatedAt = now
         } else {
@@ -244,6 +262,8 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
                     name: profile.injuryName,
                     bodyRegion: profile.bodyRegion,
                     side: profile.side,
+                    affectedAreaIDsJSON: Self.affectedAreaIDsJSON(
+                        from: profile.affectedAreaIDs),
                     status: profile.isActive ? "active" : "managed",
                     createdAt: now,
                     updatedAt: now
@@ -436,7 +456,7 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
             level: .avoid,
             painThreshold: 2,
             rationale:
-                "Known partial distal-triceps injury; keep this editable as guidance changes.",
+                "Known partial distal-triceps injury.",
             isActive: true
         ),
         RestrictionProfile(
@@ -484,4 +504,20 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
             isActive: false
         ),
     ]
+
+    private static func affectedAreaIDsJSON(from ids: [String]) -> String? {
+        let ids = BodyAreaCatalog.validIDs(ids)
+        guard !ids.isEmpty,
+            let data = try? JSONEncoder().encode(ids)
+        else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private static func affectedAreaIDs(from json: String?) -> [String] {
+        guard let json,
+            let data = json.data(using: .utf8),
+            let ids = try? JSONDecoder().decode([String].self, from: data)
+        else { return [] }
+        return BodyAreaCatalog.validIDs(ids)
+    }
 }

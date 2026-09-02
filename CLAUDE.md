@@ -98,8 +98,80 @@ test passes for the wrong reason.
 
 Also: after tapping `protocol-review-save`, `ProtocolCaptureView` does `await onSaved()` then
 `dismiss()`, so the tab bar is not immediately interactable. Synchronize on the dismissal
-(`app.navigationBars["Train"].waitForExistence(timeout: 5)`) before switching tabs, rather than
+(`app.otherElements["journal-page-work"].waitForExistence(timeout: 5)`) before switching tabs, rather than
 tapping into a view that is still going away.
+
+## Journal backgrounds and accessibility identifiers
+
+Keep notebook decoration in proposal-sized drawing layers. A fixed-height stack in a
+`safeAreaInset` background can force the background to cover hundreds of points of content,
+even when the foreground navigation looks correctly positioned. Compare simulator screenshots,
+not just view-hierarchy existence checks.
+
+Do not attach a disclosure's test identifier to the container that owns editable content.
+SwiftUI can propagate that identifier to a nested `TextEditor`, masking its own identifier.
+The journal's expandable sections use a separately identified Button and conditional content,
+so the intake editor, parser controls, and diagnostics retain independent identities.
+
+When replacing the native tab bar, apply `.toolbar(.hidden, for: .tabBar)` to each tab's
+content. Applying it only to the outer `TabView` can leave duplicate tabs in the accessibility
+tree underneath the custom navigation. Give plain custom buttons an explicit rectangular
+`contentShape` after sizing them; otherwise their accessibility bounds can shrink to the text.
+
+XCUITest can report a scroll-view field as hittable even when a pinned footer covers it. Before
+typing, scroll the entire field above the footer, not just until `isHittable` becomes true.
+`LabeledContent` also combines its label and value (for example, “Confidence, Low”); match that
+combined accessibility label rather than expecting a standalone `Confidence` text element.
+
+The phone feedback exposed a second bottom-navigation failure that screenshots/existence tests
+had missed: `isHittable` remained true for “your movements” while its bottom was y=824, below
+the clear-content boundary y=772. Keep tab content and navigation in separate bounded layout
+rows, then test full-frame clearance and a coordinate tap after scrolling, at normal and
+Accessibility XXXL sizes. Do not use `element.tap()` alone as evidence; XCTest may auto-scroll.
+Check populated history too: completed-workout titles and dates must stack at accessibility
+sizes. A side-by-side row split long words into narrow columns and made scrolling through
+history impractically tall. Exercise bottom actions with long existing workout titles.
+
+For keyboard clearance, measure the actual Done footer instead of subtracting a constant from
+the keyboard's frame. In the parser test, Parse occupied y=421.7–481.7 while Done began at y=423;
+the keyboard key frame began at y=583, so a guessed 100-point clearance missed the overlap.
+The button was hidden and the tap did nothing. Dismiss the keyboard when necessary, scroll
+the action fully above navigation, and use a coordinate tap on its visible bounds.
+
+`JournalForm` and `JournalList` apply transparent row backgrounds inside their content group;
+hiding only `scrollContentBackground` leaves the native white grouped cards visible. Use the
+wrappers on secondary pages too. A vertical-axis `TextField` still exposes a TextField on the
+tested iOS runtime; a broad `descendants(.any)[label]` also matches its persistent text label
+and creates an ambiguous test query. Target the editable control type explicitly.
+
+Use `journalGreenText`, `journalAmberText`, and `journalRedPen` for small status text on paper.
+Bright system orange/red and decorative inks are not interchangeable with text inks. The
+contrast regression covers these tokens, secondary ink, and normal/focused input borders.
+
+On iOS 26 the floating `.keyboard` toolbar could cover the focused value: Actual load's frame
+ended at y=561 while Done occupied that area above the keyboard. A second tap intended to
+position the caret dismissed focus. Reserve Done's space with a conditional bottom safe-area
+inset instead. Also make a custom list button's label frame fill its row before `contentShape`;
+the system reports the entire row as a Button even if a text-sized custom style only accepts
+taps on the label. Coordinate-tap Save schedule and reset/cancel checks guard this distinction.
+
+A vertical-axis TextField can insert a newline for the software keyboard's Done key without
+calling `onSubmit`. Wrapping single-line names/titles opt into `singleLineText` on the shared
+focus modifier so Done normalizes that newline and dismisses. Actual multiline notes omit the
+binding and retain Return. Keep both submit-dismissal and multiline-note regression coverage.
+An iOS 26 confirmation dialog can be an anchored popover with no Cancel row; dismiss outside
+its actual bounds (a tap on the navigation title can land inside the popover).
+
+Validate numeric text in the input Binding setter, before updating the numeric model. Reverting to
+`previous` from `onChange` can oscillate during rapid or invalid edits: a duration-estimate
+edit hung the text-update loop and grew the QA app's footprint to 1.7 GB. Keep external model
+refresh separate from user edits and test rejected third-decimal input as well as valid values.
+Keep pending text separate from accepted text and reconcile after the control receives the edit,
+without publishing the numeric model again. Returning early from a rejecting setter alone can
+leave unaccepted characters visible in UIKit.
+Use Select All to replace a populated field in UI tests rather than inferring the caret's
+position from its bordered frame. Empty fields can expose their placeholder as their value;
+do not try to select placeholder text.
 
 ## Adding a Swift file requires manual Xcode project edits
 

@@ -448,13 +448,87 @@ editable deviations (the RecordActual pattern), and docket-launched workout reco
 - [x] Convert `MorningCheckInView`'s pain, energy, and motivation sliders to chip rows (T6 — a
       phase 1 leftover folded into this phase at the user's request, not new phase 3 scope).
 
-Deferred to later phases: widget/notification completion, quick-action pain logging, the
-"bring to PT" adherence export, and the three-zone information architecture (Today/Work/Body +
-gear).
+Deferred to later phases: widget/notification completion, quick-action pain logging, and the
+"bring to PT" adherence export. The three-zone visual migration is tracked separately below.
 
-Live acceptance remains: on the real PT protocol, log one item as prescribed and one as a
-deviation; confirm next morning that the deviation aside reads correctly and the times-per-week
-count advanced once, not twice.
+Phase 3 is complete, as confirmed by Robert. When accepting the journal visual migration below,
+the real-protocol spot check is to log one item as prescribed and one as a deviation, then confirm
+the deviation aside and times-per-week count still behave as before.
+
+## Native Journal Visual Migration (after redesign phase 3)
+
+- [x] Apply the supplied HTML mockups to the native app, not a separate web prototype.
+- [x] Replace the four-tab shell with Today / Work / Body and a Settings gear.
+- [x] Bundle Literata / Caveat and licenses; reuse shared paper, strokes, and chips.
+- [x] Prioritize Today verdict/docket and retain detailed metrics, source status, and overrides.
+- [x] Lead Work with taped protocol cards and retain workout intake, editing, and actual history.
+- [x] Lead Body with named body-part records and real restrictions; keep weekly review, all
+      trends, experiments, and exports reachable without fabricated healing milestones.
+- [x] Restyle morning check-in, protocol flows, and record-actual; preserve keyboard dismissal.
+- [x] Add left-handed margin/gear alignment and respect Reduce Motion on drawn completion.
+- [x] Complete unit/UI regression tests and source-to-simulator visual comparison.
+- [x] Confirm the redesigned app on Robert's phone after building this checkout in Xcode.
+
+Initial simulator verification (August 31): **161 unit tests and 31 UI tests passed**, with zero failures;
+the unsigned physical-iPhone target build passed. Normal/Accessibility XXXL, left-handed,
+and entry-flow captures were compared with the HTML sources. Swift formatting, property-list
+validation, and diff checks passed. Evidence and intentional native adaptations are recorded in
+[`design-qa.md`](../design-qa.md).
+
+### Daily-use dependability follow-up (August 31)
+
+Physical-phone feedback reopened visual acceptance despite the initial simulator pass.
+
+- [x] Reproduce the obscured bottom link with a coordinate-tap regression, not just `isHittable`.
+- [x] Reserve a bounded layout row for navigation; keep the last page action above it.
+- [x] Use separate readiness rows with color, icons, accessible status words, and honest missing data.
+- [x] Make text actions recognizable as underlined links with 44-point touch targets.
+- [x] Apply paper backgrounds, transparent rows, and bordered/focused inputs to secondary screens.
+- [x] Wrap long workout titles and retain persistent workout-field labels and keyboard behavior.
+- [x] Remove the duplicate Body prompt and clean only the exact shipped restriction rationale.
+- [x] Add four unit regressions for presentation bands and narrowly scoped note cleanup.
+- [x] Fix invalid numeric-edit update loops; add an input-state regression and UI rejection check.
+- [x] Stack completed-workout history rows at accessibility sizes to keep long titles readable.
+- [x] Apply readable status inks consistently and test text/input-border contrast on paper.
+- [x] Add UI coverage for bottom actions at normal/Accessibility XXXL sizes and secondary routes.
+- [x] Finish final-source unit/UI suites, phone-target compile, and screenshot comparison.
+- [x] Replace the ambiguous Work toolbar icons with a labeled overflow menu while retaining
+      capture/import, new movement, and movement-store import actions.
+- [x] Add a stable affected-area catalog and additive optional restriction persistence without
+      inferring anatomy from existing prose or resetting older stores.
+- [x] Add the coarse full-body to focused front/back picker, explicit multi-select, list fallback,
+      removable selections, one-handed confirmation, and Reduce Motion behavior.
+- [x] Highlight mapped areas on Body and reuse the same picker from Body and restriction editing.
+- [x] Add catalog, persistence, invalid-payload, target-size, selection, and persistence UI coverage.
+- [x] Expose Restrictions as a first-class labeled Settings route.
+- [x] Rename the Body record menu to “Choose restriction” and keep anatomy selection separate.
+- [x] Expand the stable catalog to practical external musculoskeletal regions across the full body.
+- [x] Make focus navigation visually neutral; derive highlights, rows, chips, counts, and
+      confirmation copy only from selected IDs.
+- [x] Connect Body selection by stable restriction identity rather than editable display names.
+- [x] Add regressions proving one selected arm area does not highlight Torso or inflate the count.
+- [x] Robert approves the phone checks before any remaining feature work starts.
+
+Final follow-up verification (August 31): **167 unit tests and 33 UI tests passed**, zero failures;
+unsigned physical-iPhone target build and synthetic 19-model store-upgrade checks passed.
+Final captures were compared with all five annotated phone references; bottom-link coordinate
+taps pass at normal and Accessibility XXXL sizes. Formatting, property-list validation, and diff
+checks passed. See [`design-qa.md`](../design-qa.md) for exact output and the phone checklist.
+The structured body-map follow-up adds no analytics and does not change restriction evaluation.
+Targeted catalog/persistence checks and the body-map UI flow pass; the shared-architecture run
+passes **171 unit tests**. The final complete UI run passes **35 of 35 cases**, including the
+Settings Restrictions route and the one-arm/Torso selection-state regression.
+The unsigned physical-iPhone target build, historical 19-model store upgrades, formatting,
+property-list/asset JSON validation, visual comparison, and diff checks pass. Robert approved the
+physical-phone checks on September 1, 2026. This checkout has not been committed or pushed in
+this follow-up.
+
+Priority is **dependable daily use → user approval → remaining low-friction logging**. No new
+analytics in this pass. Preserve existing data, source connections, editing, and export access.
+
+Remaining feature phases are **4: widget/notification completion**, **5: ad-hoc pain entry and
+quick action**, and **6: bring-to-PT summary**. Phase 3 remains complete; visual rollout is not
+evidence that these additional features are complete.
 
 ## Milestone 6: Personal Experiment Laboratory
 

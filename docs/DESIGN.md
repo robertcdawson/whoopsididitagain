@@ -2,8 +2,12 @@
 
 **Status:** Design exploration complete; phases 1–3 of the implementation priority (camera/OCR
 intake + tap-chip review; protocol recurrence + docket generation; one-tap as-prescribed
-recording with editable deviations) implemented — see `ARCHITECTURE.md` and `TASKS.md`
-**Last updated:** August 31, 2026
+recording with editable deviations) implemented. The native field-journal shell and
+Today / Work / Body screen migration, phone-feedback usability corrections, and explicit
+coarse-to-focused affected-area mapping are implemented and approved on Robert's phone, with
+verification tracked in `../design-qa.md`. The dependability gate is closed. Phases 4–6 remain
+separate work — see `ARCHITECTURE.md` and `TASKS.md`.
+**Last updated:** September 1, 2026
 
 This document specifies the app redesign produced in the design exploration session. It is the
 implementation reference for restructuring the app around a three-zone information architecture,
@@ -14,6 +18,103 @@ Static mockups for every screen described here live in [`design/mockups`](design
 self-contained HTML files with exact colors, sizes, and copy. Read them alongside this document;
 where prose and mockup disagree, the mockup wins for visual values and this document wins for
 behavior.
+
+## Native implementation status
+
+The first three phases delivered protocol and logging behavior; they did **not** replace the
+four-tab dashboard. The journal migration applies the visible design to the actual SwiftUI app:
+
+- Today, Work, and Body, with a Settings gear instead of a fourth tab.
+- Bundled Literata and Caveat fonts (and their SIL Open Font Licenses), dot-grid paper, margin
+  rule, notebook holes, pen dividers, drawn selection boxes, and taped protocol cards.
+- Today prioritizes one verdict, three compact readiness rows, check-in, and the docket. Existing reason
+  codes, override, physiology, sleep, and diagnostics remain under “Readiness & source details.”
+- Work leads with protocols and recorded weekly item completions; workout intake expands on
+  demand. Plans, actuals, edits, deletion confirmation, and the movement library remain reachable.
+- Body leads with a selectable named restriction record, its actual recorded dates, restriction
+  details, explicit affected areas, pain-by-movement, and compressed recovery. “Choose restriction”
+  selects among saved restriction records; it is not an anatomy menu. Weekly review and complete
+  trends/export are links.
+- Check-in uses symptom chips and a bottom save action. Protocol intake/review and record-actual
+  use the same typography; record-actual scrolls so controls remain reachable with larger text.
+- Settings can mirror the margin and gear for left-handed use. This first visual release uses
+  the specified light paper palette even when the device is in Dark Mode; protocol capture keeps
+  the mockup's intentionally dark camera surface and matching system chrome.
+
+### Phone-feedback refinements (August 31)
+
+- Keep the journal navigation in a separate, measured layout row. The scrollable page must end
+  above it, and the last action must be scrollable fully into view and tappable at normal and
+  accessibility text sizes. An accessibility `isHittable` check alone is not acceptance evidence.
+- Show Body, Sleep, and Tissue on separate rows with status color and an icon; expose status
+  words to VoiceOver. Use existing score bands, never manufactured readings. Missing data says
+  Unavailable; an active hard tissue restriction says Restricted even without a check-in score.
+- Underline text actions, including check-in, protocol capture, workout paste, and movement
+  library links. Retain at least 44-point touch targets and distinguish disabled controls.
+  List-row buttons must respond across their whole visible/accessibility row, not just the text.
+- Use journal paper and transparent native rows on secondary lists and forms too. Native dates,
+  steppers, pickers, navigation bars, sheets, and keyboard behavior remain native.
+  Small status/warning text uses the darker journal green/amber/red inks, not bright system
+  colors; text contrast is at least 4.5:1 and input-boundary contrast at least 3:1 on paper.
+- Give text inputs a subtle paper border, stronger while focused. Keep workout field labels
+  visible and allow long titles to wrap both in editors and in the completed-workout detail.
+  Reserve space for the keyboard's Done action so it cannot overlay the focused input.
+- Show the Body selector once. Replace only the exact shipped right-triceps rationale with
+  “Known partial distal-triceps injury.” Preserve customized text, other records, and timestamps.
+- Expose Restrictions as a first-class labeled route under “Body & restrictions” in Settings.
+  Use domain-accurate labels: “Choose restriction” selects a saved record, while “affected areas”
+  refers to the separate anatomical localization flow.
+
+### Structured affected-area selection
+
+- Treat the full-body illustration as a coarse navigation map: head/neck, torso, each whole arm,
+  and each whole leg. A coarse tap opens a focused selector; it does not silently create a
+  detailed anatomical selection.
+- In the focused view, select one or more explicit areas. Arm choices distinguish front/back
+  shoulder, upper arm, elbow, forearm, and wrist/hand, plus an entire-arm option. The posterior
+  upper-arm label may clarify “triceps area”; the whole elbow must never be labeled triceps.
+- Keep a complete list fallback, an “Add another area” path, front/back controls, removable
+  selected-area chips, and one persistent full-width confirmation action. Do not require pinch,
+  drag, or long press. Touch targets remain at least 44 points and Reduce Motion replaces zoom
+  motion with a crossfade.
+- Persist stable area identifiers chosen by the user. Do not infer anatomy from a restriction
+  name, body-region string, side string, or rationale. Those existing free-text fields remain
+  independently editable and older restrictions remain valid with no mapped areas.
+- Treat navigation focus and stored selection as distinct states. Opening Torso, an arm, a leg,
+  or Head/Neck must not highlight that whole region unless its stable whole-region ID is explicitly
+  selected. Figure highlights, checkmarks, selected-area chips, counts, and confirmation copy all
+  derive from the same validated selected-ID set.
+- Cover practical external musculoskeletal localization across head/neck, torso/pelvis, bilateral
+  upper and lower limbs, hands/fingers, and feet/toes. The focused figure uses large non-overlapping
+  touch regions and the complete list exposes finer choices. This is not an internal-organ,
+  diagnostic, every-muscle, or every-bone ontology. Regional naming follows
+  [OpenStax anatomical terminology](https://openstax.org/books/anatomy-and-physiology/pages/1-6-anatomical-terminology)
+  and [FIPAT Terminologia Anatomica](https://fipat.library.dal.ca/wp-content/uploads/2021/08/FIPAT-TA2-Part-1.pdf).
+- Body may highlight mapped areas and launch the same picker. This is descriptive logging and
+  navigation, not diagnosis, surgical guidance, or movement clearance.
+
+**Execution order:** daily-use dependability and Robert's phone approval are complete; return to
+the remaining low-friction logging work in phases 4–6. Do not add more analytics in this pass. Existing
+experiments, trends, and exports stay available; their algorithms are unchanged.
+
+The mockups' personal scores, surgery dates, “curing” claims, and unlock countdowns are illustrative,
+not fixtures or defaults. The app never infers a healing timeline from a record creation date.
+Work shows recorded completion counts, not an invented adherence percentage. Native safe areas,
+scrolling, and 44-point touch targets take precedence over the static HTML's fixed frame.
+
+Still outstanding: phase 4 widgets/notifications, phase 5 standalone pain logging and its quick
+action (`PainLog`), phase 6 bring-to-PT summaries, explicit clinical milestone/history storage,
+and a separately designed dark palette. None is represented by an inert new control.
+
+### Seeing the redesign on a phone
+
+Open this checkout's `ios/WhoopsApp/WhoopsApp.xcodeproj`, choose the **WhoopsApp** scheme and your
+connected iPhone, then use **Product → Run** (⌘R). A previously installed binary does not change
+when the mockups or Swift source change. Keep the existing bundle identifier and signing team;
+do not delete the app or reset its store. The visible acceptance check is the paper background,
+Today / Work / Body navigation, and Settings gear. Also try a check-in and a saved workout edit.
+Camera/health permissions require the physical phone. Robert accepted the corrected visual and
+affected-area flows on September 1, 2026.
 
 ## Purpose and positioning
 
@@ -44,7 +145,7 @@ settings gear** (gear opens the existing Settings content as a sheet or pushed s
 
 | Zone | Replaces | Contents |
 | --- | --- | --- |
-| **Today** | Today tab | One verdict + one compressed metrics line + **the docket** (all of today's committed items — PT exercises, workouts, wind-down — as a single checklist). Morning check-in and record-actual launch from here. No metric grids: WHOOP has the graphs. |
+| **Today** | Today tab | One verdict + three compact color-coded readiness rows + **the docket** (all of today's committed items — PT exercises, workouts, wind-down — as a single checklist). Morning check-in and record-actual launch from here. No metric grids: WHOOP has the graphs. |
 | **Work** | Train tab | Everything committed. The **PT protocol card** (phase x of y, day n of m, per-item cadence, adherence, next unlock) above the existing workout planning/parsing. Protocols and workouts share the movement library and restriction checks. "Your Movements" lives here. |
 | **Body** | Trends tab | The long story organized **by body part, then systemically**: per-part timeline (surgery → milestones → today → next unlock), pain-by-movement trends, then compressed systemic trends with sample sizes, and the weekly review behind one link. |
 

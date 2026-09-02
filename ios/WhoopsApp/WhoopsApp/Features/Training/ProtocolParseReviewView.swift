@@ -4,6 +4,7 @@ import SwiftUI
 /// candidate chip, unknown rows by one tap into the movement library, cadence by
 /// preset chips, and the restriction check runs before anything can be saved.
 struct ProtocolParseReviewView: View {
+    @FocusState private var focusedField: UUID?
     let parsed: ParsedProtocol
     let scalingEngine: any WorkoutScalingEngine
     let movementLibrary: any MovementLibraryRepository
@@ -21,6 +22,7 @@ struct ProtocolParseReviewView: View {
     @State private var undoTask: Task<Void, Never>?
     @State private var isSaving = false
     @State private var errorMessage: String?
+    @AppStorage("journalLeftHanded") private var leftHanded = false
 
     init(
         parsed: ParsedProtocol,
@@ -46,10 +48,14 @@ struct ProtocolParseReviewView: View {
 
     private var unresolvedCount: Int { items.filter(\.needsAttention).count }
 
+    private var journalRowInsets: EdgeInsets {
+        EdgeInsets(top: 7, leading: leftHanded ? 22 : 56, bottom: 7, trailing: leftHanded ? 56 : 22)
+    }
+
     var body: some View {
         ZStack {
             JournalPaperBackground()
-            List {
+            JournalList(showsMarginRule: true) {
                 Group {
                     header
                     headline
@@ -62,7 +68,7 @@ struct ProtocolParseReviewView: View {
                             } ?? false,
                             onAddToLibrary: { Task { await addToLibrary(itemID: item.id) } }
                         )
-                        .listRowInsets(EdgeInsets(top: 7, leading: 56, bottom: 7, trailing: 22))
+                        .listRowInsets(journalRowInsets)
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .swipeActions(edge: .trailing) {
@@ -76,7 +82,7 @@ struct ProtocolParseReviewView: View {
                     restrictionRow
                     footerNote
                 }
-                .listRowInsets(EdgeInsets(top: 7, leading: 56, bottom: 7, trailing: 22))
+                .listRowInsets(journalRowInsets)
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
             }
@@ -84,6 +90,7 @@ struct ProtocolParseReviewView: View {
             .scrollContentBackground(.hidden)
         }
         .safeAreaInset(edge: .bottom) { bottomBar }
+        .formKeyboardScope($focusedField)
         .navigationBarTitleDisplayMode(.inline)
         .toolbarBackground(.hidden, for: .navigationBar)
         .task {
@@ -114,14 +121,15 @@ struct ProtocolParseReviewView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 Text("new protocol")
-                    .font(.system(.body, design: .serif))
+                    .font(.journal(.body))
                 Spacer()
                 Text(parsed.source.displayName)
-                    .font(.system(.body, design: .serif))
+                    .font(.journal(.body))
             }
             .foregroundStyle(Color.journalInk)
             TextField("protocol title", text: $title)
-                .font(.system(.title3, design: .serif, weight: .semibold))
+                .formKeyboardField()
+                .font(.journal(.title3, weight: .semibold))
                 .foregroundStyle(Color.journalInk)
                 .accessibilityIdentifier("protocol-title")
         }
@@ -130,9 +138,9 @@ struct ProtocolParseReviewView: View {
     private var headline: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("found \(items.count) \(items.count == 1 ? "movement" : "movements").")
-                .font(.system(.title2, design: .serif, weight: .bold))
+                .font(.journal(.title2, weight: .bold))
             Text(attentionLine)
-                .font(.system(.body, design: .serif))
+                .font(.journal(.body))
                 .italic()
         }
         .foregroundStyle(Color.journalInk)
@@ -155,35 +163,35 @@ struct ProtocolParseReviewView: View {
                 case .clear:
                     DrawnCheckmarkView()
                     Text("all clear — checked against your restrictions.")
-                        .font(.system(.body, design: .serif))
+                        .font(.journal(.body))
                         .foregroundStyle(Color.journalInk)
                 case .caution(let message):
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(Color.journalAmber)
                     Text(message)
-                        .font(.system(.callout, design: .serif))
+                        .font(.journal(.callout))
                         .foregroundStyle(Color.journalAmber)
                 case .hard(let message):
                     Image(systemName: "hand.raised.fill")
                         .foregroundStyle(Color.journalRedPen)
                     Text(message)
-                        .font(.system(.callout, design: .serif))
+                        .font(.journal(.callout))
                         .foregroundStyle(Color.journalRedPen)
                 case .checking:
                     ProgressView()
                     Text("checking restrictions…")
-                        .font(.system(.callout, design: .serif))
+                        .font(.journal(.callout))
                         .foregroundStyle(Color.journalInk.opacity(0.55))
                 case .noRestrictions:
                     Text("no active restrictions to check against.")
-                        .font(.system(.callout, design: .serif))
+                        .font(.journal(.callout))
                         .foregroundStyle(Color.journalInk.opacity(0.55))
                 }
             }
             .accessibilityIdentifier("protocol-restriction-check")
         } else {
             Text("resolve the flagged rows to run the restriction check.")
-                .font(.system(.callout, design: .serif))
+                .font(.journal(.callout))
                 .foregroundStyle(Color.journalInk.opacity(0.55))
         }
     }
@@ -212,7 +220,7 @@ struct ProtocolParseReviewView: View {
 
     private var footerNote: some View {
         Text(footerText)
-            .font(.system(.subheadline, design: .serif))
+            .font(.journal(.subheadline))
             .foregroundStyle(Color.journalInk.opacity(0.55))
     }
 
@@ -245,7 +253,7 @@ struct ProtocolParseReviewView: View {
                         "dropped \"\(dropped.displayName)\" — undo",
                         systemImage: "arrow.uturn.backward"
                     )
-                    .font(.system(.subheadline, design: .serif))
+                    .font(.journal(.subheadline))
                     .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.bordered)
@@ -253,6 +261,7 @@ struct ProtocolParseReviewView: View {
                 .accessibilityIdentifier("protocol-undo-drop")
             }
             Button {
+                focusedField = nil
                 Task { await save() }
             } label: {
                 Group {
@@ -262,18 +271,17 @@ struct ProtocolParseReviewView: View {
                         Text(saveLabel)
                     }
                 }
-                .font(.system(.title3, design: .serif, weight: .semibold))
+                .font(.journal(.title3, weight: .semibold))
                 .frame(maxWidth: .infinity, minHeight: 52)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.journalInk)
+            .buttonStyle(JournalPrimaryButtonStyle())
             .disabled(isSaving || items.isEmpty || unresolvedCount > 0)
             .accessibilityIdentifier("protocol-review-save")
         }
         .padding(.horizontal, 22)
         .padding(.top, 8)
         .padding(.bottom, 10)
-        .background(.thinMaterial)
+        .background(Color.journalPaper)
     }
 
     private var saveLabel: String {
@@ -392,14 +400,14 @@ private struct ProtocolReviewItemCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(titleText)
-                    .font(.system(.title3, design: .serif))
+                    .font(.journal(.title3))
                     .foregroundStyle(Color.journalInk)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 trailingAside
             }
             if let notes = item.notes.isEmpty ? nil : item.notes {
                 Text(notes.lowercased())
-                    .font(.system(.footnote, design: .serif))
+                    .font(.journal(.footnote))
                     .foregroundStyle(Color.journalInk.opacity(0.55))
             }
             if item.isResolved {
@@ -439,21 +447,21 @@ private struct ProtocolReviewItemCard: View {
             DrawnCheckmarkView()
         } else if !item.candidateIDs.isEmpty {
             Text("which one?")
-                .font(.system(.footnote, design: .serif))
+                .font(.journal(.footnote))
                 .italic()
                 .foregroundStyle(Color.journalRedPen)
         } else {
             Text("new one!")
-                .font(.system(.footnote, design: .serif))
+                .font(.journal(.footnote))
                 .italic()
                 .foregroundStyle(Color.journalInk.opacity(0.6))
         }
     }
 
     private var cadenceRow: some View {
-        HStack(spacing: 7) {
+        JournalChipLayout(spacing: 7) {
             Text("how often:")
-                .font(.system(.footnote, design: .serif))
+                .font(.journal(.footnote))
                 .foregroundStyle(Color.journalInk.opacity(0.55))
             JournalChip(
                 label: "daily",
@@ -477,24 +485,23 @@ private struct ProtocolReviewItemCard: View {
                 item.cadence = .daysOfWeek([])
             }
             if wasAddedToLibrary {
-                Spacer(minLength: 0)
                 Text("added ✓")
-                    .font(.system(.caption, design: .serif))
+                    .font(.journal(.caption))
                     .foregroundStyle(Color.journalGreen)
             }
         }
     }
 
     private func perWeekStepper(_ count: Int) -> some View {
-        HStack(spacing: 7) {
+        JournalChipLayout(spacing: 7) {
             Text("times a week:")
-                .font(.system(.footnote, design: .serif))
+                .font(.journal(.footnote))
                 .foregroundStyle(Color.journalInk.opacity(0.55))
             JournalChip(label: "−", accessibilityID: "cadence-weekly-minus-\(item.id)") {
                 item.cadence = .timesPerWeek(max(1, count - 1))
             }
             Text("\(count)")
-                .font(.system(.body, design: .serif, weight: .semibold))
+                .font(.journal(.body, weight: .semibold))
                 .foregroundStyle(Color.journalInk)
             JournalChip(label: "+", accessibilityID: "cadence-weekly-plus-\(item.id)") {
                 item.cadence = .timesPerWeek(min(7, count + 1))
@@ -503,7 +510,7 @@ private struct ProtocolReviewItemCard: View {
     }
 
     private func weekdayRow(_ days: Set<Int>) -> some View {
-        HStack(spacing: 6) {
+        JournalChipLayout(spacing: 6) {
             ForEach(1...7, id: \.self) { weekday in
                 JournalChip(
                     label: ProtocolCadence.shortWeekdayName(weekday),
@@ -529,7 +536,7 @@ private struct ProtocolReviewItemCard: View {
                     item.resolve(toMovementID: candidateID, name: candidateName(candidateID))
                 } label: {
                     Text(candidateName(candidateID).lowercased())
-                        .font(.system(.body, design: .serif))
+                        .font(.journal(.body))
                         .foregroundStyle(Color.journalInk)
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         .padding(.horizontal, 14)
@@ -545,7 +552,7 @@ private struct ProtocolReviewItemCard: View {
                 .accessibilityIdentifier("candidate-\(candidateID)-\(item.id)")
             }
             Text("tap one — the parser won't guess for you.")
-                .font(.system(.footnote, design: .serif))
+                .font(.journal(.footnote))
                 .foregroundStyle(Color.journalInk.opacity(0.55))
         }
     }

@@ -52,6 +52,12 @@
 	<string>WHOOPs transcribes dictated protocol text on this device when on-device recognition is available.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Fonts/Literata.ttf</string>
+		<string>Fonts/Literata-Italic.ttf</string>
+		<string>Fonts/Caveat.ttf</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

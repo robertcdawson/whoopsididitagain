@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("journalLeftHanded") private var leftHanded = false
     @StateObject private var whoop: WhoopConnectionModel
     @StateObject private var healthKit: HealthKitConnectionModel
     @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
@@ -20,13 +22,29 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            JournalList {
+                Section("Body & restrictions") {
+                    NavigationLink {
+                        RestrictionManagementView(repository: assessmentRepository)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Label("Restrictions", systemImage: "bandage")
+                            Text("Injuries, affected areas, and movement limits")
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
+                        }
+                    }
+                    .accessibilityIdentifier("settings-restrictions")
+                }
+
                 Section("Connections") {
                     HStack {
                         Label("WHOOP", systemImage: "heart.circle")
                         Spacer()
                         Text(whoop.status.connected ? "Connected" : "Not connected")
-                            .foregroundStyle(whoop.status.connected ? .green : .secondary)
+                            .foregroundStyle(
+                                whoop.status.connected
+                                    ? Color.journalGreenText : .journalInk.opacity(0.7))
                     }
 
                     if whoop.status.connected {
@@ -53,7 +71,7 @@ struct SettingsView: View {
                                     .frame(maxWidth: .infinity)
                             }
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(JournalPrimaryButtonStyle())
                         .disabled(whoop.isWorking)
                         .accessibilityIdentifier("connect-whoop")
                     }
@@ -63,7 +81,8 @@ struct SettingsView: View {
                         Spacer()
                         Text(healthKit.statusText)
                             .foregroundStyle(
-                                healthKit.authorizationState == .requested ? .green : .secondary
+                                healthKit.authorizationState == .requested
+                                    ? Color.journalGreenText : .journalInk.opacity(0.7)
                             )
                     }
 
@@ -102,30 +121,25 @@ struct SettingsView: View {
                     Text(
                         "Read-only. Imported data depends on the Health categories you allowed; Apple does not reveal which read categories were denied."
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
 
                 if let errorMessage = whoop.errorMessage {
                     Section("Connection issue") {
                         Text(errorMessage)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Color.journalRedPen)
                     }
                 }
 
                 if let errorMessage = healthKit.errorMessage {
                     Section("Apple Health issue") {
                         Text(errorMessage)
-                            .foregroundStyle(.red)
+                            .foregroundStyle(Color.journalRedPen)
                     }
                 }
 
                 Section("Daily planning") {
-                    NavigationLink {
-                        RestrictionManagementView(repository: assessmentRepository)
-                    } label: {
-                        Label("Injuries and restrictions", systemImage: "bandage")
-                    }
                     NavigationLink {
                         SleepScheduleSettingsView(repository: assessmentRepository)
                     } label: {
@@ -133,20 +147,29 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Journal") {
+                    Toggle("Left-handed layout", isOn: $leftHanded)
+                        .accessibilityIdentifier("journal-left-handed")
+                    Text(
+                        "Moves the notebook margin and Settings control to the other side. Text stays readable in its normal direction."
+                    )
+                    .font(.journal(.caption))
+                }
+
                 Section("Privacy") {
                     Label("Imported health data stays on this device", systemImage: "lock.shield")
                     Label("Export local data", systemImage: "square.and.arrow.up")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
 
                 Section("Experimental features") {
                     Toggle("Personal Experiment Lab", isOn: $experimentLabEnabled)
                         .accessibilityIdentifier("experiment-lab-toggle")
                     Text(
-                        "When enabled, Trends can compare intervention and comparison days using locally stored outcomes. Results are exploratory and are not medical advice."
+                        "When enabled, Body can compare intervention and comparison days using locally stored outcomes. Results are exploratory and are not medical advice."
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
 
                 Section("About") {
@@ -154,6 +177,11 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }.accessibilityIdentifier("close-settings")
+                }
+            }
             .task {
                 await whoop.refresh()
                 await healthKit.refresh()
@@ -166,7 +194,7 @@ private struct AppleHealthDataInclusionView: View {
     @ObservedObject var model: HealthKitConnectionModel
 
     var body: some View {
-        List {
+        JournalList {
             Section {
                 ForEach(HealthMetric.userSelectableMetrics) { metric in
                     Toggle(
@@ -178,8 +206,8 @@ private struct AppleHealthDataInclusionView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(metric.displayName)
                             Text(metric.inclusionDescription)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                     }
                     .accessibilityIdentifier("include-health-\(metric.rawValue)")

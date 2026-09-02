@@ -14,15 +14,15 @@ struct ExperimentLabView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        List {
+        JournalList {
             Section {
                 Label("Experimental feature", systemImage: "flask")
-                    .font(.headline)
+                    .font(.journal(.headline))
                 Text(
                     "Results are descriptive personal associations. They do not establish causation, treatment efficacy, diagnosis, or medical advice."
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             }
 
             Section("One daily check-in") {
@@ -38,8 +38,8 @@ struct ExperimentLabView: View {
                 .accessibilityIdentifier("log-experiment-day")
                 if activeExperiments.isEmpty {
                     Text("Start an experiment before logging a day.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
             }
 
@@ -51,7 +51,7 @@ struct ExperimentLabView: View {
                         Text("Create a structured comparison instead of relying on memory.")
                     } actions: {
                         Button("Create experiment") { isPresentingNewExperiment = true }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(JournalPrimaryButtonStyle())
                     }
                 } else {
                     ForEach(experiments) { experiment in
@@ -68,12 +68,12 @@ struct ExperimentLabView: View {
                             }
                         } label: {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(experiment.title).font(.headline)
+                                Text(experiment.title).font(.journal(.headline))
                                 Text(experiment.primaryOutcome.displayName)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                                    .font(.journal(.subheadline))
+                                    .foregroundStyle(Color.journalInk.opacity(0.7))
                                 Text(experiment.status.displayName)
-                                    .font(.caption)
+                                    .font(.journal(.caption))
                                     .foregroundStyle(.tint)
                             }
                             .padding(.vertical, 3)
@@ -168,7 +168,7 @@ private struct ExperimentDetailView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        List {
+        JournalList {
             loggingSection
             analysisSection
             observationSection
@@ -253,12 +253,12 @@ private struct ExperimentDetailView: View {
             Text(
                 "Choose the condition that actually happened on that day. This does not schedule or promise a future action."
             )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(.journal(.caption))
+            .foregroundStyle(Color.journalInk.opacity(0.7))
             LabeledContent("Outcome timing", value: experiment.outcomeTiming.displayName)
             Text(experiment.outcomeTiming.explanation)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
         } header: {
             Text("Log a day")
         }
@@ -268,12 +268,14 @@ private struct ExperimentDetailView: View {
         Section("Definition") {
             LabeledContent("Status", value: experiment.status.displayName)
             VStack(alignment: .leading, spacing: 4) {
-                Text("Question").font(.caption).foregroundStyle(.secondary)
+                Text("Question").font(.journal(.caption)).foregroundStyle(
+                    Color.journalInk.opacity(0.7))
                 Text(experiment.question)
             }
             if !experiment.hypothesis.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Hypothesis").font(.caption).foregroundStyle(.secondary)
+                    Text("Hypothesis").font(.journal(.caption)).foregroundStyle(
+                        Color.journalInk.opacity(0.7))
                     Text(experiment.hypothesis)
                 }
             }
@@ -309,8 +311,8 @@ private struct ExperimentDetailView: View {
                 )
                 if analysis.evidenceStatus == .insufficientData {
                     Text(remainingText(analysis))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
                 Text(analysis.summary)
                 if analysis.missingOutcomeCount > 0 {
@@ -318,21 +320,21 @@ private struct ExperimentDetailView: View {
                         "\(analysis.missingOutcomeCount) logged days have no \(experiment.primaryOutcome.displayName) value",
                         systemImage: "questionmark.circle"
                     )
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Color.journalAmberText)
                     Text(experiment.primaryOutcome.missingOutcomeExplanation)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
                 Text(analysis.caveat)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 Text(analysis.version)
-                    .font(.caption2)
+                    .font(.journal(.caption2))
                     .foregroundStyle(.tertiary)
             } else if isAnalyzing {
                 ProgressView("Resolving local outcomes…")
             } else {
-                Text("Analysis is unavailable.").foregroundStyle(.secondary)
+                Text("Analysis is unavailable.").foregroundStyle(Color.journalInk.opacity(0.7))
             }
         }
     }
@@ -340,7 +342,8 @@ private struct ExperimentDetailView: View {
     private var observationSection: some View {
         Section {
             if observations.isEmpty {
-                Text("No condition days recorded yet.").foregroundStyle(.secondary)
+                Text("No condition days recorded yet.").foregroundStyle(
+                    Color.journalInk.opacity(0.7))
             } else {
                 ForEach(observations) { observation in
                     Button {
@@ -526,17 +529,17 @@ private struct ExperimentObservationRow: View {
                 Text(
                     observation.map { experiment.conditionLabel(for: $0.condition) } ?? "Condition"
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
                 if let outcomeDay = resolved?.outcomeDay {
                     Text("\(experiment.primaryOutcome.displayName): \(outcomeDay)")
-                        .font(.caption2)
+                        .font(.journal(.caption2))
                         .foregroundStyle(.tertiary)
                 }
                 if observation?.included == false {
                     Label("Excluded", systemImage: "nosign")
-                        .font(.caption)
-                        .foregroundStyle(.orange)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalAmberText)
                 }
             }
             Spacer()
@@ -545,7 +548,7 @@ private struct ExperimentObservationRow: View {
                     "\(value.formatted(.number.precision(.fractionLength(1)))) \(experiment.primaryOutcome.unit)"
                 )
             } else {
-                Text("No outcome").foregroundStyle(.secondary)
+                Text("No outcome").foregroundStyle(Color.journalInk.opacity(0.7))
             }
         }
         .contentShape(Rectangle())
@@ -578,7 +581,7 @@ private struct ExperimentEditorView: View {
     }
 
     var body: some View {
-        Form {
+        JournalForm {
             Section("Question") {
                 TextField("Short title", text: $experiment.title)
                     .formKeyboardField()
@@ -602,24 +605,24 @@ private struct ExperimentEditorView: View {
                 Text(
                     "At the end of a day, choose the condition that actually happened. These labels do not schedule a future action."
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             }
             Section("Outcomes") {
                 Picker("Primary outcome", selection: $experiment.primaryOutcome) {
                     ForEach(ExperimentOutcome.allCases) { Text($0.displayName).tag($0) }
                 }
                 Text(experiment.primaryOutcome.dataSourceExplanation)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 Picker("Measure outcome", selection: $experiment.outcomeTiming) {
                     ForEach(ExperimentOutcomeTiming.allCases) {
                         Text($0.displayName).tag($0)
                     }
                 }
                 Text(experiment.outcomeTiming.explanation)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 DisclosureGroup("Secondary outcomes") {
                     ForEach(ExperimentOutcome.allCases.filter { $0 != experiment.primaryOutcome }) {
                         outcome in
@@ -637,11 +640,11 @@ private struct ExperimentEditorView: View {
                 Text(
                     "Requires at least \(experiment.minimumObservations) usable days in each condition (\(2 * experiment.minimumObservations) total)."
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
                 Text(experiment.analysisMethod)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
             }
             Section("Criteria and context") {
                 TextField("Inclusion criteria, one per line", text: $inclusionText, axis: .vertical)
@@ -674,8 +677,8 @@ private struct ExperimentEditorView: View {
                     }
                 }
                 Text("Active experiments appear in the single daily check-in.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
             }
         }
         .navigationTitle(experiment.title.isEmpty ? "New Experiment" : "Edit Experiment")
@@ -787,7 +790,7 @@ struct DailyExperimentLogView: View {
     }
 
     var body: some View {
-        Form {
+        JournalForm {
             Section("Day") {
                 DatePicker(
                     "Local day",
@@ -798,8 +801,8 @@ struct DailyExperimentLogView: View {
                 Text(
                     "At the end of the day, choose what actually happened. Not recorded leaves that experiment unchanged."
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             }
 
             if isLoading {
@@ -819,14 +822,14 @@ struct DailyExperimentLogView: View {
                                 "This date already has an entry. Saving updates it.",
                                 systemImage: "arrow.triangle.2.circlepath"
                             )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.journal(.caption))
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                         }
                         Text(
                             "\(selection.experiment.primaryOutcome.displayName): \(selection.experiment.outcomeTiming.displayName.lowercased())."
                         )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                     }
                 }
             }
@@ -964,13 +967,13 @@ private struct ExperimentObservationEditorView: View {
     }
 
     var body: some View {
-        Form {
+        JournalForm {
             Section("What actually happened") {
                 Text(
                     "Choose the condition that was true on this day. This records what happened; it does not schedule a future action."
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
                 DatePicker("Local day", selection: $date, displayedComponents: .date)
                 Picker("Condition", selection: $observation.condition) {
                     Text(experiment.intervention).tag(ExperimentCondition.intervention)
@@ -981,22 +984,22 @@ private struct ExperimentObservationEditorView: View {
                         "That date already has a condition day.",
                         systemImage: "exclamationmark.triangle.fill"
                     )
-                    .font(.caption)
-                    .foregroundStyle(.orange)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalAmberText)
                 } else if let originalDay, selectedDay != originalDay {
                     Label(
                         "Saving will move this entry from \(originalDay) to \(selectedDay).",
                         systemImage: "calendar.badge.clock"
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 } else if isUpdatingExistingDay {
                     Label(
                         "Saving will update this date's existing entry.",
                         systemImage: "arrow.triangle.2.circlepath"
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
                 Toggle("Include in analysis", isOn: $observation.included)
                 if !observation.included {
@@ -1011,18 +1014,18 @@ private struct ExperimentObservationEditorView: View {
                     if let formattedResolvedValue {
                         Text(formattedResolvedValue)
                     } else {
-                        Text("Not available yet").foregroundStyle(.secondary)
+                        Text("Not available yet").foregroundStyle(Color.journalInk.opacity(0.7))
                     }
                 }
                 LabeledContent("Condition day", value: selectedDay)
                 LabeledContent("Outcome day", value: outcomeDay)
                 Text(experiment.outcomeTiming.explanation)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 if resolvedValue == nil {
                     Text("Synchronize the source if this outcome should already be available.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
             }
             Section {
