@@ -358,6 +358,26 @@ behavior without weakening source fidelity.
   muscles, or bones from free text. Regional terms follow OpenStax and FIPAT references linked in
   `DESIGN.md`.
 
+## ADR-023: Keep outside-app docket actions narrow and app-reconciled
+
+- **Date:** September 1, 2026
+- **Status:** Phase 4 in progress
+- **Decision:** Keep the 19-model SwiftData store app-owned. Share only a versioned snapshot of
+  today's user-visible docket and durable file-per-action completion requests through the App
+  Group. Widgets and App Intents may optimistically overlay a pending request, but only the app
+  reconciles it through `DocketRepository`, republishes the snapshot, and acknowledges the file.
+- **Completion boundary:** Protocol and wind-down items may be completed as prescribed without
+  opening the app. Workouts must open their existing completion flow because session RPE, pain,
+  and actual work cannot be inferred from a one-tap action. Notification actions and App Shortcut
+  phrases must reuse the same bridge.
+- **Rationale:** Moving or opening SwiftData from an extension would enlarge the data and migration
+  boundary and create competing writers. File-per-action requests survive process termination;
+  the existing local-day/kind/source upsert makes replay idempotent, and publishing before
+  acknowledgment avoids a lost-action window. The shared container excludes health history, raw
+  provider payloads, credentials, and backend state.
+- **Scope:** Reminders are local and opt-in. No backend push service, analytics expansion, or
+  outside-app workout fabrication is authorized by this decision.
+
 ## Remaining open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final

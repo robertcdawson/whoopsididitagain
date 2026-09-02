@@ -10,6 +10,8 @@ import SwiftUI
 /// rows launch `WorkoutCompletionView` — the docket cannot invent session RPE or
 /// pain, so it defers to the same recording flow the Train tab uses.
 struct DocketView: View {
+    @Environment(\.scenePhase) private var scenePhase
+
     let protocolRepository: any ProtocolRepository
     let workoutRepository: any WorkoutRepository
     let docketRepository: any DocketRepository
@@ -88,6 +90,10 @@ struct DocketView: View {
         }
         .sensoryFeedback(.success, trigger: completionCount)
         .task(id: sleepDeadline) { await reload() }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await reload() }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("docket-card")
         .sheet(item: $recordActualTarget) { item in
@@ -224,18 +230,25 @@ struct DocketView: View {
     private func reload() async {
         do {
             let now = Date.now
+            let outsideCoordinator = OutsideAppDocketCoordinator(repository: docketRepository)
+            let pendingActionIDs = try await outsideCoordinator.reconcilePendingCompletions()
             let protocols = try await protocolRepository.protocols(includeArchived: false)
             let fetchedPlans = try await workoutRepository.plans()
             let completions = try await docketRepository.completions(
                 days: engine.weekDays(containing: now)
             )
             plans = fetchedPlans
-            docket = engine.docket(
+            let generatedDocket = engine.docket(
                 for: now,
                 protocols: protocols,
                 plans: fetchedPlans,
                 sleepDeadline: sleepDeadline,
                 completions: completions
+            )
+            docket = generatedDocket
+            try await outsideCoordinator.publish(
+                generatedDocket,
+                acknowledging: pendingActionIDs
             )
             errorMessage = nil
         } catch {

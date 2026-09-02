@@ -642,6 +642,21 @@ The app should provide no more than:
 - One optional morning check-in notification
 - One exceptional anomaly notification when warranted
 
+### Phase 4 outside-app completion contract
+
+Implementation began September 1, 2026 with the interactive docket widget and its shared
+completion boundary. Keep the 19-model SwiftData store in the app container. An App Group stores
+only a versioned snapshot of today's user-visible docket plus durable, file-per-action completion
+requests. The app reconciles those requests through the existing `DocketRepository` before
+publishing a refreshed snapshot; an interrupted reconciliation safely repeats the repository's
+idempotent day/kind/source upsert.
+
+Home and Lock Screen widgets may complete protocol and wind-down items as prescribed through the
+shared App Intent without opening the app. Workouts continue to open the app because session RPE,
+pain, and actual work cannot be fabricated by a one-tap extension action. Notification actions and
+voice phrases must reuse this same bridge. Notifications remain local and opt-in; no backend push
+service is part of this phase.
+
 ### Benefit
 
 WHOOP indicates how much sleep may be needed. This feature determines what that means for tonight’s actual schedule.
