@@ -58,12 +58,14 @@ struct ProtocolCaptureView: View {
                         isShowingPaste = false
                         parse(text: text, source: .paste)
                     }
+                    .preferredColorScheme(.light)
                 }
                 .sheet(isPresented: $isShowingDictation) {
                     ProtocolDictationSheet { text in
                         isShowingDictation = false
                         parse(text: text, source: .dictation)
                     }
+                    .preferredColorScheme(.light)
                 }
                 .alert("Couldn't read the protocol", isPresented: errorIsPresented) {
                     Button("OK", role: .cancel) { errorMessage = nil }
@@ -71,50 +73,18 @@ struct ProtocolCaptureView: View {
                     Text(errorMessage ?? "Unknown error")
                 }
         }
+        .preferredColorScheme(reviewing == nil ? .dark : .light)
     }
 
     private var captureScreen: some View {
         ZStack {
             Color.journalCaptureBackground.ignoresSafeArea()
-            VStack(spacing: 0) {
-                Text("point it at the PT sheet")
-                    .font(.system(.title2, design: .serif, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.95))
-                    .padding(.top, 12)
-
-                sheetFrame
-                    .padding(.top, 22)
-                    .padding(.horizontal, 34)
-
-                Text("read on this phone. parsed by math.")
-                    .font(.system(.callout, design: .serif))
-                    .foregroundStyle(.white.opacity(0.75))
-                    .padding(.top, 14)
-                Text(
-                    isCameraSupported
-                        ? "the sheet never leaves the device"
-                        : "camera scanning isn't available here — paste instead"
-                )
-                .font(.system(.footnote, design: .serif))
-                .foregroundStyle(.white.opacity(0.55))
-                .padding(.top, 2)
-
-                Spacer(minLength: 12)
-
-                shutterButton
-
-                HStack(spacing: 26) {
-                    captureLink("paste instead", identifier: "protocol-paste-link") {
-                        isShowingPaste = true
-                    }
-                    captureLink("read it aloud", identifier: "protocol-dictate-link") {
-                        isShowingDictation = true
-                    }
+            GeometryReader { geometry in
+                ScrollView {
+                    captureContent
+                        .frame(minHeight: geometry.size.height)
                 }
-                .padding(.top, 26)
-                .padding(.bottom, 16)
             }
-            .padding(.horizontal)
 
             if isProcessing {
                 Color.black.opacity(0.55).ignoresSafeArea()
@@ -122,11 +92,55 @@ struct ProtocolCaptureView: View {
                     ProgressView()
                         .tint(.white)
                     Text("reading the sheet…")
-                        .font(.system(.callout, design: .serif))
+                        .font(.journal(.callout))
                         .foregroundStyle(.white)
                 }
             }
         }
+    }
+
+    private var captureContent: some View {
+        VStack(spacing: 0) {
+            Text("point it at the PT sheet")
+                .font(.journal(.title2, weight: .bold))
+                .foregroundStyle(.white.opacity(0.95))
+                .padding(.top, 12)
+
+            sheetFrame
+                .frame(height: 360)
+                .padding(.top, 22)
+                .padding(.horizontal, 34)
+
+            Text("read on this phone. parsed by math.")
+                .font(.journal(.callout))
+                .foregroundStyle(.white.opacity(0.75))
+                .padding(.top, 14)
+            Text(
+                isCameraSupported
+                    ? "the sheet never leaves the device"
+                    : "camera scanning isn't available here — paste instead"
+            )
+            .font(.journal(.footnote))
+            .foregroundStyle(.white.opacity(0.55))
+            .padding(.top, 2)
+
+            Spacer(minLength: 12)
+
+            shutterButton
+
+            HStack(spacing: 26) {
+                captureLink("paste instead", identifier: "protocol-paste-link") {
+                    isShowingPaste = true
+                }
+                captureLink("read it aloud", identifier: "protocol-dictate-link") {
+                    isShowingDictation = true
+                }
+            }
+            .padding(.top, 26)
+            .padding(.bottom, 16)
+        }
+        .padding(.horizontal)
+
     }
 
     private var sheetFrame: some View {
@@ -178,7 +192,7 @@ struct ProtocolCaptureView: View {
     ) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.system(.body, design: .serif))
+                .font(.journal(.body))
                 .foregroundStyle(Color.journalCaptureGold)
                 .underline()
                 .frame(minHeight: 44)
@@ -273,57 +287,62 @@ private struct CornerBrackets: Shape {
 /// Paste (and share-sheet fallback) path into the parser.
 private struct ProtocolPasteSheet: View {
     @State private var text = ""
+    @FocusState private var focusedField: UUID?
     @Environment(\.dismiss) private var dismiss
     let onUse: (String) -> Void
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Text("paste the protocol text — one item per line works best.")
-                    .font(.system(.subheadline, design: .serif))
-                    .foregroundStyle(Color.journalInk.opacity(0.7))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            ScrollView {
+                VStack(spacing: 16) {
+                    Text("paste the protocol text — one item per line works best.")
+                        .font(.journal(.subheadline))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                TextEditor(text: $text)
-                    .font(.system(.body, design: .serif))
-                    .scrollContentBackground(.hidden)
-                    .padding(8)
-                    .frame(minHeight: 220)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Color.journalInk.opacity(0.35), lineWidth: 1.5)
-                    )
-                    .accessibilityIdentifier("protocol-paste-entry")
+                    TextEditor(text: $text)
+                        .font(.journal(.body))
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 220)
+                        .journalInput()
+                        .formKeyboardField(dismissOnSubmit: false)
+                        .accessibilityIdentifier("protocol-paste-entry")
 
-                PasteButton(payloadType: String.self) { strings in
-                    if let pasted = strings.first {
-                        text = pasted
+                    PasteButton(payloadType: String.self) { strings in
+                        if let pasted = strings.first {
+                            text = pasted
+                        }
                     }
-                }
-                .buttonBorderShape(.capsule)
-                .tint(Color.journalInk)
+                    .buttonBorderShape(.capsule)
+                    .tint(Color.journalInk)
 
-                Spacer()
+                    Spacer()
 
-                Button {
-                    onUse(text)
-                } label: {
-                    Text("parse it")
-                        .font(.system(.title3, design: .serif, weight: .semibold))
-                        .frame(maxWidth: .infinity, minHeight: 52)
+                    Button {
+                        focusedField = nil
+                        onUse(text)
+                    } label: {
+                        Text("parse it")
+                            .font(.journal(.title3, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(JournalPrimaryButtonStyle())
+                    .tint(Color.journalInk)
+                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .accessibilityIdentifier("protocol-paste-use")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.journalInk)
-                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .accessibilityIdentifier("protocol-paste-use")
+                .padding()
             }
-            .padding()
-            .background(Color.journalPaper)
+            .journalForm()
+            .formKeyboardScope($focusedField)
             .navigationTitle("Paste the Sheet")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        focusedField = nil
+                        dismiss()
+                    }
                 }
             }
         }

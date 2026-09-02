@@ -7,6 +7,7 @@ import SwiftUI
 /// the `onSave` closure the caller supplies.
 struct RecordActualSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @FocusState private var focusedField: UUID?
 
     let item: DocketItem
@@ -35,54 +36,56 @@ struct RecordActualSheet: View {
         ZStack(alignment: .top) {
             JournalPaperBackground(showsMarginRule: false)
 
-            VStack(spacing: 14) {
-                Capsule()
-                    .fill(Color.journalInk.opacity(0.3))
-                    .frame(width: 44, height: 5)
-                    .padding(.top, 10)
+            ScrollView {
+                VStack(spacing: 14) {
+                    Capsule()
+                        .fill(Color.journalInk.opacity(0.3))
+                        .frame(width: 44, height: 5)
+                        .padding(.top, 10)
 
-                titleRow
+                    titleRow
 
-                asPrescribedButton
+                    asPrescribedButton
 
-                Text("one tap. that's the whole log.")
-                    .font(.system(.footnote, design: .serif))
-                    .foregroundStyle(Color.journalInk.opacity(0.55))
+                    Text("one tap. that's the whole log.")
+                        .font(.journal(.footnote))
+                        .foregroundStyle(Color.journalInk.opacity(0.55))
 
-                SquiggleDivider()
-                    .stroke(Color.journalInk.opacity(0.25), lineWidth: 1.5)
-                    .frame(height: 10)
+                    SquiggleDivider()
+                        .stroke(Color.journalInk.opacity(0.25), lineWidth: 1.5)
+                        .frame(height: 10)
 
-                Text("or, if it went sideways:")
-                    .font(.system(.body, design: .serif))
-                    .foregroundStyle(Color.journalInk.opacity(0.65))
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("or, if it went sideways:")
+                        .font(.journal(.body))
+                        .foregroundStyle(Color.journalInk.opacity(0.65))
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                deviationControls
+                    deviationControls
 
-                painSection
+                    painSection
 
-                noteField
+                    noteField
 
-                Spacer(minLength: 0)
+                    Spacer(minLength: 0)
 
-                Text("saved with undo — mis-taps happen to the best thumbs")
-                    .font(.system(.footnote, design: .serif))
-                    .foregroundStyle(Color.journalInk.opacity(0.5))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                    Text("saved with undo — mis-taps happen to the best thumbs")
+                        .font(.journal(.footnote))
+                        .foregroundStyle(Color.journalInk.opacity(0.5))
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
 
-                logItButton
+                    logItButton
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(.journal(.footnote))
+                            .foregroundStyle(Color.journalRedPen)
+                    }
                 }
+                .padding(.horizontal, 22)
+                .padding(.bottom, 20)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal, 22)
-            .padding(.bottom, 20)
-            .frame(maxWidth: .infinity)
         }
         .overlay(alignment: .top) {
             Rectangle()
@@ -90,38 +93,15 @@ struct RecordActualSheet: View {
                 .frame(height: 2)
         }
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
-        .ignoresSafeArea(edges: .bottom)
         .formKeyboardScope($focusedField, doneIdentifier: "dismiss-record-actual-keyboard")
     }
 
     private var titleRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(item.title)
-                .font(.system(.title2, design: .serif, weight: .bold))
-            if let prescriptionSummary {
-                Text(prescriptionSummary)
-                    .font(.system(.body, design: .serif, weight: .medium))
-            }
-            Spacer(minLength: 0)
-        }
-        .foregroundStyle(Color.journalInk)
-    }
-
-    private var prescriptionSummary: String? {
-        switch (item.prescribedSets, item.prescribedRepetitions, item.prescribedDurationSeconds) {
-        case (let sets?, let repetitions?, _):
-            "\(sets)×\(repetitions)"
-        case (let sets?, nil, let duration?):
-            "\(sets)×\(duration)s"
-        case (nil, let repetitions?, _):
-            "\(repetitions) reps"
-        case (nil, nil, let duration?):
-            "\(duration)s"
-        case (let sets?, nil, nil):
-            "\(sets) sets"
-        case (nil, nil, nil):
-            nil
-        }
+        // The docket title already includes the prescribed quantity.
+        Text(item.title)
+            .font(.journal(.title2, weight: .bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .foregroundStyle(Color.journalInk)
     }
 
     private var asPrescribedButton: some View {
@@ -131,7 +111,7 @@ struct RecordActualSheet: View {
             HStack(spacing: 12) {
                 DrawnCheckmarkView(color: .journalPaper, size: 26)
                 Text("as prescribed")
-                    .font(.system(.title3, design: .serif, weight: .bold))
+                    .font(.journal(.title3, weight: .bold))
             }
             .frame(maxWidth: .infinity)
             .padding(18)
@@ -144,7 +124,7 @@ struct RecordActualSheet: View {
     }
 
     private var deviationControls: some View {
-        HStack(spacing: 16) {
+        deviationLayout {
             JournalStepper(
                 label: "sets",
                 value: draft.sets,
@@ -175,14 +155,20 @@ struct RecordActualSheet: View {
         }
     }
 
+    private var deviationLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+            : AnyLayout(HStackLayout(spacing: 16))
+    }
+
     private var painSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("pain during")
-                    .font(.system(.body, design: .serif))
+                    .font(.journal(.body))
                     .foregroundStyle(Color.journalInk)
                 Text("(tap it)")
-                    .font(.system(.footnote, design: .serif))
+                    .font(.journal(.footnote))
                     .foregroundStyle(Color.journalInk.opacity(0.5))
             }
             JournalScaleChipRow(
@@ -199,16 +185,17 @@ struct RecordActualSheet: View {
     private var noteField: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("note")
-                .font(.system(.footnote, design: .serif))
+                .font(.journal(.footnote))
                 .foregroundStyle(Color.journalInk.opacity(0.6))
             TextField(
                 "What changed — load, form, anything else",
                 text: $draft.note,
                 axis: .vertical
             )
-            .font(.system(.body, design: .serif))
+            .font(.journal(.body))
             .foregroundStyle(Color.journalInk)
             .formKeyboardField(dismissOnSubmit: false)
+            .textFieldStyle(JournalTextFieldStyle())
             .lineLimit(1...3)
             .accessibilityIdentifier("record-actual-note")
         }
@@ -219,7 +206,7 @@ struct RecordActualSheet: View {
             Task { await save(draft) }
         } label: {
             Text("log it")
-                .font(.system(.title3, design: .serif, weight: .semibold))
+                .font(.journal(.title3, weight: .semibold))
                 .frame(maxWidth: .infinity)
                 .padding(15)
                 .foregroundStyle(Color.journalPaper)

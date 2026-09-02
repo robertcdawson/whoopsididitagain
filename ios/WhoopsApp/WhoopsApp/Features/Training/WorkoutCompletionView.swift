@@ -48,12 +48,12 @@ struct WorkoutCompletionView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            JournalForm {
                 Section {
                     textField("Workout title", text: $workout.title)
                     Text(introduction)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
 
                 Section("Session") {
@@ -73,12 +73,12 @@ struct WorkoutCompletionView: View {
                     Text(
                         "Changing the start preserves duration. Changing the end updates duration. Changing duration moves the end."
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Session RPE (1–10)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .font(.journal(.subheadline))
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                         JournalScaleChipRow(
                             range: 1...10,
                             selected: workout.sessionRPE,
@@ -90,8 +90,8 @@ struct WorkoutCompletionView: View {
                     .padding(.vertical, 2)
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Post-session pain (0–10)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .font(.journal(.subheadline))
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                         JournalScaleChipRow(
                             range: 0...10,
                             selected: workout.postSessionPain,
@@ -114,8 +114,8 @@ struct WorkoutCompletionView: View {
                         Text(
                             "This score is separate from the actual movement totals below. Editing either does not overwrite the other."
                         )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                         Button("Remove reported result", role: .destructive) {
                             focusedField = nil
                             isRemovingScore = true
@@ -151,7 +151,7 @@ struct WorkoutCompletionView: View {
                 if let message = validationMessage {
                     Section {
                         Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(
-                            .orange)
+                            Color.journalAmberText)
                     }
                 }
             }
@@ -304,8 +304,8 @@ struct WorkoutCompletionView: View {
                 seconds: $workout.movements[index].actualDurationSeconds)
             VStack(alignment: .leading, spacing: 6) {
                 Text("Pain during (0–10)")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.subheadline))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 JournalScaleChipRow(
                     range: 0...10,
                     selected: workout.movements[index].painDuring,
@@ -342,7 +342,8 @@ struct WorkoutCompletionView: View {
 
     @ViewBuilder
     private func numberField(_ title: String, value: Binding<Int?>) -> some View {
-        LabeledContent(title) {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
             TextField("", text: optionalInteger(value), prompt: Text("Optional"))
                 .formKeyboardField()
                 .keyboardType(.numberPad)
@@ -358,10 +359,12 @@ struct WorkoutCompletionView: View {
 
     @ViewBuilder
     private func textField(_ title: String, text: Binding<String>) -> some View {
-        LabeledContent(title) {
-            TextField("", text: text, prompt: Text("Optional"))
-                .formKeyboardField()
-                .multilineTextAlignment(.trailing)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+            TextField("", text: text, prompt: Text("Optional"), axis: .vertical)
+                .formKeyboardField(singleLineText: text)
+                .lineLimit(1...4)
+                .accessibilityLabel(title)
                 .accessibilityIdentifier(title)
         }
     }
@@ -370,8 +373,8 @@ struct WorkoutCompletionView: View {
     private func multilineField(_ title: String, text: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .font(.journal(.subheadline))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             TextField("", text: text, prompt: Text("Optional"), axis: .vertical)
                 .formKeyboardField(dismissOnSubmit: false)
                 .lineLimit(1...4)

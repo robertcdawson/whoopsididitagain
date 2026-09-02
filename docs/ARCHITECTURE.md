@@ -1,13 +1,62 @@
 # Architecture
 
 **Status:** Milestones 5–6 (trends and Personal Experiment Lab), workout/HealthKit stability
-improvements, and redesign phases 1–2 (protocol intake, tap-chip review, recurrence and docket
-generation) integrated
+improvements, redesign phases 1–3, and the native Today / Work / Body field-journal shell integrated
 
-**Last updated:** August 30, 2026
+**Last updated:** September 1, 2026
 
 `PROJECT_PLAN.md` is the product source of truth. This document records the architecture that is
 currently implemented.
+
+The journal navigation preserves independent native navigation stacks and presents Settings from
+a gear. Shared paper, typography, controls, and vector strokes live in `FieldJournal.swift`.
+Fonts are bundled resources; rendering never fetches a font from the network. The visual migration
+does not change persistence schemas, HealthKit anchors, parser behavior, or readiness calculations.
+Today retains expanded diagnostics; Work retains all plan/actual editing; Body retains all trends,
+experiments, and exports behind focused links. See `DESIGN.md` for the visual scope and limits.
+Settings exposes a first-class Restrictions route for creating, editing, disabling, deleting, and
+mapping restrictions. Body’s “Choose restriction” control selects the record whose story is shown;
+anatomical selection remains a separate affected-area flow.
+
+The tab content and journal navigation occupy separate rows in a bounded vertical layout, so
+the navigation cannot cover a scroll view's last action. `JournalForm` and `JournalList` retain
+native control behavior with transparent rows on paper; shared link/input styles make editing
+discoverable. Field focus flows through the existing UUID-based keyboard scope to draw focus
+borders. The keyboard Done action uses a conditional bottom safe-area inset instead of a
+floating keyboard toolbar, reserving space so it cannot cover the focused value. Wrapping
+single-line values dismiss on Done; true multiline notes retain Return. Readiness color/status
+mapping is presentation-only and does not alter stored scores.
+Numeric workout controls validate input in Binding setters, rather than reverting published
+model values in change observers. `WorkoutFieldInput` reconciles pending display text to the
+latest accepted edit after the control receives it, without re-publishing the numeric model;
+external model refreshes remain separate to prevent edit loops and preserve stored precision.
+Completed-workout rows stack at accessibility sizes so titles keep
+the full content width instead of competing with dates.
+Default preparation also removes obsolete instructional copy from the exact shipped
+right-triceps rationale. This idempotent content correction changes neither custom notes nor
+record dates and needs no schema migration.
+
+Restrictions can additionally store zero or more user-selected affected-area identifiers. The
+domain-owned `BodyAreaCatalog` defines stable IDs, labels, laterality, front/back view, coarse
+focus region, and deterministic display order. UI selection is the only writer: free-text injury
+names, body regions, sides, and rationales are never parsed to infer anatomy. This keeps the map
+auditable and prevents changing terminology from silently moving a restriction on the body.
+The catalog covers practical external musculoskeletal regions across head/neck, torso/pelvis,
+bilateral limbs, hands/fingers, and feet/toes; it is not a diagnostic anatomy ontology. Large
+figure hit regions and finer list regions share stable IDs and deterministic ordering. Hip, groin,
+and glute choices have one canonical torso/pelvis focus rather than duplicate IDs under a leg.
+
+Picker navigation focus is transient UI state and is never merged into stored selection. Figure
+highlights, rows, chips, selection counts, and confirmation labels project the same validated
+selected-ID set. Body connects a restriction to its injury timeline through the stable
+`injury:<restriction-id>` relationship rather than editable display names.
+
+`InjuryRecord.affectedAreaIDsJSON` is an additive optional SwiftData column containing a JSON
+array of catalog IDs. Reads discard unknown IDs and preserve valid IDs in catalog order; writes
+store nil for an empty selection. Existing stores therefore upgrade without a reset, existing
+restrictions remain unmapped until the user chooses areas, and future catalog additions do not
+change historical selections. The Body screen and restriction editor share the same picker and
+repository save path; the map does not affect readiness or restriction-demand evaluation.
 
 The combined app keeps one SwiftData container with all 19 record types from both development
 lines: source history, assessment/configuration, planned/actual work, movement definitions,

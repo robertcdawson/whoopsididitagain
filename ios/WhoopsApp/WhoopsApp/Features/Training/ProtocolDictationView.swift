@@ -104,78 +104,82 @@ final class ProtocolDictationModel: ObservableObject {
 
 struct ProtocolDictationSheet: View {
     @StateObject private var model = ProtocolDictationModel()
+    @FocusState private var focusedField: UUID?
     @Environment(\.dismiss) private var dismiss
     let onUse: (String) -> Void
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 16) {
-                Text("read the sheet aloud — movement, sets, reps.")
-                    .font(.system(.subheadline, design: .serif))
-                    .foregroundStyle(Color.journalInk.opacity(0.7))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Button {
-                    Task { await model.toggleRecording() }
-                } label: {
-                    Label(
-                        model.isRecording ? "stop listening" : "start listening",
-                        systemImage: model.isRecording ? "mic.fill" : "mic"
-                    )
-                    .font(.system(.title3, design: .serif, weight: .semibold))
-                    .frame(maxWidth: .infinity, minHeight: 52)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(model.isRecording ? Color.journalRedPen : Color.journalInk)
-                .accessibilityIdentifier("protocol-dictation-toggle")
-
-                if let status = model.statusMessage {
-                    Text(status)
-                        .font(.system(.footnote, design: .serif))
-                        .foregroundStyle(Color.journalRedPen)
+            ScrollView {
+                VStack(spacing: 16) {
+                    Text("read the sheet aloud — movement, sets, reps.")
+                        .font(.journal(.subheadline))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                         .frame(maxWidth: .infinity, alignment: .leading)
-                }
 
-                TextEditor(text: $model.transcript)
-                    .font(.system(.body, design: .serif))
-                    .scrollContentBackground(.hidden)
-                    .padding(8)
-                    .frame(minHeight: 180)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Color.journalInk.opacity(0.35), lineWidth: 1.5)
-                    )
-                    .accessibilityIdentifier("protocol-dictation-transcript")
-
-                Text("transcribed on this phone. edit anything it misheard.")
-                    .font(.system(.footnote, design: .serif))
-                    .foregroundStyle(Color.journalInk.opacity(0.55))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Spacer()
-
-                Button {
-                    model.stopRecording()
-                    onUse(model.transcript)
-                } label: {
-                    Text("use this text")
-                        .font(.system(.title3, design: .serif, weight: .semibold))
+                    Button {
+                        Task { await model.toggleRecording() }
+                    } label: {
+                        Label(
+                            model.isRecording ? "stop listening" : "start listening",
+                            systemImage: model.isRecording ? "mic.fill" : "mic"
+                        )
+                        .font(.journal(.title3, weight: .semibold))
+                        .foregroundStyle(Color.journalPaper)
                         .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(model.isRecording ? Color.journalRedPen : Color.journalInk)
+                    .accessibilityIdentifier("protocol-dictation-toggle")
+
+                    if let status = model.statusMessage {
+                        Text(status)
+                            .font(.journal(.footnote))
+                            .foregroundStyle(Color.journalRedPen)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    TextEditor(text: $model.transcript)
+                        .font(.journal(.body))
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 180)
+                        .journalInput()
+                        .formKeyboardField(dismissOnSubmit: false)
+                        .accessibilityIdentifier("protocol-dictation-transcript")
+
+                    Text("transcribed on this phone. edit anything it misheard.")
+                        .font(.journal(.footnote))
+                        .foregroundStyle(Color.journalInk.opacity(0.55))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Spacer()
+
+                    Button {
+                        focusedField = nil
+                        model.stopRecording()
+                        onUse(model.transcript)
+                    } label: {
+                        Text("use this text")
+                            .font(.journal(.title3, weight: .semibold))
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                    }
+                    .buttonStyle(JournalPrimaryButtonStyle())
+                    .tint(Color.journalInk)
+                    .disabled(
+                        model.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    )
+                    .accessibilityIdentifier("protocol-dictation-use")
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(Color.journalInk)
-                .disabled(
-                    model.transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                )
-                .accessibilityIdentifier("protocol-dictation-use")
+                .padding()
             }
-            .padding()
-            .background(Color.journalPaper)
+            .journalForm()
+            .formKeyboardScope($focusedField)
             .navigationTitle("Read It Aloud")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        focusedField = nil
                         model.stopRecording()
                         dismiss()
                     }

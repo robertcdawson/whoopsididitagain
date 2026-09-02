@@ -28,7 +28,7 @@ something more interesting with it than scroll the official app.
 
 ## Status
 
-✅ **Milestone 6 Personal Experiment Laboratory.** The Train tab accepts raw
+✅ **Milestone 6 Personal Experiment Laboratory.** Work accepts raw
 CrossFit, weightlifting, and conditioning text; produces a schema-validated,
 editable plan; reports unresolved ambiguity instead of inventing details; and
 checks canonical movement demands against active restrictions. Candidate
@@ -46,7 +46,7 @@ library. Stable facts such as names, aliases, category, equipment, supported
 measurements, and restriction-demand tags are reusable; reps, load, distance,
 tempo, and other prescriptions remain specific to each workout.
 
-The Trends tab now combines normalized local history into source-specific
+Body's detailed trends combine normalized local history into source-specific
 recovery and sleep trends, session-RPE training load, strength volume, injury
 history, and descriptive pain-by-movement summaries. Its versioned weekly
 review always reports sample size or insufficient data, uses association—not
@@ -64,15 +64,18 @@ auditable, and every result is labeled as a descriptive association rather than
 a causal or medical conclusion. Logged experiment days and whole experiments
 can be permanently deleted with confirmation.
 
-Redesign phases 1–2 are integrated with that foundation: Train also accepts PT
+Redesign phases 1–3 are integrated with that foundation: Work also accepts PT
 protocols through photo, paste, or on-device dictation and offers tap-chip review;
 Today generates a daily docket from protocol recurrence, planned workouts, and
-sleep wind-down. The four-tab navigation and existing experiment and workout
-editing flows remain available. See [branch integration and safe Xcode update](docs/BRANCH_INTEGRATION.md).
+sleep wind-down, with as-prescribed logging, deviations, and undo. The native
+field-journal design now uses Today / Work / Body and a Settings gear, with bundled
+fonts and notebook artwork. Existing experiment and workout editing flows remain
+available. See [design scope and remaining work](docs/DESIGN.md) and
+[branch integration and safe Xcode update](docs/BRANCH_INTEGRATION.md).
 
 ## Architecture
 
-- `ios/WhoopsApp` — native SwiftUI app with Today, Train, Trends, and Settings
+- `ios/WhoopsApp` — native SwiftUI app with Today, Work, Body, and a Settings gear
 - `backend` — TypeScript/Next.js service; the first endpoint is
   `GET /api/v1/health`
 - `contracts` — versioned app/backend JSON Schema contracts
@@ -117,7 +120,9 @@ results in bounded pages so a large Apple Health store is never materialized in
 one in-memory result set.
 
 For daily planning, review the seeded restrictions and sleep schedule in the
-app's Settings tab, then complete the morning check-in on Today. The resulting
+app's Settings tab, map any affected areas you want to see on Body, then complete the morning
+check-in on Today. The map stores only areas you explicitly choose; it does not infer anatomy from
+restriction names or notes. The resulting
 recommendation is deterministic and works without an LLM. You can override and
 annotate it without erasing the calculated recommendation.
 

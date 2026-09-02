@@ -17,7 +17,7 @@ struct MovementLibraryView: View {
     @State private var resultMessage: String?
 
     var body: some View {
-        List {
+        JournalList {
             if searchText.isEmpty, !recentMovements.isEmpty {
                 Section("Recent") {
                     ForEach(recentMovements) { row($0) }
@@ -45,22 +45,31 @@ struct MovementLibraryView: View {
         .onChange(of: editingMovement?.id) { _, _ in focusedField = nil }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button("Import WOD Lab", systemImage: "square.and.arrow.down") {
-                    focusedField = nil
-                    isImporting = true
-                }
-                .accessibilityIdentifier("import-wod-lab")
                 Button("Add Movement", systemImage: "plus") {
                     focusedField = nil
                     editingMovement = .custom(name: "")
                 }
                 .accessibilityIdentifier("add-movement")
-                Button(
-                    showsArchived ? "Hide Archived" : "Show Archived",
-                    systemImage: "archivebox"
-                ) {
-                    showsArchived.toggle()
+                Menu {
+                    Button("Import movements from WOD Lab…", systemImage: "square.and.arrow.down") {
+                        focusedField = nil
+                        isImporting = true
+                    }
+                    .accessibilityIdentifier("import-wod-lab")
+                    Button(
+                        showsArchived
+                            ? "Hide archived movements (\(archivedMovements.count))"
+                            : "Show archived movements (\(archivedMovements.count))",
+                        systemImage: "archivebox"
+                    ) {
+                        showsArchived.toggle()
+                    }
+                    .disabled(archivedMovements.isEmpty)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
                 }
+                .accessibilityLabel("More movement options")
+                .accessibilityIdentifier("movement-library-more")
             }
         }
         .task { await load() }
@@ -139,8 +148,8 @@ struct MovementLibraryView: View {
                         .foregroundStyle(.primary)
                     Spacer()
                     Text(summary.movement.category.displayName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
                 HStack(spacing: 6) {
                     Text(originLabel(summary.movement.origin))
@@ -151,8 +160,8 @@ struct MovementLibraryView: View {
                         Text(lastUsedAt, format: .relative(presentation: .named))
                     }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             }
         }
         .buttonStyle(.plain)
@@ -169,7 +178,7 @@ struct MovementLibraryView: View {
             editingMovement = movement
         } label: {
             LabeledContent(movement.canonicalName, value: movement.category.displayName)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.journalInk.opacity(0.7))
         }
         .buttonStyle(.plain)
         .swipeActions {
@@ -287,7 +296,7 @@ private struct MovementDefinitionEditor: View {
     }
 
     var body: some View {
-        Form {
+        JournalForm {
             Section("Identity") {
                 TextField("Movement name", text: $movement.canonicalName)
                     .formKeyboardField()
@@ -405,7 +414,7 @@ private struct MovementImportPreviewView: View {
     @State private var isImporting = false
 
     var body: some View {
-        List {
+        JournalList {
             Section("Summary") {
                 LabeledContent("New movements", value: "\(preview.additions.count)")
                 LabeledContent("Already matched", value: "\(preview.matchedCount)")
@@ -424,7 +433,7 @@ private struct MovementImportPreviewView: View {
             if !preview.issues.isEmpty {
                 Section("Notes") {
                     ForEach(Array(preview.issues.enumerated()), id: \.offset) { _, issue in
-                        Text(issue).font(.subheadline)
+                        Text(issue).font(.journal(.subheadline))
                     }
                 }
             }

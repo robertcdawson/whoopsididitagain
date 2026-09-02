@@ -35,202 +35,205 @@ struct TodayView: View {
     @State private var isShowingExperimentLog = false
     @State private var activeExperiments: [ExperimentDefinition] = []
     @State private var assessmentError: String?
+    @State private var showingReadinessDetails = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    FoundationCard(title: "Should I Send It?") {
+            JournalPage(title: "Today") {
+                verdict
+                if let assessment {
+                    Text(assessment.reasons.first?.message ?? "Your daily assessment is ready.")
+                        .font(.journal(.title3)).italic()
+                        .foregroundStyle(Color.journalRedPen)
+                    JournalReadinessRows(assessment: assessment)
+                } else {
+                    Text("A little context first.").font(.journal(.title3)).italic()
+                    Text("Complete a morning check-in to calculate tissue readiness.")
+                        .font(.journal(.subheadline))
+                }
+                Button(checkIn == nil ? "Complete morning check-in" : "Edit morning check-in") {
+                    isShowingCheckIn = true
+                }
+                .font(.journal(.subheadline))
+                .frame(minHeight: 44)
+                .accessibilityIdentifier("morning-check-in")
+
+                JournalRule()
+                DocketView(
+                    protocolRepository: protocolRepository,
+                    workoutRepository: workoutRepository,
+                    docketRepository: docketRepository,
+                    movementLibrary: movementLibrary,
+                    sleepDeadline: sleepDeadline
+                )
+                if FeatureFlags.experimentLabEnabled(storedValue: experimentLabEnabled),
+                    !activeExperiments.isEmpty
+                {
+                    Button("Log experiment day") { isShowingExperimentLog = true }
+                        .font(.journal(.subheadline))
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("today-experiment-check-in")
+                }
+                Spacer(minLength: 12)
+                Button {
+                    showingReadinessDetails.toggle()
+                } label: {
+                    HStack {
+                        Text("Readiness & source details")
+                        Spacer()
+                        Image(
+                            systemName: showingReadinessDetails ? "chevron.down" : "chevron.right")
+                    }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(JournalLinkButtonStyle())
+                .font(.journal(.footnote))
+                .accessibilityValue(showingReadinessDetails ? "Expanded" : "Collapsed")
+                .accessibilityIdentifier("readiness-details")
+                if showingReadinessDetails {
+                    VStack(alignment: .leading, spacing: 14) {
                         if let assessment {
-                            Label(
-                                assessment.effectiveRecommendation.displayName,
-                                systemImage: assessment.effectiveRecommendation.symbolName
-                            )
-                            .font(.title3.weight(.semibold))
-
-                            if assessment.userOverride != nil {
-                                Text(
-                                    "Your override is active; the calculated recommendation was \(assessment.recommendation.displayName.lowercased())."
-                                )
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            }
-
                             assessmentRow("Systemic readiness", score: assessment.systemicScore)
                             assessmentRow("Sleep sufficiency", score: assessment.sleepScore)
                             tissueReadinessRow(assessment)
                             LabeledContent("Confidence", value: assessment.confidence.displayName)
-
-                            Divider()
-                            ForEach(assessment.reasons.prefix(3)) { reason in
+                            if assessment.userOverride != nil {
+                                Text(
+                                    "Your override is active. Calculated: \(assessment.recommendation.displayName)."
+                                )
+                            }
+                            ForEach(assessment.reasons) { reason in
                                 Label(reason.message, systemImage: reasonSymbol(reason.direction))
-                                    .font(.subheadline)
                             }
-
-                            Button("Override or annotate") {
-                                isShowingOverride = true
-                            }
-                            .buttonStyle(.bordered)
-                        } else {
-                            Label("Not enough context yet", systemImage: "questionmark.circle")
-                                .font(.title3.weight(.semibold))
-                            Text("Complete the morning check-in to calculate tissue readiness.")
-                                .foregroundStyle(.secondary)
+                            Button("Override or annotate") { isShowingOverride = true }
+                                .frame(minHeight: 44)
                         }
-
-                        Button(
-                            checkIn == nil ? "Complete morning check-in" : "Edit morning check-in"
-                        ) {
-                            isShowingCheckIn = true
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .accessibilityIdentifier("morning-check-in")
-                    }
-
-                    DocketView(
-                        protocolRepository: protocolRepository,
-                        workoutRepository: workoutRepository,
-                        docketRepository: docketRepository,
-                        movementLibrary: movementLibrary,
-                        sleepDeadline: sleepDeadline
-                    )
-
-                    if FeatureFlags.experimentLabEnabled(storedValue: experimentLabEnabled),
-                        !activeExperiments.isEmpty
-                    {
-                        FoundationCard(title: "Experiment Check-in") {
-                            Text(
-                                "Once today, record what actually happened across your active experiments."
+                        FoundationCard(title: "Daily Physiology") {
+                            metricRow(
+                                "Recovery",
+                                value: latestRecovery?.recoveryScore.map { "\($0)%" } ?? "—",
+                                source: "WHOOP"
                             )
-                            .foregroundStyle(.secondary)
-                            Button("Log experiment day") {
-                                isShowingExperimentLog = true
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .accessibilityIdentifier("today-experiment-check-in")
-                        }
-                    }
-
-                    FoundationCard(title: "Daily Physiology") {
-                        metricRow(
-                            "Recovery",
-                            value: latestRecovery?.recoveryScore.map { "\($0)%" } ?? "—",
-                            source: "WHOOP"
-                        )
-                        metricRow(
-                            "Resting heart rate",
-                            value: latestHealthDay?.restingHeartRate.map {
-                                "\($0.formatted(.number.precision(.fractionLength(0)))) bpm"
-                            } ?? latestRecovery?.restingHeartRate.map { "\($0) bpm" } ?? "—",
-                            source: latestHealthDay?.restingHeartRate == nil
-                                ? "WHOOP" : "Apple Health"
-                        )
-                        metricRow(
-                            "HRV RMSSD",
-                            value: latestRecovery?.hrvRMSSD.map {
-                                "\($0.formatted(.number.precision(.fractionLength(1)))) ms"
-                            } ?? "—",
-                            source: "WHOOP"
-                        )
-                        metricRow(
-                            "HRV SDNN",
-                            value: latestHealthDay?.hrvSDNNMilliseconds.map {
-                                "\($0.formatted(.number.precision(.fractionLength(1)))) ms"
-                            } ?? "—",
-                            source: includedHealthMetrics.contains(.hrvSDNN)
-                                ? "Apple Health" : "Excluded in Settings"
-                        )
-                        metricRow(
-                            "Respiratory rate",
-                            value: latestHealthDay?.respiratoryRate.map {
-                                "\($0.formatted(.number.precision(.fractionLength(1)))) /min"
-                            } ?? "—",
-                            source: includedHealthMetrics.contains(.respiratoryRate)
-                                ? "Apple Health" : "Excluded in Settings"
-                        )
-                        metricRow(
-                            "Sleep",
-                            value: latestWhoopSleep?.sleepMinutes.map(Self.duration)
-                                ?? latestHealthDay?.sleepMinutes.map(Self.duration) ?? "—",
-                            source: latestWhoopSleep?.sleepMinutes != nil
-                                ? "WHOOP"
-                                : latestHealthDay?.sleepMinutes != nil
-                                    ? "Apple Health" : "WHOOP / Apple Health"
-                        )
-                        if let sources = latestHealthDay?.sources, !sources.isEmpty {
-                            Text("Apple Health sources: \(sources.joined(separator: ", "))")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    FoundationCard(title: "Sleep Deadline") {
-                        if let sleepDeadline {
-                            statusRow(
-                                "Begin wind-down",
-                                value: sleepDeadline.windDownAt.formatted(
-                                    date: .omitted, time: .shortened)
+                            metricRow(
+                                "Resting heart rate",
+                                value: latestHealthDay?.restingHeartRate.map {
+                                    "\($0.formatted(.number.precision(.fractionLength(0)))) bpm"
+                                } ?? latestRecovery?.restingHeartRate.map { "\($0) bpm" } ?? "—",
+                                source: latestHealthDay?.restingHeartRate == nil
+                                    ? "WHOOP" : "Apple Health"
                             )
-                            statusRow(
-                                "Lights out",
-                                value: sleepDeadline.lightsOutAt.formatted(
-                                    date: .omitted, time: .shortened)
+                            metricRow(
+                                "HRV RMSSD",
+                                value: latestRecovery?.hrvRMSSD.map {
+                                    "\($0.formatted(.number.precision(.fractionLength(1)))) ms"
+                                } ?? "—",
+                                source: "WHOOP"
                             )
-                            statusRow(
-                                "Required wake time",
-                                value: sleepDeadline.wakeAt.formatted(
-                                    date: .abbreviated, time: .shortened)
+                            metricRow(
+                                "HRV SDNN",
+                                value: latestHealthDay?.hrvSDNNMilliseconds.map {
+                                    "\($0.formatted(.number.precision(.fractionLength(1)))) ms"
+                                } ?? "—",
+                                source: includedHealthMetrics.contains(.hrvSDNN)
+                                    ? "Apple Health" : "Excluded in Settings"
                             )
-                            Text(
-                                "Target \(Self.duration(sleepSettings.targetSleepMinutes)) plus \(sleepSettings.sleepLatencyMinutes) minutes to fall asleep."
+                            metricRow(
+                                "Respiratory rate",
+                                value: latestHealthDay?.respiratoryRate.map {
+                                    "\($0.formatted(.number.precision(.fractionLength(1)))) /min"
+                                } ?? "—",
+                                source: includedHealthMetrics.contains(.respiratoryRate)
+                                    ? "Apple Health" : "Excluded in Settings"
                             )
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    FoundationCard(title: "Data Sync") {
-                        Text(syncState)
-                            .foregroundStyle(.secondary)
-                        Button {
-                            Task { await synchronizeSources() }
-                        } label: {
-                            if isSyncing {
-                                ProgressView()
-                                    .frame(maxWidth: .infinity)
-                            } else {
-                                Text("Synchronize connected sources")
-                                    .frame(maxWidth: .infinity)
+                            metricRow(
+                                "Sleep",
+                                value: latestWhoopSleep?.sleepMinutes.map(Self.duration)
+                                    ?? latestHealthDay?.sleepMinutes.map(Self.duration) ?? "—",
+                                source: latestWhoopSleep?.sleepMinutes != nil
+                                    ? "WHOOP"
+                                    : latestHealthDay?.sleepMinutes != nil
+                                        ? "Apple Health" : "WHOOP / Apple Health"
+                            )
+                            if let sources = latestHealthDay?.sources, !sources.isEmpty {
+                                Text("Apple Health sources: \(sources.joined(separator: ", "))")
+                                    .font(.journal(.caption))
+                                    .foregroundStyle(Color.journalInk.opacity(0.7))
                             }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isSyncing)
-                    }
 
-                    FoundationCard(title: "Backend") {
-                        Text(backendState)
-                            .foregroundStyle(.secondary)
-                            .accessibilityIdentifier("backend-status")
-
-                        Button {
-                            Task { await checkBackend() }
-                        } label: {
-                            if isCheckingBackend {
-                                ProgressView()
-                                    .frame(maxWidth: .infinity)
-                            } else {
-                                Text("Check connection")
-                                    .frame(maxWidth: .infinity)
+                        FoundationCard(title: "Sleep Deadline") {
+                            if let sleepDeadline {
+                                statusRow(
+                                    "Begin wind-down",
+                                    value: sleepDeadline.windDownAt.formatted(
+                                        date: .omitted, time: .shortened)
+                                )
+                                statusRow(
+                                    "Lights out",
+                                    value: sleepDeadline.lightsOutAt.formatted(
+                                        date: .omitted, time: .shortened)
+                                )
+                                statusRow(
+                                    "Required wake time",
+                                    value: sleepDeadline.wakeAt.formatted(
+                                        date: .abbreviated, time: .shortened)
+                                )
+                                Text(
+                                    "Target \(Self.duration(sleepSettings.targetSleepMinutes)) plus \(sleepSettings.sleepLatencyMinutes) minutes to fall asleep."
+                                )
+                                .font(.journal(.caption))
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
                             }
                         }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isCheckingBackend)
-                        .accessibilityIdentifier("check-backend")
+
+                        FoundationCard(title: "Data Sync") {
+                            Text(syncState)
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
+                            Button {
+                                Task { await synchronizeSources() }
+                            } label: {
+                                if isSyncing {
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity)
+                                } else {
+                                    Text("Synchronize connected sources")
+                                        .frame(maxWidth: .infinity)
+                                }
+                            }
+                            .buttonStyle(JournalPrimaryButtonStyle())
+                            .disabled(isSyncing)
+                        }
+
+                        FoundationCard(title: "Backend") {
+                            Text(backendState)
+                                .foregroundStyle(Color.journalInk.opacity(0.7))
+                                .accessibilityIdentifier("backend-status")
+
+                            Button {
+                                Task { await checkBackend() }
+                            } label: {
+                                if isCheckingBackend {
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity)
+                                } else {
+                                    Text("Check connection")
+                                        .frame(maxWidth: .infinity)
+                                }
+                            }
+                            .buttonStyle(JournalPrimaryButtonStyle())
+                            .disabled(isCheckingBackend)
+                            .accessibilityIdentifier("check-backend")
+                        }
                     }
+                    .font(.journal(.subheadline))
+                    .padding(.top, 12)
                 }
-                .padding()
+                Text(syncState)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.65))
             }
-            .navigationTitle("Today")
+            .refreshable { await synchronizeSources() }
             .task { await refreshOnLaunch() }
             .onReceive(
                 NotificationCenter.default.publisher(for: .healthMetricInclusionDidChange)
@@ -274,6 +277,29 @@ struct TodayView: View {
         healthHistory.days.first
     }
 
+    private var verdict: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(verdictText)
+                .font(.custom("Caveat-Regular", size: 66, relativeTo: .largeTitle).weight(.bold))
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("today-verdict")
+            SquiggleDivider()
+                .stroke(Color.journalInk, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .frame(width: 180, height: 12)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var verdictText: String {
+        guard let assessment else { return "Check in." }
+        switch assessment.effectiveRecommendation {
+        case .proceed: return "Send it."
+        case .proceedWithLimits: return "Easy does it."
+        case .modify: return "Modify."
+        case .recoveryFocused: return "Take it easy."
+        }
+    }
+
     private var currentDay: String {
         HealthDayKey.day(containing: .now, timeZone: .autoupdatingCurrent)
     }
@@ -297,7 +323,7 @@ struct TodayView: View {
         }) {
             LabeledContent("Tissue readiness") {
                 Label("Restricted", systemImage: "hand.raised.fill")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Tissue readiness")
@@ -312,7 +338,7 @@ struct TodayView: View {
             Text(title)
             Spacer()
             Text(value)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.journalInk.opacity(0.7))
         }
     }
 
@@ -330,12 +356,12 @@ struct TodayView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                 Text(source)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
             }
             Spacer()
             Text(value)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.journalInk.opacity(0.7))
         }
     }
 

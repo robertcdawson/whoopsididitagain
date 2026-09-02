@@ -7,6 +7,29 @@ final class WorkoutMilestoneTests: XCTestCase {
     private let scoredWorkout =
         "AMRAP 8 minutes\n4 Burpees\n12 Overhead Kettlebell Swings (35#)\nScore: 5 rounds, 3 reps"
 
+    func testNumericFieldReconciliationKeepsLatestAcceptedEditWithoutOscillating() {
+        var field = WorkoutFieldInput("8")
+        field.receive("5.25", accepted: true)
+        field.receive("5.259", accepted: false)
+        XCTAssertEqual(field.acceptedText, "5.25")
+        field.reconcile()
+        XCTAssertEqual(field.text, "5.25")
+        field.reconcile()
+        XCTAssertEqual(field.text, "5.25")
+
+        // A newer valid edit wins even when invalid input was awaiting reconciliation.
+        field.receive("5.25.9", accepted: false)
+        field.receive("12.", accepted: true)
+        field.reconcile()
+        XCTAssertEqual(field.text, "12.")
+        field.replace("6.75")
+        field.reconcile()
+        XCTAssertEqual(field.text, "6.75")
+        field.receive("", accepted: true)
+        field.reconcile()
+        XCTAssertEqual(field.acceptedText, "")
+    }
+
     func testDecimalQuantityInputPreservesPartialAndLocalizedValues() {
         let english = Locale(identifier: "en_US")
         for text in ["", ".", "0.", "12.", "12.5", "0.25", "1000.75"] {

@@ -10,6 +10,12 @@ struct TrendsView: View {
 
     @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
     @State private var snapshot: TrendsSnapshot?
+    @State private var selectedInjuryID: String?
+    @State private var bodyRestrictions: [RestrictionProfile] = []
+    @State private var bodyMapView: BodyMapView = .front
+    @State private var editingBodyRestriction: RestrictionProfile?
+    @State private var editingBodyFocus: BodyMapFocus?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var exportFiles: TrendsExportFiles?
     @State private var errorMessage: String?
     @State private var isLoading = false
@@ -17,32 +23,98 @@ struct TrendsView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
+            JournalPage(title: "Body") {
                 if let snapshot {
-                    List {
-                        weeklySection(snapshot.weeklyReview)
-                        recoverySection(snapshot)
-                        sleepSection(snapshot.sleep)
-                        trainingSection(snapshot)
-                        painSection(snapshot.painByMovement)
-                        injurySection(snapshot.injuries)
-                        if FeatureFlags.experimentLabEnabled(storedValue: experimentLabEnabled) {
-                            experimentSection
+                    bodyOverview(snapshot)
+                    JournalRule()
+                    if let injury = selectedInjury(in: snapshot) {
+                        JournalSection(title: "\(injury.name) · the story") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(
+                                    "Recorded \(injury.startedAt.formatted(date: .abbreviated, time: .omitted))"
+                                )
+                                Text(
+                                    "Updated \(injury.updatedAt.formatted(date: .abbreviated, time: .omitted))"
+                                )
+                                ForEach(bodyRestrictions.filter { $0.injuryName == injury.name }) {
+                                    restriction in
+                                    Text(
+                                        "\(restriction.isActive ? restriction.level.displayName : "Inactive"): \(restriction.rationale)"
+                                    )
+                                    .foregroundStyle(
+                                        restriction.isActive
+                                            ? Color.journalRedPen : Color.journalInk.opacity(0.7))
+                                }
+                            }
+                            .font(.journal(.subheadline))
+                            .padding(.leading, 14)
+                            .overlay(alignment: .leading) {
+                                Rectangle().fill(Color.journalRedPen.opacity(0.25)).frame(width: 1)
+                            }
+                            Text("Dates describe your records, not a healing timeline.")
+                                .font(.journal(.caption)).italic().foregroundStyle(
+                                    Color.journalInk.opacity(0.7))
                         }
-                        exportSection
+                        JournalRule()
+                    }
+                    NavigationLink {
+                        JournalList { painSection(snapshot.painByMovement) }
+                            .navigationTitle("Pain by movement")
+                    } label: {
+                        Label("pain by movement →", systemImage: "waveform.path")
+                            .font(.journal(.subheadline)).frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("body-pain-history")
+                    if let recovery = snapshot.recoveryMetrics.first(where: {
+                        $0.id == "whoop-recovery"
+                    }) {
+                        MetricRow(metric: recovery).font(.journal(.subheadline))
+                    }
+                    Text("association, not causation. as always.")
+                        .font(.journal(.footnote)).italic().foregroundStyle(
+                            Color.journalInk.opacity(0.7))
+                    Spacer(minLength: 12)
+                    NavigationLink {
+                        JournalList { weeklySection(snapshot.weeklyReview) }
+                            .navigationTitle("Weekly review")
+                    } label: {
+                        Text("this week's review →").underline().frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("weekly-review-link")
+                    NavigationLink {
+                        JournalList {
+                            recoverySection(snapshot)
+                            sleepSection(snapshot.sleep)
+                            trainingSection(snapshot)
+                            injurySection(snapshot.injuries)
+                            exportSection
+                        }
+                        .navigationTitle("Trends & export")
+                    } label: {
+                        Text("all trends & export →").font(.journal(.subheadline)).frame(
+                            minHeight: 44)
+                    }
+                    .accessibilityIdentifier("all-trends-link")
+                    if FeatureFlags.experimentLabEnabled(storedValue: experimentLabEnabled) {
+                        experimentSection
                     }
                 } else if isLoading {
-                    ProgressView("Building trends…")
+                    ProgressView("Building your body story…")
                 } else {
-                    ContentUnavailableView {
-                        Label("No trends yet", systemImage: "chart.xyaxis.line")
-                    } description: {
-                        Text("Synchronize health history or record a workout to begin.")
-                    }
+                    Text("Your story starts with a check-in.")
+                    Text("Synchronize health history or record a workout to begin.")
+                        .font(.journal(.subheadline))
                 }
             }
-            .navigationTitle("Trends")
             .task { await load() }
+            .sheet(item: $editingBodyRestriction) { profile in
+                BodyAreaPicker(
+                    initialAreaIDs: profile.affectedAreaIDs,
+                    initialFocus: editingBodyFocus
+                ) { ids in
+                    Task { await saveAffectedAreas(ids, for: profile) }
+                }
+            }
             .onReceive(
                 NotificationCenter.default.publisher(for: .healthMetricInclusionDidChange)
             ) { _ in
@@ -65,8 +137,8 @@ struct TrendsView: View {
                 reportItem("What coincided", review.plausibleExplanation, symbol: "link")
                 reportItem("Next action", review.nextAction, symbol: "checklist")
                 Text(review.caveat)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
             }
             .padding(.vertical, 6)
         } header: {
@@ -77,9 +149,116 @@ struct TrendsView: View {
                     format: .interval.day().month(.abbreviated)
                 )
                 .textCase(nil)
-                .font(.caption)
+                .font(.journal(.caption))
             }
         }
+    }
+
+    private func selectedInjury(in snapshot: TrendsSnapshot) -> InjuryTimelineItem? {
+        snapshot.injuries.first { $0.id == selectedInjuryID }
+            ?? snapshot.injuries.first { injury in
+                bodyRestrictions.contains {
+                    injury.id == injuryTimelineID(for: $0) && $0.isActive
+                }
+            } ?? snapshot.injuries.first
+    }
+
+    private func bodyOverview(_ snapshot: TrendsSnapshot) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            bodyOverviewLayout {
+                BodyMapFigure(
+                    view: bodyMapView,
+                    selectedAreaIDs: Set(
+                        selectedBodyRestriction(in: snapshot)?.affectedAreaIDs ?? [])
+                ) { focus in
+                    guard let profile = selectedBodyRestriction(in: snapshot) else { return }
+                    editingBodyFocus = focus
+                    editingBodyRestriction = profile
+                }
+                .frame(width: 126, height: 210)
+                VStack(alignment: .leading, spacing: 12) {
+                    if let injury = selectedInjury(in: snapshot) {
+                        Text(injury.name).font(.journal(.headline, weight: .bold))
+                            .foregroundStyle(Color.journalAmber)
+                        Text("\(injury.side) · \(injury.bodyRegion)").font(.journal(.subheadline))
+                        Text(injury.status.capitalized).font(.journal(.subheadline))
+                        if let profile = selectedBodyRestriction(in: snapshot) {
+                            Text(
+                                profile.affectedAreaIDs.isEmpty
+                                    ? "No mapped areas yet"
+                                    : "\(profile.affectedAreaIDs.count) mapped area\(profile.affectedAreaIDs.count == 1 ? "" : "s")"
+                            )
+                            .font(.journal(.footnote))
+                            .foregroundStyle(Color.journalInk.opacity(0.68))
+                        }
+                    } else {
+                        Text("No body-part history yet.").font(.journal(.subheadline))
+                    }
+                }.padding(.top, 14)
+            }
+            Picker("Body view", selection: $bodyMapView) {
+                ForEach(BodyMapView.allCases) { view in
+                    Text(view.displayName).tag(view)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("body-overview-view")
+            if !bodyRestrictions.isEmpty {
+                Menu {
+                    ForEach(bodyRestrictions) { restriction in
+                        Button(restriction.injuryName) {
+                            selectedInjuryID = injuryTimelineID(for: restriction)
+                            bodyMapView = preferredBodyMapView(for: restriction)
+                        }
+                    }
+                } label: {
+                    Label("Choose restriction", systemImage: "chevron.down")
+                        .font(.journal(.subheadline)).frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("choose-restriction")
+            }
+            if let profile = selectedBodyRestriction(in: snapshot) {
+                Button {
+                    editingBodyFocus = nil
+                    editingBodyRestriction = profile
+                } label: {
+                    Label(
+                        profile.affectedAreaIDs.isEmpty
+                            ? "choose affected areas →" : "edit affected areas →",
+                        systemImage: "figure.stand"
+                    )
+                    .font(.journal(.subheadline))
+                    .frame(minHeight: 44)
+                }
+                .accessibilityIdentifier("body-edit-affected-areas")
+            }
+            NavigationLink {
+                RestrictionManagementView(repository: assessmentRepository)
+            } label: {
+                Text("manage restrictions →").font(.journal(.footnote)).frame(minHeight: 44)
+            }
+        }
+    }
+
+    private var bodyOverviewLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 8))
+    }
+
+    private func selectedBodyRestriction(in snapshot: TrendsSnapshot) -> RestrictionProfile? {
+        guard let injury = selectedInjury(in: snapshot) else { return nil }
+        return bodyRestrictions.first { injuryTimelineID(for: $0) == injury.id }
+    }
+
+    private func preferredBodyMapView(for restriction: RestrictionProfile) -> BodyMapView {
+        BodyAreaCatalog.definitions(for: restriction.affectedAreaIDs)
+            .compactMap(\.view)
+            .first ?? .front
+    }
+
+    private func injuryTimelineID(for restriction: RestrictionProfile) -> String {
+        "injury:\(restriction.id)"
     }
 
     private func reportItem(_ title: String, _ text: String, symbol: String) -> some View {
@@ -88,8 +267,8 @@ struct TrendsView: View {
                 .foregroundStyle(.tint)
                 .frame(width: 20)
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.headline)
-                Text(text).foregroundStyle(.secondary)
+                Text(title).font(.journal(.headline))
+                Text(text).foregroundStyle(Color.journalInk.opacity(0.7))
             }
         }
     }
@@ -106,8 +285,8 @@ struct TrendsView: View {
             Text(
                 "WHOOP RMSSD and Apple Health SDNN are shown separately because they are different HRV measurements."
             )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(.journal(.caption))
+            .foregroundStyle(Color.journalInk.opacity(0.7))
         }
     }
 
@@ -164,8 +343,8 @@ struct TrendsView: View {
                 Text(
                     "Session load = completed minutes × session RPE. It is a descriptive workload estimate, not a medical score."
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             }
 
             if !snapshot.strengthVolumes.isEmpty {
@@ -179,16 +358,16 @@ struct TrendsView: View {
                             VStack(alignment: .leading) {
                                 Text(item.movement)
                                 Text("n=\(item.entryCount) recorded entries")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                                    .font(.journal(.caption))
+                                    .foregroundStyle(Color.journalInk.opacity(0.7))
                             }
                         }
                     }
                     Text(
                         "Volumes stay separated by movement and unit; unlike units are never combined."
                     )
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
                 }
             }
         }
@@ -209,13 +388,13 @@ struct TrendsView: View {
                         Text(
                             "n=\(item.observationCount) · highest \(item.maximumPain)/10 · latest \(item.latestAt.formatted(date: .abbreviated, time: .omitted))"
                         )
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.journal(.caption))
+                        .foregroundStyle(Color.journalInk.opacity(0.7))
                     }
                 }
                 Text("This is a record of reported pain, not evidence that a movement caused it.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.journal(.caption))
+                    .foregroundStyle(Color.journalInk.opacity(0.7))
             }
         }
     }
@@ -231,15 +410,17 @@ struct TrendsView: View {
                             Text(injury.name)
                             Spacer()
                             Text(injury.status.capitalized)
-                                .foregroundStyle(injury.status == "active" ? .orange : .secondary)
+                                .foregroundStyle(
+                                    injury.status == "active"
+                                        ? Color.journalAmberText : .journalInk.opacity(0.7))
                         }
                         Text("\(injury.side) · \(injury.bodyRegion)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.journal(.caption))
+                            .foregroundStyle(Color.journalInk.opacity(0.7))
                         Text(
                             "Updated \(injury.updatedAt.formatted(date: .abbreviated, time: .omitted))"
                         )
-                        .font(.caption2)
+                        .font(.journal(.caption2))
                         .foregroundStyle(.tertiary)
                     }
                 }
@@ -262,8 +443,8 @@ struct TrendsView: View {
             }
             .accessibilityIdentifier("experiment-lab-link")
             Text("Experimental and descriptive. Results do not establish causation.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
         }
     }
 
@@ -285,13 +466,14 @@ struct TrendsView: View {
             Text(
                 "Exports include normalized records visible to the app. They exclude OAuth tokens, API keys, Keychain values, and raw WHOOP payloads."
             )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(.journal(.caption))
+            .foregroundStyle(Color.journalInk.opacity(0.7))
         }
     }
 
     private func unavailableRow(_ text: String) -> some View {
-        Label(text, systemImage: "questionmark.circle").foregroundStyle(.secondary)
+        Label(text, systemImage: "questionmark.circle").foregroundStyle(
+            Color.journalInk.opacity(0.7))
     }
 
     private var errorIsPresented: Binding<Bool> {
@@ -326,6 +508,10 @@ struct TrendsView: View {
             let result = DeterministicTrendsEngine().analyze(input)
             includedHealthMetrics = await includedMetrics
             snapshot = result
+            bodyRestrictions = input.restrictions
+            if let restriction = selectedBodyRestriction(in: result) {
+                bodyMapView = preferredBodyMapView(for: restriction)
+            }
             exportFiles = try TrendsExporter.write(input: input, snapshot: result)
         } catch {
             errorMessage = error.localizedDescription
@@ -345,6 +531,22 @@ struct TrendsView: View {
             errorMessage = error.localizedDescription
         }
     }
+
+    @MainActor
+    private func saveAffectedAreas(_ ids: [String], for profile: RestrictionProfile) async {
+        var updated = profile
+        updated.affectedAreaIDs = BodyAreaCatalog.validIDs(ids)
+        do {
+            try await assessmentRepository.saveRestriction(updated)
+            bodyRestrictions = try await assessmentRepository.restrictions()
+            bodyMapView =
+                BodyAreaCatalog.definitions(for: updated.affectedAreaIDs)
+                .compactMap(\.view)
+                .first ?? bodyMapView
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
 }
 
 private struct MetricRow: View {
@@ -358,7 +560,7 @@ private struct MetricRow: View {
                         "\(value.formatted(.number.precision(.fractionLength(metric.unit == "%" || metric.unit == "bpm" ? 0 : 1)))) \(metric.unit)"
                     )
                 } else {
-                    Text("—").foregroundStyle(.secondary)
+                    Text("—").foregroundStyle(Color.journalInk.opacity(0.7))
                 }
             } label: {
                 Text(metric.title)
@@ -374,8 +576,8 @@ private struct MetricRow: View {
                     Text("Insufficient baseline · n=\(metric.observationCount)")
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(.journal(.caption))
+            .foregroundStyle(Color.journalInk.opacity(0.7))
         }
     }
 }
@@ -384,7 +586,7 @@ private struct MetricDetailView: View {
     let metric: MetricTrendSummary
 
     var body: some View {
-        List {
+        JournalList {
             Section {
                 if metric.points.isEmpty {
                     ContentUnavailableView("No observations", systemImage: "chart.xyaxis.line")
@@ -416,8 +618,8 @@ private struct MetricDetailView: View {
                 Text(
                     "The baseline uses up to 28 preceding local observations. This view is descriptive and does not establish a cause."
                 )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
             }
         }
         .navigationTitle(metric.title)

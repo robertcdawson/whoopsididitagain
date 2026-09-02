@@ -10,7 +10,7 @@ struct SleepScheduleSettingsView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Form {
+        JournalForm {
             Section("Schedule") {
                 DatePicker(
                     "Required wake time",

@@ -14,59 +14,134 @@ struct AppTabView: View {
     let protocolRepository: any ProtocolRepository
     let docketRepository: any DocketRepository
     let experimentRepository: any ExperimentRepository
+    @State private var selectedZone = "Today"
+    @State private var showingSettings = false
+    @AppStorage("journalLeftHanded") private var leftHanded = false
 
     var body: some View {
-        TabView {
-            TodayView(
-                healthChecker: healthChecker,
-                whoopRepository: whoopRepository,
-                healthKitRepository: healthKitRepository,
-                assessmentRepository: assessmentRepository,
-                readinessEngine: readinessEngine,
-                workoutRepository: workoutRepository,
-                protocolRepository: protocolRepository,
-                docketRepository: docketRepository,
-                movementLibrary: movementLibrary,
-                experimentRepository: experimentRepository
-            )
-            .tabItem {
-                Label("Today", systemImage: "sun.max")
-            }
+        VStack(spacing: 0) {
+            TabView(selection: $selectedZone) {
+                TodayView(
+                    healthChecker: healthChecker,
+                    whoopRepository: whoopRepository,
+                    healthKitRepository: healthKitRepository,
+                    assessmentRepository: assessmentRepository,
+                    readinessEngine: readinessEngine,
+                    workoutRepository: workoutRepository,
+                    protocolRepository: protocolRepository,
+                    docketRepository: docketRepository,
+                    movementLibrary: movementLibrary,
+                    experimentRepository: experimentRepository
+                )
+                .toolbar(.hidden, for: .tabBar)
+                .tabItem {
+                    Label("Today", systemImage: "sun.max")
+                }
+                .tag("Today")
 
-            TrainingView(
-                parser: workoutParser,
-                scalingEngine: workoutScalingEngine,
-                workoutRepository: workoutRepository,
-                assessmentRepository: assessmentRepository,
-                movementLibrary: movementLibrary,
-                protocolParser: protocolParser,
-                protocolRepository: protocolRepository
-            )
-            .tabItem {
-                Label("Train", systemImage: "figure.cross.training")
-            }
+                TrainingView(
+                    parser: workoutParser,
+                    scalingEngine: workoutScalingEngine,
+                    workoutRepository: workoutRepository,
+                    assessmentRepository: assessmentRepository,
+                    movementLibrary: movementLibrary,
+                    protocolParser: protocolParser,
+                    protocolRepository: protocolRepository,
+                    docketRepository: docketRepository
+                )
+                .toolbar(.hidden, for: .tabBar)
+                .tabItem {
+                    Label("Work", systemImage: "figure.cross.training")
+                }
+                .tag("Work")
 
-            TrendsView(
-                whoopRepository: whoopRepository,
-                healthKitRepository: healthKitRepository,
-                assessmentRepository: assessmentRepository,
-                workoutRepository: workoutRepository,
-                experimentRepository: experimentRepository
-            )
-            .tabItem {
-                Label("Trends", systemImage: "chart.xyaxis.line")
+                TrendsView(
+                    whoopRepository: whoopRepository,
+                    healthKitRepository: healthKitRepository,
+                    assessmentRepository: assessmentRepository,
+                    workoutRepository: workoutRepository,
+                    experimentRepository: experimentRepository
+                )
+                .toolbar(.hidden, for: .tabBar)
+                .tabItem {
+                    Label("Body", systemImage: "chart.xyaxis.line")
+                }
+                .tag("Body")
             }
-
+            .toolbar(.hidden, for: .tabBar)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            journalNavigation
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .background(Color.journalPaper.ignoresSafeArea())
+        .sheet(isPresented: $showingSettings) {
             SettingsView(
                 whoopRepository: whoopRepository,
                 healthKitRepository: healthKitRepository,
                 assessmentRepository: assessmentRepository
             )
-            .tabItem {
-                Label("Settings", systemImage: "gearshape")
+        }
+        .font(.journal())
+        .tint(.journalInk)
+        // DESIGN.md explicitly permits a light-only journal until dark artwork is designed.
+        .preferredColorScheme(.light)
+    }
+
+    private var journalNavigation: some View {
+        VStack(spacing: 8) {
+            JournalRule()
+            HStack(spacing: 8) {
+                if leftHanded { settingsButton }
+                ForEach(["Today", "Work", "Body"], id: \.self) { zone in
+                    Button {
+                        selectedZone = zone
+                    } label: {
+                        Text(zone.lowercased())
+                            .font(
+                                .journal(
+                                    .subheadline, weight: selectedZone == zone ? .bold : .regular)
+                            )
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                            .foregroundStyle(
+                                Color.journalInk.opacity(selectedZone == zone ? 1 : 0.65)
+                            )
+                            .padding(.horizontal, 8)
+                            .frame(minWidth: 44, maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle())
+                            .overlay {
+                                if selectedZone == zone {
+                                    JournalTabOutline().stroke(Color.journalInk, lineWidth: 2.5)
+                                }
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(zone)
+                    .accessibilityIdentifier("zone-\(zone.lowercased())")
+                    .accessibilityAddTraits(selectedZone == zone ? .isSelected : [])
+                }
+                if !leftHanded { settingsButton }
             }
         }
-        .tint(.accentColor)
+        .padding(.leading, leftHanded ? 24 : 56)
+        .padding(.trailing, leftHanded ? 56 : 24)
+        .padding(.bottom, 6)
+        .background { JournalPaperBackground() }
+        .accessibilityElement(children: .contain)
+    }
+
+    private var settingsButton: some View {
+        Button {
+            showingSettings = true
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 20))
+                .foregroundStyle(Color.journalInk.opacity(0.7))
+                .frame(minWidth: 44, minHeight: 44)
+        }
+        .accessibilityLabel("Settings")
+        .accessibilityIdentifier("journal-settings")
     }
 }
 

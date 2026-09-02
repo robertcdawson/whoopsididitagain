@@ -307,7 +307,58 @@ behavior without weakening source fidelity.
   rewriting history, which is why a deviation always creates or overwrites one row per
   (day, kind, source) rather than layering entries.
 
-## Open decisions
+## ADR-021: Apply the journal design without rewriting health or workout history
+
+- **Date:** August 30, 2026
+- **Status:** Implemented; accepted on Robert's phone September 1, 2026
+- **Decision:** Implement the supplied journal mockups in the production SwiftUI screens using
+  shared vector components, locally bundled open-licensed fonts, three navigation zones, and a
+  Settings sheet. Retain all existing editing/analysis paths through focused disclosures and
+  detail links. Use the specified light palette for this release; do not invent a dark design.
+- **Rationale:** Redesign phases 1–3 delivered features but left the old dashboard shell visible.
+  A dedicated visual migration closes that gap without changing the 19-model store or deterministic
+  calculations. Mockup surgery dates, healing claims, countdowns, and adherence percentages must
+  not become fabricated user records. Only persisted facts and established calculations appear.
+- **Phone-feedback amendment August 31, 2026:** Reserve actual layout space for journal
+  navigation rather than overlaying scroll content. Extend the shared paper/link/input styles
+  to all secondary forms; keep platform date, keyboard, and accessibility behavior. Readiness
+  uses separate color-coded rows with non-color status cues. Clean only the exact obsolete
+  seeded restriction rationale, preserving custom notes and timestamps. Complete this daily-use
+  dependability pass and obtain Robert's approval before the remaining low-friction logging
+  features; no additional analytics are authorized by this pass.
+- **Discoverability amendment September 1, 2026:** Present Restrictions as a labeled first-class
+  Settings route. Name the Body record selector “Choose restriction” so it cannot be mistaken for
+  the anatomical affected-area catalog.
+
+## ADR-022: Store explicit affected areas; use semantic zoom without anatomical inference
+
+- **Date:** August 31, 2026
+- **Status:** Implemented; accepted on Robert's phone September 1, 2026
+- **Decision:** Keep the full-body figure coarse and use it to open a focused front/back selector.
+  Persist only stable catalog IDs that the user explicitly selects. Support multi-select, an
+  entire-limb option, a complete list fallback, and removal/clear actions. Keep the existing
+  free-text body-region and side fields independently editable; never derive IDs from those
+  strings, the restriction name, or its rationale.
+- **Anatomy boundary:** Treat the posterior upper arm as the triceps area and the posterior elbow
+  as a separate area. The map is descriptive localization, not diagnosis, medical advice, or
+  movement clearance. Restriction-demand rules remain the safety authority already defined by
+  the deterministic engine.
+- **Persistence:** Add one optional JSON column to the existing injury entity. Empty or legacy
+  records decode as no mapped areas, unknown IDs are ignored, and no store reset or backfill is
+  permitted.
+- **Accessibility:** Use 44-point targets, ordinary taps, a persistent full-width confirmation,
+  a text-list alternative, front/back controls, and Reduce Motion-aware transitions so the flow
+  remains practical one-handed.
+- **Selection invariant:** Coarse focus is navigation only. A focus region is highlighted only when
+  its stable whole-region ID is explicitly selected. Every visible selected state and count derives
+  from the same validated ID set.
+- **Catalog scope:** Cover practical external musculoskeletal regions across the entire body, with
+  large non-overlapping figure targets and finer list choices. Keep hip/groin/glute localization in
+  one canonical focus. Do not claim exhaustive clinical anatomy or infer diagnoses, organs,
+  muscles, or bones from free text. Regional terms follow OpenStax and FIPAT references linked in
+  `DESIGN.md`.
+
+## Remaining open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final
 bundle identifier, Apple signing team, production domains, PostgreSQL provider, credential
