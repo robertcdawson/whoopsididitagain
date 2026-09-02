@@ -85,6 +85,15 @@ struct AppTabView: View {
         .tint(.journalInk)
         // DESIGN.md explicitly permits a light-only journal until dark artwork is designed.
         .preferredColorScheme(.light)
+        .onOpenURL { url in
+            guard url.scheme == "whoops" else { return }
+            switch url.host?.lowercased() {
+            case "work": selectedZone = "Work"
+            case "body": selectedZone = "Body"
+            case "settings": showingSettings = true
+            default: selectedZone = "Today"
+            }
+        }
     }
 
     private var journalNavigation: some View {

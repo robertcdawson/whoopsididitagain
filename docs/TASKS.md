@@ -530,6 +530,38 @@ Remaining feature phases are **4: widget/notification completion**, **5: ad-hoc 
 quick action**, and **6: bring-to-PT summary**. Phase 3 remains complete; visual rollout is not
 evidence that these additional features are complete.
 
+## Redesign Phase 4: Widget and Notification Completion
+
+Phase 4 of the `docs/DESIGN.md` implementation priority: complete suitable docket items outside
+the app without creating another source of truth.
+
+- [x] Add a narrow App Group bridge containing only a versioned current-docket snapshot and
+      durable file-per-action completion requests; do not move or copy the SwiftData store.
+- [x] Reconcile outside-app actions through `DocketRepository` before publishing and acknowledging
+      them, preserving the existing idempotent day/kind/source completion rule.
+- [x] Add an embedded `WhoopsDocketWidget` target for Home Screen small/medium and Lock Screen
+      rectangular families using the field-journal palette and native widget behavior.
+- [x] Add an App Intent that logs protocol and wind-down items as prescribed without opening the
+      app, and keep workout rows out of one-tap completion because actual effort/pain are required.
+- [x] Overlay pending actions on the widget snapshot immediately and refresh widgets after app or
+      extension writes.
+- [x] Route widget deep links to the relevant journal zone and refresh/reconcile when the app
+      becomes active.
+- [x] Add targeted tests for pending-action visibility, repository reconciliation/acknowledgment,
+      prescription snapshots, and workout rejection; compile and validate the embedded extension.
+- [ ] Add explicit opt-in notification settings for the single wind-down and single morning
+      check-in reminders.
+- [ ] Register local notification categories/actions. Wind-down supports Done/Later through the
+      shared completion bridge; morning check-in supports Open/Later and never fabricates answers.
+- [ ] Expose the completion intent through concise App Shortcut/Siri phrases and test ambiguous or
+      stale item names.
+- [ ] Confirm App Group signing, all supported widget families, tap-to-complete, app reconciliation,
+      Dynamic Type/VoiceOver, and notification actions on Robert's physical iPhone.
+
+Phase 4 is **in progress**, not complete. The first vertical slice passes its three targeted unit
+tests and an unsigned app-plus-widget simulator build. Signed device acceptance and the remaining
+local-notification/voice work are still required.
+
 ## Milestone 6: Personal Experiment Laboratory
 
 - [x] Define the initial feature-flagged experiment contract and defer unsupported advanced models.

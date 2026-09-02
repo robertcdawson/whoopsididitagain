@@ -102,9 +102,11 @@ not fixtures or defaults. The app never infers a healing timeline from a record 
 Work shows recorded completion counts, not an invented adherence percentage. Native safe areas,
 scrolling, and 44-point touch targets take precedence over the static HTML's fixed frame.
 
-Still outstanding: phase 4 widgets/notifications, phase 5 standalone pain logging and its quick
-action (`PainLog`), phase 6 bring-to-PT summaries, explicit clinical milestone/history storage,
-and a separately designed dark palette. None is represented by an inert new control.
+Phase 4 is in progress: the interactive docket widget and its completion bridge are implemented,
+while local notification controls/actions and physical-phone acceptance remain. Still outstanding:
+phase 5 standalone pain logging and its quick action (`PainLog`), phase 6 bring-to-PT summaries,
+explicit clinical milestone/history storage, and a separately designed dark palette. None is
+represented by an inert new control.
 
 ### Seeing the redesign on a phone
 

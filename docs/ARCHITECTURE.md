@@ -398,6 +398,33 @@ a later phase.
 CI builds the app and test bundles and runs the iOS unit-test suite on an iOS Simulator for
 every push; UI tests remain build-only in CI and run locally.
 
+## Outside-app docket completion
+
+Phase 4 keeps SwiftData and all health, workout, and check-in history inside the app container.
+The widget and App Intents share only a narrow, versioned App Group bridge:
+
+```text
+docket engine -> current-docket snapshot -> widget / App Intent
+                                             |
+                                             v
+                                      completion action file
+                                             |
+app becomes active -> reconcile through DocketRepository -> refreshed snapshot -> acknowledge
+```
+
+The snapshot contains today's user-visible docket rows and their prescribed quantities. It never
+contains health history, raw provider payloads, credentials, sessions, or encryption material.
+Outside-app completion writes one durable JSON file per action rather than mutating SwiftData.
+Pending actions are overlaid on the snapshot so the widget responds immediately, while the app
+remains the only process that persists a completion.
+
+Reconciliation reuses the repository's idempotent local-day/kind/source upsert. The app publishes
+the refreshed snapshot before acknowledging processed actions, so interruption can repeat a write
+without stacking completions or losing the user's tap. One-tap completion is limited to protocol
+and wind-down items that can be asserted as prescribed. Workout rows deep-link into the app because
+session RPE, pain, and actual work require explicit input. Local notification actions and voice
+phrases reuse this bridge rather than introducing another persistence path.
+
 ## Repository
 
 - `ios/WhoopsApp`: SwiftUI app, Keychain session store, SwiftData persistence, tests

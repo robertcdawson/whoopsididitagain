@@ -92,6 +92,14 @@
 		B20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift */; };
 		B30000000000000000000001 /* WhoopsApp/Resources/Fonts in Resources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000001 /* WhoopsApp/Resources/Fonts */; };
 		B40000000000000000000001 /* WhoopsApp/DesignSystem/BodyAreaPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = F40000000000000000000001 /* WhoopsApp/DesignSystem/BodyAreaPicker.swift */; };
+		B50000000000000000000001 /* WhoopsApp/Domain/Models/SharedDocketBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000001 /* WhoopsApp/Domain/Models/SharedDocketBridge.swift */; };
+		B50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift */; };
+		B50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift */; };
+		B50000000000000000000004 /* WhoopsApp/Domain/Models/SharedDocketBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000001 /* WhoopsApp/Domain/Models/SharedDocketBridge.swift */; };
+		B50000000000000000000005 /* WhoopsApp/App/DocketAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift */; };
+		B50000000000000000000006 /* WhoopsDocketWidget/WhoopsDocketWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000004 /* WhoopsDocketWidget/WhoopsDocketWidget.swift */; };
+		B50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift */; };
+		B50000000000000000000008 /* WhoopsDocketWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F50000000000000000000006 /* WhoopsDocketWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		CBE5C84A30326AFA001C1E49 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = CBE5C84930326AFA001C1E49 /* AppIcon.icon */; };
 /* End PBXBuildFile section */
 
@@ -109,6 +117,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = A00000000000000000000001;
 			remoteInfo = WhoopsApp;
+		};
+		C50000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D00000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A50000000000000000000001;
+			remoteInfo = WhoopsDocketWidget;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -203,7 +218,29 @@
 		F20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/RecordActualTests.swift; sourceTree = "<group>"; };
 		F30000000000000000000001 /* WhoopsApp/Resources/Fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; path = WhoopsApp/Resources/Fonts; sourceTree = "<group>"; };
 		F40000000000000000000001 /* WhoopsApp/DesignSystem/BodyAreaPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/DesignSystem/BodyAreaPicker.swift; sourceTree = "<group>"; };
+		F50000000000000000000001 /* WhoopsApp/Domain/Models/SharedDocketBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Domain/Models/SharedDocketBridge.swift; sourceTree = "<group>"; };
+		F50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/OutsideAppDocketCoordinator.swift; sourceTree = "<group>"; };
+		F50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/DocketAppIntents.swift; sourceTree = "<group>"; };
+		F50000000000000000000004 /* WhoopsDocketWidget/WhoopsDocketWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsDocketWidget/WhoopsDocketWidget.swift; sourceTree = "<group>"; };
+		F50000000000000000000005 /* WhoopsDocketWidget/WhoopsDocketWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WhoopsDocketWidget/WhoopsDocketWidget.entitlements; sourceTree = "<group>"; };
+		F50000000000000000000006 /* WhoopsDocketWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WhoopsDocketWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/OutsideAppMilestoneTests.swift; sourceTree = "<group>"; };
+		F50000000000000000000008 /* WhoopsDocketWidget/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = WhoopsDocketWidget/Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		Q50000000000000000000001 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B50000000000000000000008 /* WhoopsDocketWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		E00000000000000000000001 /* Frameworks */ = {
@@ -229,6 +266,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E50000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -238,6 +282,7 @@
 				G00000000000000000000002 /* WhoopsApp */,
 				G00000000000000000000003 /* WhoopsAppTests */,
 				G00000000000000000000004 /* WhoopsAppUITests */,
+				G50000000000000000000001 /* WhoopsDocketWidget */,
 				G00000000000000000000005 /* Frameworks */,
 				G00000000000000000000006 /* Products */,
 			);
@@ -249,6 +294,8 @@
 				CBE5C84930326AFA001C1E49 /* AppIcon.icon */,
 				F00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift */,
 				F00000000000000000000002 /* WhoopsApp/App/AppTabView.swift */,
+				F50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift */,
+				F50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift */,
 				F00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift */,
 				F00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift */,
 				F00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift */,
@@ -279,6 +326,7 @@
 				F00000000000000000000022 /* WhoopsApp/Features/Settings/HealthKitConnectionModel.swift */,
 				F00000000000000000000023 /* WhoopsApp/Resources/WhoopsApp.entitlements */,
 				F00000000000000000000025 /* WhoopsApp/Domain/Models/AssessmentModels.swift */,
+				F50000000000000000000001 /* WhoopsApp/Domain/Models/SharedDocketBridge.swift */,
 				F00000000000000000000026 /* WhoopsApp/Domain/Services/VersionedReadinessEngine.swift */,
 				F00000000000000000000027 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift */,
 				F00000000000000000000028 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift */,
@@ -338,6 +386,7 @@
 				F20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift */,
 				F00000000000000000000042 /* WhoopsAppTests/ExperimentMilestoneTests.swift */,
 				F00000000000000000000045 /* WhoopsAppTests/OnDeviceWorkoutParserTests.swift */,
+				F50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift */,
 			);
 			name = WhoopsAppTests;
 			sourceTree = "<group>";
@@ -364,8 +413,19 @@
 				F00000000000000000000012 /* WhoopsApp.app */,
 				F00000000000000000000013 /* WhoopsAppTests.xctest */,
 				F00000000000000000000014 /* WhoopsAppUITests.xctest */,
+				F50000000000000000000006 /* WhoopsDocketWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		G50000000000000000000001 /* WhoopsDocketWidget */ = {
+			isa = PBXGroup;
+			children = (
+				F50000000000000000000004 /* WhoopsDocketWidget/WhoopsDocketWidget.swift */,
+				F50000000000000000000005 /* WhoopsDocketWidget/WhoopsDocketWidget.entitlements */,
+				F50000000000000000000008 /* WhoopsDocketWidget/Info.plist */,
+			);
+			name = WhoopsDocketWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -378,10 +438,12 @@
 				S00000000000000000000001 /* Sources */,
 				E00000000000000000000001 /* Frameworks */,
 				R00000000000000000000001 /* Resources */,
+				Q50000000000000000000001 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				T50000000000000000000001 /* PBXTargetDependency */,
 			);
 			name = WhoopsApp;
 			productName = WhoopsApp;
@@ -424,6 +486,23 @@
 			productReference = F00000000000000000000014 /* WhoopsAppUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		A50000000000000000000001 /* WhoopsDocketWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = L50000000000000000000001 /* Build configuration list for PBXNativeTarget "WhoopsDocketWidget" */;
+			buildPhases = (
+				S50000000000000000000001 /* Sources */,
+				E50000000000000000000001 /* Frameworks */,
+				R50000000000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WhoopsDocketWidget;
+			productName = WhoopsDocketWidget;
+			productReference = F50000000000000000000006 /* WhoopsDocketWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -450,6 +529,9 @@
 						CreatedOnToolsVersion = 26.6;
 						TestTargetID = A00000000000000000000001;
 					};
+					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 26.6;
+					};
 				};
 			};
 			buildConfigurationList = L00000000000000000000001 /* Build configuration list for PBXProject "WhoopsApp" */;
@@ -468,6 +550,7 @@
 				A00000000000000000000001 /* WhoopsApp */,
 				A00000000000000000000002 /* WhoopsAppTests */,
 				A00000000000000000000003 /* WhoopsAppUITests */,
+				A50000000000000000000001 /* WhoopsDocketWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -497,6 +580,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		R50000000000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -506,6 +596,8 @@
 			files = (
 				B00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift in Sources */,
 				B00000000000000000000002 /* WhoopsApp/App/AppTabView.swift in Sources */,
+				B50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift in Sources */,
+				B50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift in Sources */,
 				B00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift in Sources */,
 				B00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift in Sources */,
 				B00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift in Sources */,
@@ -532,6 +624,7 @@
 				B0000000000000000000001E /* WhoopsApp/Data/Repositories/LiveHealthKitRepository.swift in Sources */,
 				B0000000000000000000001F /* WhoopsApp/Features/Settings/HealthKitConnectionModel.swift in Sources */,
 				B00000000000000000000021 /* WhoopsApp/Domain/Models/AssessmentModels.swift in Sources */,
+				B50000000000000000000001 /* WhoopsApp/Domain/Models/SharedDocketBridge.swift in Sources */,
 				B00000000000000000000022 /* WhoopsApp/Domain/Services/VersionedReadinessEngine.swift in Sources */,
 				B00000000000000000000023 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift in Sources */,
 				B00000000000000000000024 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift in Sources */,
@@ -591,6 +684,7 @@
 				B20000000000000000000003 /* WhoopsAppTests/RecordActualTests.swift in Sources */,
 				B0000000000000000000003E /* WhoopsAppTests/ExperimentMilestoneTests.swift in Sources */,
 				B00000000000000000000045 /* WhoopsAppTests/OnDeviceWorkoutParserTests.swift in Sources */,
+				B50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -599,6 +693,16 @@
 			buildActionMask = 2147483647;
 			files = (
 				B00000000000000000000011 /* WhoopsAppUITests/WhoopsAppUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		S50000000000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B50000000000000000000004 /* WhoopsApp/Domain/Models/SharedDocketBridge.swift in Sources */,
+				B50000000000000000000005 /* WhoopsApp/App/DocketAppIntents.swift in Sources */,
+				B50000000000000000000006 /* WhoopsDocketWidget/WhoopsDocketWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -614,6 +718,11 @@
 			isa = PBXTargetDependency;
 			target = A00000000000000000000001 /* WhoopsApp */;
 			targetProxy = C00000000000000000000002 /* PBXContainerItemProxy */;
+		};
+		T50000000000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A50000000000000000000001 /* WhoopsDocketWidget */;
+			targetProxy = C50000000000000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -790,6 +899,60 @@
 			};
 			name = Release;
 		};
+		X50000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = WhoopsDocketWidget/WhoopsDocketWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 539UZYLF7U;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WhoopsDocketWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.9.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops.docketwidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		X50000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = WhoopsDocketWidget/WhoopsDocketWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 539UZYLF7U;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WhoopsDocketWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.9.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops.docketwidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -825,6 +988,15 @@
 			buildConfigurations = (
 				X00000000000000000000007 /* Debug */,
 				X00000000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		L50000000000000000000001 /* Build configuration list for PBXNativeTarget "WhoopsDocketWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				X50000000000000000000001 /* Debug */,
+				X50000000000000000000002 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
