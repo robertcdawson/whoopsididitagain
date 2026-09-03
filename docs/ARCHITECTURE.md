@@ -425,6 +425,14 @@ and wind-down items that can be asserted as prescribed. Workout rows deep-link i
 session RPE, pain, and actual work require explicit input. Local notification actions and voice
 phrases reuse this bridge rather than introducing another persistence path.
 
+The reminder scheduler is app-owned, local, and explicitly opt-in. Its repeating times are derived
+from `SleepScheduleSettings` and refreshed on app launch and every saved schedule change. Morning
+actions can open the existing check-in or snooze for 15 minutes but cannot write answers. Wind-down
+Done queues only the current day's eligible wind-down row; Later schedules only a one-shot snooze.
+App Shortcut entities include the local day in their identifier, and the widget, notifications, and
+voice resolver all reject a cached snapshot whose day is no longer current. Notification permission
+and reminder preferences stay in app-owned system/UserDefaults storage; neither enters the App Group.
+
 ## Repository
 
 - `ios/WhoopsApp`: SwiftUI app, Keychain session store, SwiftData persistence, tests

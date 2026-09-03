@@ -446,12 +446,15 @@ final class WhoopsAppUITests: XCTestCase {
         tapParseWorkout(in: app)
         XCTAssertTrue(app.navigationBars["Review Workout"].waitForExistence(timeout: 5))
         let completedRounds = app.textFields["Completed rounds"]
-        for _ in 0..<6 where !completedRounds.isHittable { app.swipeUp() }
+        bringIntoInteractionZone(completedRounds, in: app)
         XCTAssertEqual(completedRounds.value as? String, "5")
-        XCTAssertEqual(app.textFields["Additional reps"].value as? String, "3")
         replaceText(completedRounds, with: "6")
         XCTAssertEqual(completedRounds.value as? String, "6")
         app.buttons["dismiss-workout-keyboard"].tap()
+        let additionalReps = app.textFields["Additional reps"]
+        bringIntoInteractionZone(additionalReps, in: app)
+        XCTAssertTrue(additionalReps.waitForExistence(timeout: 5))
+        XCTAssertEqual(additionalReps.value as? String, "3")
 
         let setup = app.buttons["segment-setup-0"]
         for _ in 0..<6 where !setup.isHittable { app.swipeUp() }
@@ -1149,6 +1152,16 @@ final class WhoopsAppUITests: XCTestCase {
         }
         app.navigationBars["Sleep Schedule"].buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 3))
+        let reminders = app.buttons["settings-reminders"]
+        for _ in 0..<10 where !reminders.isHittable { app.swipeUp() }
+        reminders.tap()
+        XCTAssertTrue(app.navigationBars["Reminders"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.switches["morning-reminder-toggle"].exists)
+        XCTAssertTrue(app.switches["wind-down-reminder-toggle"].exists)
+        XCTAssertEqual(app.staticTexts.matching(identifier: "Time").count, 2)
+        captureJournal("Reminders", app: app)
+        app.navigationBars["Reminders"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 3))
         app.buttons["close-settings"].tap()
         app.buttons["zone-body"].tap()
         let trends = app.buttons["all-trends-link"]
@@ -1184,22 +1197,33 @@ final class WhoopsAppUITests: XCTestCase {
         app.buttons["journal-settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         let handedness = app.switches["journal-left-handed"]
-        for _ in 0..<10 where !handedness.isHittable { app.swipeUp() }
+        bringIntoInteractionZone(handedness, in: app)
         captureJournal("Settings", app: app)
         if handedness.value as? String == "0" {
             handedness.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         }
-        XCTAssertEqual(handedness.value as? String, "1")
         app.buttons["close-settings"].tap()
         XCTAssertTrue(app.navigationBars["Settings"].waitForNonExistence(timeout: 5))
         XCTAssertLessThan(
             app.buttons["journal-settings"].frame.midX, app.buttons["zone-today"].frame.midX)
         captureJournal("LeftHanded", app: app)
         app.buttons["journal-settings"].tap()
-        for _ in 0..<10 where !handedness.isHittable { app.swipeUp() }
+        bringIntoInteractionZone(handedness, in: app)
         handedness.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
-        XCTAssertEqual(handedness.value as? String, "0")
         app.buttons["close-settings"].tap()
+        XCTAssertGreaterThan(
+            app.buttons["journal-settings"].frame.midX, app.buttons["zone-today"].frame.midX)
+    }
+
+    @MainActor
+    private func bringIntoInteractionZone(_ element: XCUIElement, in app: XCUIApplication) {
+        let lowestSafeY = app.frame.maxY - 160
+        for _ in 0..<12 {
+            if element.exists, element.frame.minY >= 100, element.frame.maxY <= lowestSafeY {
+                return
+            }
+            app.swipeUp()
+        }
     }
 
     @MainActor

@@ -14,8 +14,10 @@ struct AppTabView: View {
     let protocolRepository: any ProtocolRepository
     let docketRepository: any DocketRepository
     let experimentRepository: any ExperimentRepository
+    let reminderService: LocalReminderService
     @State private var selectedZone = "Today"
     @State private var showingSettings = false
+    @State private var morningCheckInRequest = 0
     @AppStorage("journalLeftHanded") private var leftHanded = false
 
     var body: some View {
@@ -31,7 +33,8 @@ struct AppTabView: View {
                     protocolRepository: protocolRepository,
                     docketRepository: docketRepository,
                     movementLibrary: movementLibrary,
-                    experimentRepository: experimentRepository
+                    experimentRepository: experimentRepository,
+                    morningCheckInRequest: morningCheckInRequest
                 )
                 .toolbar(.hidden, for: .tabBar)
                 .tabItem {
@@ -78,7 +81,8 @@ struct AppTabView: View {
             SettingsView(
                 whoopRepository: whoopRepository,
                 healthKitRepository: healthKitRepository,
-                assessmentRepository: assessmentRepository
+                assessmentRepository: assessmentRepository,
+                reminderService: reminderService
             )
         }
         .font(.journal())
@@ -93,6 +97,20 @@ struct AppTabView: View {
             case "settings": showingSettings = true
             default: selectedZone = "Today"
             }
+        }
+        .task { consumePendingRoute() }
+        .onReceive(
+            NotificationCenter.default.publisher(for: PendingAppRouteStore.routeRequested)
+        ) { _ in
+            consumePendingRoute()
+        }
+    }
+
+    private func consumePendingRoute() {
+        guard let route = PendingAppRouteStore().consume() else { return }
+        selectedZone = "Today"
+        if route == .morningCheckIn {
+            morningCheckInRequest += 1
         }
     }
 
@@ -168,6 +186,7 @@ struct AppTabView: View {
         protocolParser: DeterministicProtocolParser(),
         protocolRepository: PreviewProtocolRepository(),
         docketRepository: PreviewDocketRepository(),
-        experimentRepository: PreviewExperimentRepository()
+        experimentRepository: PreviewExperimentRepository(),
+        reminderService: .live()
     )
 }

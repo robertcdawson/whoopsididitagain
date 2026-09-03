@@ -48,7 +48,7 @@ struct DocketTimelineProvider: TimelineProvider {
     }
 
     private func loadSnapshot() -> SharedDocketSnapshot? {
-        try? SharedDocketStore.live()?.effectiveSnapshot()
+        try? SharedDocketStore.live()?.currentEffectiveSnapshot()
     }
 }
 

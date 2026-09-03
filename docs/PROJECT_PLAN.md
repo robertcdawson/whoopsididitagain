@@ -657,6 +657,16 @@ pain, and actual work cannot be fabricated by a one-tap extension action. Notifi
 voice phrases must reuse this same bridge. Notifications remain local and opt-in; no backend push
 service is part of this phase.
 
+The September 1 implementation adds two off-by-default local schedules under Settings → Reminders.
+The morning reminder follows the required wake time and offers Open check-in or Later (15 minutes).
+The wind-down reminder follows the calculated wind-down deadline and offers Done or Later. Done
+queues only the current incomplete wind-down item through the shared bridge; it never invents a
+check-in or workout. Saving a changed sleep schedule reschedules any enabled reminders. App Shortcut
+phrases complete only current-day, one-tap-eligible items, return every plausible name match for Siri
+disambiguation, and reject cached prior-day snapshots and entity identifiers. Robert accepted
+physical-iPhone signing, notification delivery/actions, Siri behavior, all supported widget families,
+Dynamic Type, and VoiceOver on September 3, 2026, closing the Phase 4 acceptance gate.
+
 ### Benefit
 
 WHOOP indicates how much sleep may be needed. This feature determines what that means for tonight’s actual schedule.
