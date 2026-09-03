@@ -7,17 +7,20 @@ struct SettingsView: View {
     @StateObject private var healthKit: HealthKitConnectionModel
     @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
     let assessmentRepository: any AssessmentRepository
+    let reminderService: LocalReminderService
 
     init(
         whoopRepository: any WhoopRepository,
         healthKitRepository: any HealthKitRepository,
-        assessmentRepository: any AssessmentRepository
+        assessmentRepository: any AssessmentRepository,
+        reminderService: LocalReminderService = .live()
     ) {
         _whoop = StateObject(wrappedValue: WhoopConnectionModel(repository: whoopRepository))
         _healthKit = StateObject(
             wrappedValue: HealthKitConnectionModel(repository: healthKitRepository)
         )
         self.assessmentRepository = assessmentRepository
+        self.reminderService = reminderService
     }
 
     var body: some View {
@@ -141,10 +144,22 @@ struct SettingsView: View {
 
                 Section("Daily planning") {
                     NavigationLink {
-                        SleepScheduleSettingsView(repository: assessmentRepository)
+                        SleepScheduleSettingsView(
+                            repository: assessmentRepository,
+                            reminderService: reminderService
+                        )
                     } label: {
                         Label("Sleep schedule", systemImage: "bed.double")
                     }
+                    NavigationLink {
+                        ReminderSettingsView(
+                            repository: assessmentRepository,
+                            reminderService: reminderService
+                        )
+                    } label: {
+                        Label("Reminders", systemImage: "bell.badge")
+                    }
+                    .accessibilityIdentifier("settings-reminders")
                 }
 
                 Section("Journal") {

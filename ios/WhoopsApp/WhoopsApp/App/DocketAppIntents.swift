@@ -7,6 +7,7 @@ struct DocketItemEntity: AppEntity, Hashable, Sendable {
     static let defaultQuery = DocketItemEntityQuery()
 
     let id: String
+    let docketItemID: String
     let day: String
     let title: String
     let tag: String?
@@ -19,7 +20,10 @@ struct DocketItemEntity: AppEntity, Hashable, Sendable {
     }
 
     init(item: SharedDocketItem, day: String) {
-        id = item.id
+        // Include the local day in the App Entity identifier so Shortcuts cannot
+        // silently rehydrate yesterday's cached entity as today's similarly named row.
+        id = "\(day)::\(item.id)"
+        docketItemID = item.id
         self.day = day
         title = item.title
         tag = item.tag
@@ -32,12 +36,7 @@ struct DocketItemEntityQuery: EntityStringQuery {
     }
 
     func entities(matching string: String) async throws -> [DocketItemEntity] {
-        let query = string.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else { return try availableEntities() }
-        return try availableEntities().filter {
-            $0.title.localizedCaseInsensitiveContains(query)
-                || ($0.tag?.localizedCaseInsensitiveContains(query) ?? false)
-        }
+        DocketItemEntityResolver.entities(matching: string, in: try currentSnapshot())
     }
 
     func suggestedEntities() async throws -> [DocketItemEntity] {
@@ -45,11 +44,55 @@ struct DocketItemEntityQuery: EntityStringQuery {
     }
 
     private func availableEntities() throws -> [DocketItemEntity] {
-        guard let store = SharedDocketStore.live(), let snapshot = try store.effectiveSnapshot()
-        else { return [] }
+        DocketItemEntityResolver.availableEntities(in: try currentSnapshot())
+    }
+
+    private func currentSnapshot() throws -> SharedDocketSnapshot? {
+        try SharedDocketStore.live()?.currentEffectiveSnapshot()
+    }
+}
+
+enum DocketItemEntityResolver {
+    static func availableEntities(in snapshot: SharedDocketSnapshot?) -> [DocketItemEntity] {
+        guard let snapshot else { return [] }
         return snapshot.items
             .filter { !$0.isCompleted && $0.supportsOneTapCompletion }
             .map { DocketItemEntity(item: $0, day: snapshot.day) }
+    }
+
+    /// Return every plausible match so Siri can disambiguate instead of silently
+    /// choosing one row when two protocols use the same or similar name.
+    static func entities(
+        matching string: String,
+        in snapshot: SharedDocketSnapshot?
+    ) -> [DocketItemEntity] {
+        let available = availableEntities(in: snapshot)
+        let query = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return available }
+        let exact = available.filter {
+            $0.title.compare(query, options: [.caseInsensitive, .diacriticInsensitive])
+                == .orderedSame
+                || ($0.tag?.compare(
+                    query,
+                    options: [.caseInsensitive, .diacriticInsensitive]
+                ) == .orderedSame)
+        }
+        if !exact.isEmpty { return exact }
+        return available.filter {
+            $0.title.localizedCaseInsensitiveContains(query)
+                || ($0.tag?.localizedCaseInsensitiveContains(query) ?? false)
+        }
+    }
+
+    static func item(
+        for entity: DocketItemEntity,
+        in snapshot: SharedDocketSnapshot?
+    ) throws -> SharedDocketItem {
+        guard let snapshot, snapshot.day == entity.day,
+            let item = snapshot.items.first(where: { $0.id == entity.docketItemID }),
+            item.supportsOneTapCompletion
+        else { throw SharedDocketStoreError.itemUnavailable }
+        return item
     }
 }
 
@@ -73,15 +116,12 @@ struct CompleteDocketItemIntent: AppIntent {
         guard let store = SharedDocketStore.live() else {
             throw SharedDocketStoreError.appGroupUnavailable
         }
-        guard let snapshot = try store.effectiveSnapshot(), snapshot.day == item.day,
-            let sharedItem = snapshot.items.first(where: { $0.id == item.id })
-        else {
-            throw SharedDocketStoreError.itemUnavailable
-        }
+        let snapshot = try store.currentEffectiveSnapshot()
+        let sharedItem = try DocketItemEntityResolver.item(for: item, in: snapshot)
         if sharedItem.isCompleted {
             return .result(dialog: "\(sharedItem.title) is already done.")
         }
-        try store.enqueueCompletion(for: sharedItem, day: snapshot.day)
+        try store.enqueueCompletion(for: sharedItem, day: item.day)
         WidgetCenter.shared.reloadTimelines(ofKind: WhoopsWidgetConstants.kind)
         return .result(dialog: "Logged \(sharedItem.title) as prescribed.")
     }

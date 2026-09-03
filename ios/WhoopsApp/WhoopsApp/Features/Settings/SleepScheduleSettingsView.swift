@@ -2,12 +2,21 @@ import SwiftUI
 
 struct SleepScheduleSettingsView: View {
     let repository: any AssessmentRepository
+    let reminderService: LocalReminderService
 
     @State private var settings = SleepScheduleSettings.standard
     @State private var isSaving = false
     @State private var saved = false
     @State private var isConfirmingReset = false
     @State private var errorMessage: String?
+
+    init(
+        repository: any AssessmentRepository,
+        reminderService: LocalReminderService = .live()
+    ) {
+        self.repository = repository
+        self.reminderService = reminderService
+    }
 
     var body: some View {
         JournalForm {
@@ -128,6 +137,7 @@ struct SleepScheduleSettingsView: View {
         defer { isSaving = false }
         do {
             try await repository.saveSleepSettings(settings)
+            await reminderService.refreshEnabledSchedules(settings: settings)
             saved = true
         } catch {
             errorMessage = error.localizedDescription

@@ -127,6 +127,18 @@ struct SharedDocketStore: Sendable {
         return snapshot
     }
 
+    /// Extensions must not offer or complete yesterday's cached rows if the app
+    /// has not yet published today's docket.
+    func currentEffectiveSnapshot(
+        now: Date = .now,
+        timeZone: TimeZone = .autoupdatingCurrent
+    ) throws -> SharedDocketSnapshot? {
+        guard let snapshot = try effectiveSnapshot(),
+            snapshot.day == SharedDocketDay.localDay(containing: now, timeZone: timeZone)
+        else { return nil }
+        return snapshot
+    }
+
     func saveSnapshot(_ snapshot: SharedDocketSnapshot) throws {
         try prepareDirectories()
         let data = try encoder.encode(snapshot)
@@ -194,5 +206,19 @@ struct SharedDocketStore: Sendable {
             at: actionsDirectory,
             withIntermediateDirectories: true
         )
+    }
+}
+
+enum SharedDocketDay {
+    static func localDay(
+        containing date: Date,
+        timeZone: TimeZone = .autoupdatingCurrent
+    ) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 }

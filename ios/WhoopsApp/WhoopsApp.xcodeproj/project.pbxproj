@@ -100,6 +100,9 @@
 		B50000000000000000000006 /* WhoopsDocketWidget/WhoopsDocketWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000004 /* WhoopsDocketWidget/WhoopsDocketWidget.swift */; };
 		B50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift */; };
 		B50000000000000000000008 /* WhoopsDocketWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F50000000000000000000006 /* WhoopsDocketWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B60000000000000000000001 /* WhoopsApp/App/LocalReminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000001 /* WhoopsApp/App/LocalReminders.swift */; };
+		B60000000000000000000002 /* WhoopsApp/App/DocketAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000002 /* WhoopsApp/App/DocketAppShortcuts.swift */; };
+		B60000000000000000000003 /* WhoopsApp/Features/Settings/ReminderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000003 /* WhoopsApp/Features/Settings/ReminderSettingsView.swift */; };
 		CBE5C84A30326AFA001C1E49 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = CBE5C84930326AFA001C1E49 /* AppIcon.icon */; };
 /* End PBXBuildFile section */
 
@@ -225,6 +228,9 @@
 		F50000000000000000000005 /* WhoopsDocketWidget/WhoopsDocketWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WhoopsDocketWidget/WhoopsDocketWidget.entitlements; sourceTree = "<group>"; };
 		F50000000000000000000006 /* WhoopsDocketWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WhoopsDocketWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsAppTests/OutsideAppMilestoneTests.swift; sourceTree = "<group>"; };
+		F60000000000000000000001 /* WhoopsApp/App/LocalReminders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/LocalReminders.swift; sourceTree = "<group>"; };
+		F60000000000000000000002 /* WhoopsApp/App/DocketAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/DocketAppShortcuts.swift; sourceTree = "<group>"; };
+		F60000000000000000000003 /* WhoopsApp/Features/Settings/ReminderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Settings/ReminderSettingsView.swift; sourceTree = "<group>"; };
 		F50000000000000000000008 /* WhoopsDocketWidget/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = WhoopsDocketWidget/Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -296,6 +302,8 @@
 				F00000000000000000000002 /* WhoopsApp/App/AppTabView.swift */,
 				F50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift */,
 				F50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift */,
+				F60000000000000000000001 /* WhoopsApp/App/LocalReminders.swift */,
+				F60000000000000000000002 /* WhoopsApp/App/DocketAppShortcuts.swift */,
 				F00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift */,
 				F00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift */,
 				F00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift */,
@@ -331,6 +339,7 @@
 				F00000000000000000000027 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift */,
 				F00000000000000000000028 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift */,
 				F00000000000000000000029 /* WhoopsApp/Features/Settings/SleepScheduleSettingsView.swift */,
+				F60000000000000000000003 /* WhoopsApp/Features/Settings/ReminderSettingsView.swift */,
 				F0000000000000000000002A /* WhoopsApp/Features/Today/MorningCheckInView.swift */,
 				F0000000000000000000002C /* WhoopsApp/Domain/Models/WorkoutModels.swift */,
 				F0000000000000000000002D /* WhoopsApp/Domain/Services/VersionedWorkoutParser.swift */,
@@ -598,6 +607,8 @@
 				B00000000000000000000002 /* WhoopsApp/App/AppTabView.swift in Sources */,
 				B50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift in Sources */,
 				B50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift in Sources */,
+				B60000000000000000000001 /* WhoopsApp/App/LocalReminders.swift in Sources */,
+				B60000000000000000000002 /* WhoopsApp/App/DocketAppShortcuts.swift in Sources */,
 				B00000000000000000000003 /* WhoopsApp/Domain/Models/APIModels.swift in Sources */,
 				B00000000000000000000004 /* WhoopsApp/Domain/Models/AppError.swift in Sources */,
 				B00000000000000000000005 /* WhoopsApp/Domain/Models/FoundationModels.swift in Sources */,
@@ -629,6 +640,7 @@
 				B00000000000000000000023 /* WhoopsApp/Data/Persistence/AssessmentPersistence.swift in Sources */,
 				B00000000000000000000024 /* WhoopsApp/Features/Settings/RestrictionManagementView.swift in Sources */,
 				B00000000000000000000025 /* WhoopsApp/Features/Settings/SleepScheduleSettingsView.swift in Sources */,
+				B60000000000000000000003 /* WhoopsApp/Features/Settings/ReminderSettingsView.swift in Sources */,
 				B00000000000000000000026 /* WhoopsApp/Features/Today/MorningCheckInView.swift in Sources */,
 				B00000000000000000000028 /* WhoopsApp/Domain/Models/WorkoutModels.swift in Sources */,
 				B00000000000000000000029 /* WhoopsApp/Domain/Services/VersionedWorkoutParser.swift in Sources */,

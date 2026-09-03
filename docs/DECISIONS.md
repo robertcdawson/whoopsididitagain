@@ -361,7 +361,7 @@ behavior without weakening source fidelity.
 ## ADR-023: Keep outside-app docket actions narrow and app-reconciled
 
 - **Date:** September 1, 2026
-- **Status:** Phase 4 in progress
+- **Status:** Implementation complete; physical-device acceptance pending
 - **Decision:** Keep the 19-model SwiftData store app-owned. Share only a versioned snapshot of
   today's user-visible docket and durable file-per-action completion requests through the App
   Group. Widgets and App Intents may optimistically overlay a pending request, but only the app
@@ -377,6 +377,10 @@ behavior without weakening source fidelity.
   provider payloads, credentials, and backend state.
 - **Scope:** Reminders are local and opt-in. No backend push service, analytics expansion, or
   outside-app workout fabrication is authorized by this decision.
+- **Reminder and voice boundary:** Morning offers Open/Later and never writes a check-in. Wind-down
+  offers Done/Later and Done queues only the current eligible row. Repeating times follow the saved
+  sleep schedule, Later is a 15-minute one-shot reminder, Siri receives all plausible name matches
+  for disambiguation, and every outside-app reader rejects stale local-day snapshots/entities.
 
 ## Remaining open decisions
 

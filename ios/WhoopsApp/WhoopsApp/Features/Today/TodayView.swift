@@ -11,6 +11,7 @@ struct TodayView: View {
     let docketRepository: any DocketRepository
     let movementLibrary: any MovementLibraryRepository
     let experimentRepository: any ExperimentRepository
+    let morningCheckInRequest: Int
 
     @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
     @State private var backendState = "Not checked"
@@ -235,6 +236,10 @@ struct TodayView: View {
             }
             .refreshable { await synchronizeSources() }
             .task { await refreshOnLaunch() }
+            .onChange(of: morningCheckInRequest) { _, request in
+                guard request > 0 else { return }
+                isShowingCheckIn = true
+            }
             .onReceive(
                 NotificationCenter.default.publisher(for: .healthMetricInclusionDidChange)
             ) { _ in
@@ -593,6 +598,7 @@ enum TodaySleepSelector {
         protocolRepository: PreviewProtocolRepository(),
         docketRepository: PreviewDocketRepository(),
         movementLibrary: PreviewMovementLibraryRepository(),
-        experimentRepository: PreviewExperimentRepository()
+        experimentRepository: PreviewExperimentRepository(),
+        morningCheckInRequest: 0
     )
 }

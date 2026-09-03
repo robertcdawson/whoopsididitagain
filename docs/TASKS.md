@@ -549,18 +549,21 @@ the app without creating another source of truth.
       becomes active.
 - [x] Add targeted tests for pending-action visibility, repository reconciliation/acknowledgment,
       prescription snapshots, and workout rejection; compile and validate the embedded extension.
-- [ ] Add explicit opt-in notification settings for the single wind-down and single morning
+- [x] Add explicit opt-in notification settings for the single wind-down and single morning
       check-in reminders.
-- [ ] Register local notification categories/actions. Wind-down supports Done/Later through the
+- [x] Register local notification categories/actions. Wind-down supports Done/Later through the
       shared completion bridge; morning check-in supports Open/Later and never fabricates answers.
-- [ ] Expose the completion intent through concise App Shortcut/Siri phrases and test ambiguous or
+- [x] Expose the completion intent through concise App Shortcut/Siri phrases and test ambiguous or
       stale item names.
-- [ ] Confirm App Group signing, all supported widget families, tap-to-complete, app reconciliation,
+- [x] Confirm App Group signing, all supported widget families, tap-to-complete, app reconciliation,
       Dynamic Type/VoiceOver, and notification actions on Robert's physical iPhone.
 
-Phase 4 is **in progress**, not complete. The first vertical slice passes its three targeted unit
-tests and an unsigned app-plus-widget simulator build. Signed device acceptance and the remaining
-local-notification/voice work are still required.
+Phase 4 is **complete and physically accepted**. On September 3, 2026, the backend checks, 182 iOS
+unit tests, a clean 35-test UI run, Swift formatting, property-list validation, and diff checks passed.
+The signed app and widget carried the same App Group entitlement, and the build was installed over
+the existing phone app without deleting its local data. Robert then accepted all supported widget
+families, tap-to-complete and app reconciliation, Dynamic Type/VoiceOver, notification actions, and
+App Shortcut/Siri behavior on the physical iPhone.
 
 ## Milestone 6: Personal Experiment Laboratory
 

@@ -1,8 +1,12 @@
+import AppIntents
 import SwiftData
 import SwiftUI
 
 @main
 struct WhoopsApp: App {
+    @UIApplicationDelegateAdaptor(ReminderNotificationDelegate.self)
+    private var notificationDelegate
+
     private let healthChecker: any BackendHealthChecking
     private let whoopRepository: any WhoopRepository
     private let healthKitRepository: any HealthKitRepository
@@ -16,9 +20,12 @@ struct WhoopsApp: App {
     private let protocolRepository: any ProtocolRepository
     private let docketRepository: any DocketRepository
     private let experimentRepository: any ExperimentRepository
+    private let reminderService: LocalReminderService
     private let modelContainer: ModelContainer
 
     init() {
+        WhoopsAppShortcuts.updateAppShortcutParameters()
+
         let configuredURL = ProcessInfo.processInfo.environment["WHOOPS_BACKEND_URL"]
         let baseURL = URL(
             string: configuredURL ?? "https://whoopsididitagain-backend.vercel.app"
@@ -77,6 +84,7 @@ struct WhoopsApp: App {
         protocolRepository = ProtocolPersistence(container: container)
         docketRepository = DocketPersistence(container: container)
         experimentRepository = ExperimentPersistence(container: container)
+        reminderService = .live()
     }
 
     var body: some Scene {
@@ -94,10 +102,16 @@ struct WhoopsApp: App {
                 protocolParser: protocolParser,
                 protocolRepository: protocolRepository,
                 docketRepository: docketRepository,
-                experimentRepository: experimentRepository
+                experimentRepository: experimentRepository,
+                reminderService: reminderService
             )
             .modelContainer(modelContainer)
-            .task { await healthKitRepository.startObserving() }
+            .task {
+                await healthKitRepository.startObserving()
+                if let settings = try? await assessmentRepository.sleepSettings() {
+                    await reminderService.refreshEnabledSchedules(settings: settings)
+                }
+            }
         }
     }
 }
