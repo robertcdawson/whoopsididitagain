@@ -37,6 +37,19 @@
 	<string>public.app-category.healthcare-fitness</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>bandage.fill</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Ow. Where?</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Log Pain</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.robertcdawson.whoops.log-pain</string>
+		</dict>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
@@ -47,9 +60,9 @@
 	<key>NSHealthShareUsageDescription</key>
 	<string>WHOOPs reads selected Apple Health data to combine physiology, sleep, and workout history on this device.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>WHOOPs uses the microphone so you can read your PT protocol aloud instead of typing.</string>
+	<string>WHOOPs uses the microphone so you can dictate a pain note or read your PT protocol aloud instead of typing.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>WHOOPs transcribes dictated protocol text on this device when on-device recognition is available.</string>
+	<string>WHOOPs transcribes dictated pain notes and protocol text on this device when on-device recognition is available.</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIAppFonts</key>

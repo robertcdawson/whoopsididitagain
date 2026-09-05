@@ -188,6 +188,7 @@ actor PreviewDocketRepository: DocketRepository {
 
 actor PreviewAssessmentRepository: AssessmentRepository {
     private var checkIns: [String: MorningCheckIn] = [:]
+    private var savedPainLogs: [PainLogEntry] = []
     private var profiles: [RestrictionProfile] = []
     private var settings = SleepScheduleSettings.standard
     private var assessments: [String: ReadinessAssessment] = [:]
@@ -199,6 +200,14 @@ actor PreviewAssessmentRepository: AssessmentRepository {
     }
     func saveCheckIn(_ checkIn: MorningCheckIn) async throws { checkIns[checkIn.day] = checkIn }
     func deleteCheckIn(day: String) async throws { checkIns[day] = nil }
+    func painLogs() async throws -> [PainLogEntry] {
+        savedPainLogs.sorted { $0.occurredAt > $1.occurredAt }
+    }
+    func savePainLog(_ entry: PainLogEntry) async throws {
+        savedPainLogs.removeAll { $0.id == entry.id }
+        savedPainLogs.append(entry)
+    }
+    func deletePainLog(id: String) async throws { savedPainLogs.removeAll { $0.id == id } }
     func restrictions() async throws -> [RestrictionProfile] { profiles }
     func saveRestriction(_ restriction: RestrictionProfile) async throws {
         profiles.removeAll { $0.id == restriction.id }

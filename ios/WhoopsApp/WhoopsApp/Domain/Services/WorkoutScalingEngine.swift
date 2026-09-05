@@ -97,6 +97,7 @@ struct DeterministicWorkoutScalingEngine: WorkoutScalingEngine {
     }
 
     private static func demands(for text: String) -> Set<MovementDemand> {
+        if let demand = MovementDemand(rawValue: text) { return [demand] }
         let normalized = text.lowercased().replacingOccurrences(of: "-", with: " ")
         var demands: Set<MovementDemand> = []
         if normalized.contains("elbow extension") { demands.insert(.elbowExtension) }

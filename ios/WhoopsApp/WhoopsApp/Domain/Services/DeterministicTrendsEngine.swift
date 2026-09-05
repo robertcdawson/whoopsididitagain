@@ -269,8 +269,9 @@ struct DeterministicTrendsEngine: Sendable {
         var entries: [String: [Entry]] = [:]
         for workout in workouts {
             for movement in workout.movements {
+                guard let pain = movement.reportedPain else { continue }
                 entries[movement.displayName, default: []].append(
-                    Entry(pain: movement.painDuring, date: workout.endedAt)
+                    Entry(pain: pain, date: workout.endedAt)
                 )
             }
         }
@@ -542,7 +543,8 @@ enum TrendsExporter {
             ])
             rows += workout.movements.map {
                 [
-                    "movement", isoString(workout.startedAt), $0.displayName, String($0.painDuring),
+                    "movement", isoString(workout.startedAt), $0.displayName,
+                    $0.reportedPain.map(String.init) ?? "",
                     "pain_0-10", "Local workout log", $0.notes,
                 ]
             }

@@ -374,6 +374,61 @@ final class AssessmentMilestoneTests: XCTestCase {
         XCTAssertEqual(remaining, second)
     }
 
+    func testPainLogRejectsUnknownAreasAndOutOfRangeIntensity() {
+        XCTAssertThrowsError(
+            try PainLogEntry(bodyAreaID: "invented.area", intensity: 4)
+        ) {
+            XCTAssertEqual($0 as? PainLogValidationError, .unknownBodyArea)
+        }
+        XCTAssertThrowsError(
+            try PainLogEntry(bodyAreaID: "midline.head-neck.entire", intensity: 11)
+        ) {
+            XCTAssertEqual($0 as? PainLogValidationError, .intensityOutOfRange)
+        }
+    }
+
+    @MainActor
+    func testPainLogsAreIndependentEditableAndExplicitlyDeletable() async throws {
+        let repository = AssessmentPersistence(container: try makeContainer())
+        let older = try PainLogEntry(
+            id: "pain-older",
+            occurredAt: Date(timeIntervalSince1970: 100),
+            bodyAreaID: "midline.head-neck.entire",
+            intensity: 2,
+            note: "  after waking  "
+        )
+        let newer = try PainLogEntry(
+            id: "pain-newer",
+            occurredAt: Date(timeIntervalSince1970: 200),
+            bodyAreaID: "right.arm.upper-arm.back",
+            intensity: 5
+        )
+        try await repository.savePainLog(older)
+        try await repository.savePainLog(newer)
+
+        var saved = try await repository.painLogs()
+        XCTAssertEqual(saved.map(\.id), ["pain-newer", "pain-older"])
+        XCTAssertEqual(saved.last?.note, "after waking")
+        let unrelatedCheckIn = try await repository.checkIn(for: "1970-01-01")
+        XCTAssertNil(unrelatedCheckIn)
+
+        let correction = try PainLogEntry(
+            id: newer.id,
+            occurredAt: newer.occurredAt,
+            bodyAreaID: newer.bodyAreaID,
+            intensity: 3,
+            note: "settled down"
+        )
+        try await repository.savePainLog(correction)
+        saved = try await repository.painLogs()
+        XCTAssertEqual(saved.count, 2)
+        XCTAssertEqual(saved.first?.intensity, 3)
+
+        try await repository.deletePainLog(id: older.id)
+        saved = try await repository.painLogs()
+        XCTAssertEqual(saved.map(\.id), ["pain-newer"])
+    }
+
     private func readinessInput(
         recovery: Int?,
         checkIn: MorningCheckIn?,
@@ -418,6 +473,7 @@ final class AssessmentMilestoneTests: XCTestCase {
             for: InjuryRecord.self,
             RestrictionRecord.self,
             SymptomCheckInRecord.self,
+            PainLogRecord.self,
             ReadinessAssessmentRecord.self,
             SleepScheduleRecord.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)

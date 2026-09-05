@@ -1,6 +1,10 @@
 import Foundation
 import SwiftData
 
+extension Notification.Name {
+    static let painLogDidChange = Notification.Name("WhoopsPainLogDidChange")
+}
+
 @Model
 final class InjuryRecord {
     @Attribute(.unique) var id: String
@@ -97,6 +101,30 @@ final class SymptomCheckInRecord {
         motivation = checkIn.motivation
         illnessSymptoms = checkIn.illnessSymptoms
         notes = checkIn.notes
+    }
+}
+
+@Model
+final class PainLogRecord {
+    @Attribute(.unique) var id: String
+    var occurredAt: Date
+    var bodyAreaID: String
+    var intensity: Int
+    var note: String
+
+    init(entry: PainLogEntry) {
+        id = entry.id
+        occurredAt = entry.occurredAt
+        bodyAreaID = entry.bodyAreaID
+        intensity = entry.intensity
+        note = entry.note
+    }
+
+    func update(from entry: PainLogEntry) {
+        occurredAt = entry.occurredAt
+        bodyAreaID = entry.bodyAreaID
+        intensity = entry.intensity
+        note = entry.note
     }
 }
 
@@ -211,12 +239,42 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
     }
 
     func deleteCheckIn(day: String) async throws {
+        try EditorDraftStore.shared.finish(key: "checkin:" + day)
         if let checkIn = try context.fetch(FetchDescriptor<SymptomCheckInRecord>())
             .first(where: { $0.day == day })
         {
             context.delete(checkIn)
         }
         try context.save()
+    }
+
+    func painLogs() async throws -> [PainLogEntry] {
+        try context.fetch(FetchDescriptor<PainLogRecord>())
+            .map(Self.painLog)
+            .sorted { $0.occurredAt > $1.occurredAt }
+    }
+
+    func savePainLog(_ entry: PainLogEntry) async throws {
+        if let existing = try context.fetch(FetchDescriptor<PainLogRecord>())
+            .first(where: { $0.id == entry.id })
+        {
+            existing.update(from: entry)
+        } else {
+            context.insert(PainLogRecord(entry: entry))
+        }
+        try context.save()
+        NotificationCenter.default.post(name: .painLogDidChange, object: nil)
+    }
+
+    func deletePainLog(id: String) async throws {
+        try EditorDraftStore.shared.deleteSource(id)
+        if let entry = try context.fetch(FetchDescriptor<PainLogRecord>())
+            .first(where: { $0.id == id })
+        {
+            context.delete(entry)
+        }
+        try context.save()
+        NotificationCenter.default.post(name: .painLogDidChange, object: nil)
     }
 
     func restrictions() async throws -> [RestrictionProfile] {
@@ -285,6 +343,7 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
     }
 
     func deleteRestriction(id: String) async throws {
+        try EditorDraftStore.shared.deleteSource(id)
         if let restriction = try context.fetch(FetchDescriptor<RestrictionRecord>())
             .first(where: { $0.id == id })
         {
@@ -419,6 +478,16 @@ final class AssessmentPersistence: AssessmentRepository, @unchecked Sendable {
             motivation: record.motivation,
             illnessSymptoms: record.illnessSymptoms,
             notes: record.notes
+        )
+    }
+
+    private static func painLog(_ record: PainLogRecord) throws -> PainLogEntry {
+        try PainLogEntry(
+            id: record.id,
+            occurredAt: record.occurredAt,
+            bodyAreaID: record.bodyAreaID,
+            intensity: record.intensity,
+            note: record.note
         )
     }
 

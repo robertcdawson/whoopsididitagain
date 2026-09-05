@@ -218,7 +218,7 @@ struct ParsedWorkout: Codable, Equatable, Sendable {
     }
 }
 
-struct WorkoutPlan: Equatable, Identifiable, Sendable {
+struct WorkoutPlan: Codable, Equatable, Identifiable, Sendable {
     let id: String
     var title: String
     var rawText: String
@@ -330,6 +330,14 @@ struct CompletedMovement: Codable, Equatable, Identifiable, Sendable {
     var actualDurationSeconds: Double?
     var modification: String
     var painDuring: Int
+    var painWasReported: Bool? = nil
+
+    var hasRecordedQuantity: Bool {
+        actualRepetitions != nil || actualDistanceMeters != nil || actualCalories != nil
+            || actualDurationSeconds != nil
+    }
+
+    var reportedPain: Int? { painWasReported == false ? nil : painDuring }
     var notes: String
 
     func duplicated() -> CompletedMovement {
@@ -348,7 +356,7 @@ struct CompletedMovement: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
-struct CompletedWorkout: Equatable, Identifiable, Sendable {
+struct CompletedWorkout: Codable, Equatable, Identifiable, Sendable {
     let id: String
     let plannedWorkoutID: String?
     var title: String
@@ -362,6 +370,47 @@ struct CompletedWorkout: Equatable, Identifiable, Sendable {
 }
 
 extension CompletedWorkout {
+    /// Only closed prescriptions have totals that can be confirmed without an actual score.
+    static func asPlanned(_ plan: WorkoutPlan) -> CompletedWorkout? {
+        guard [.rounds, .forTime, .strength].contains(plan.format),
+            plan.reportedResult == nil, plan.reportedRepetitionOverrides.isEmpty
+        else { return nil }
+        var result = CompletedWorkout(plan: plan)
+        for index in result.movements.indices {
+            guard
+                let segment = plan.segments.first(where: { segment in
+                    segment.movements.contains {
+                        $0.id == result.movements[index].plannedPrescriptionID
+                    }
+                }), segment.type != .rest,
+                let rounds = segment.rounds ?? (plan.format == .forTime ? 1 : nil),
+                rounds > 0, rounds <= 100_000,
+                result.movements[index].hasRecordedQuantity
+            else { return nil }
+            func total(_ value: Int?) -> Int? {
+                guard let value else { return nil }
+                let product = value.multipliedReportingOverflow(by: rounds)
+                return product.overflow ? nil : product.partialValue
+            }
+            let original = result.movements[index]
+            result.movements[index].actualRepetitions = total(original.actualRepetitions)
+            result.movements[index].actualDistanceMeters = total(original.actualDistanceMeters)
+            result.movements[index].actualCalories = total(original.actualCalories)
+            result.movements[index].actualDurationSeconds = original.actualDurationSeconds.map {
+                $0 * Double(rounds)
+            }
+            guard
+                original.actualRepetitions == nil
+                    || result.movements[index].actualRepetitions != nil,
+                original.actualDistanceMeters == nil
+                    || result.movements[index].actualDistanceMeters != nil,
+                original.actualCalories == nil || result.movements[index].actualCalories != nil,
+                result.movements[index].hasValidValues
+            else { return nil }
+        }
+        return result.movements.isEmpty ? nil : result
+    }
+
     var durationSeconds: Double { endedAt.timeIntervalSince(startedAt) }
 
     /// Moving a session preserves elapsed time, including fractional seconds and midnight crossings.
@@ -417,6 +466,7 @@ extension CompletedWorkout {
                 actualDurationSeconds: plan.hasReportedRepetitions ? nil : movement.durationSeconds,
                 modification: "",
                 painDuring: 0,
+                painWasReported: false,
                 notes: ""
             )
         }

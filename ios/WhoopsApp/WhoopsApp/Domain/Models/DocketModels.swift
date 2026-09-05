@@ -20,7 +20,7 @@ enum DocketCompletionStyle: Equatable, Sendable {
 /// deviation carries the edited quantities and/or pain instead. All fields are nil
 /// (and `isAsPrescribed` unset) only on a legacy phase-2 completion that made no
 /// claim about quantities at all — see `DocketCompletionRecord`.
-struct DocketActual: Equatable, Sendable {
+struct DocketActual: Codable, Equatable, Sendable {
     var sets: Int?
     var repetitions: Int?
     var durationSeconds: Int?

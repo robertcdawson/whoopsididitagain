@@ -151,6 +151,7 @@ final class CompletedMovementRecord {
     var preciseActualDurationSeconds: Double?
     var modification: String
     var painDuring: Int
+    var painWasReported: Bool?
     var notes: String
 
     init(movement: CompletedMovement, workoutRecordID: String) {
@@ -167,6 +168,7 @@ final class CompletedMovementRecord {
         actualDurationSeconds = WorkoutDurationInput.legacySeconds(movement.actualDurationSeconds)
         preciseActualDurationSeconds = movement.actualDurationSeconds
         modification = movement.modification
+        painWasReported = movement.painWasReported
         painDuring = movement.painDuring
         notes = movement.notes
     }
@@ -275,6 +277,7 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
     }
 
     func deletePlan(id: String) async throws {
+        try EditorDraftStore.shared.deleteSource(id)
         let segments = try context.fetch(FetchDescriptor<WorkoutSegmentRecord>())
             .filter { $0.workoutPlanID == id }
         let segmentIDs = Set(segments.map(\.id))
@@ -370,6 +373,7 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
     }
 
     func deleteCompletedWorkout(id: String) async throws {
+        try EditorDraftStore.shared.deleteSource(id)
         for movement in try context.fetch(FetchDescriptor<CompletedMovementRecord>())
         where movement.workoutRecordID == id {
             context.delete(movement)
@@ -484,6 +488,7 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
                 ?? record.actualDurationSeconds.map(Double.init),
             modification: record.modification,
             painDuring: record.painDuring,
+            painWasReported: record.painWasReported,
             notes: record.notes
         )
     }
@@ -543,6 +548,7 @@ final class WorkoutPersistence: WorkoutRepository, @unchecked Sendable {
             movement.actualDurationSeconds)
         record.preciseActualDurationSeconds = movement.actualDurationSeconds
         record.modification = movement.modification
+        record.painWasReported = movement.painWasReported
         record.painDuring = movement.painDuring
         record.notes = movement.notes
     }

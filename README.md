@@ -73,6 +73,16 @@ fonts and notebook artwork. Existing experiment and workout editing flows remain
 available. See [design scope and remaining work](docs/DESIGN.md) and
 [branch integration and safe Xcode update](docs/BRANCH_INTEGRATION.md).
 
+Outside the app, an interactive docket widget, local reminder actions, and App
+Shortcut/Siri phrases reconcile eligible completions through the app-owned store.
+Ad-hoc pain is now a separate local event stream: long-press **Log Pain** on the
+Home Screen, use the Body action, or hold a Body map part; choose an addressed body
+area and 0–10 intensity, optionally dictate a note, then amend or explicitly delete
+the entry from Body history. These entries do not rewrite the morning check-in,
+readiness, experiments, workout pain, or restriction rules. **Bring to PT** now previews
+current prescriptions, dated completions, workout modifications, and pain observations, with a
+locally generated PDF. Physical-phone acceptance of phases 5–6 remains pending.
+
 ## Architecture
 
 - `ios/WhoopsApp` — native SwiftUI app with Today, Work, Body, and a Settings gear
@@ -248,3 +258,9 @@ Nothing here is medical advice. It's a chart of how badly I slept.
 ## License
 
 [MIT](LICENSE.md) © 2026 Robert Dawson
+
+Daily entry now supports left-thumb controls, persistent bottom Save actions, and local unfinished
+entry recovery. New check-in and workout scores require explicit answers; workout logging offers
+a short confirmation path and expandable actual-work editing. Body's **Bring to PT** previews a
+selected date range and prepares a printable PDF, while pain entries support occurrence-time
+correction. These changes still require physical-phone reach, dictation, and share-sheet acceptance.

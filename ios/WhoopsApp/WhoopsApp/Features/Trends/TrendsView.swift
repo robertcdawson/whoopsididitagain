@@ -8,13 +8,19 @@ struct TrendsView: View {
     let workoutRepository: any WorkoutRepository
     let experimentRepository: any ExperimentRepository
 
+    var protocolRepository: any ProtocolRepository = PreviewProtocolRepository()
+    var docketRepository: any DocketRepository = PreviewDocketRepository()
+    var opensExport = false
+
     @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
     @State private var snapshot: TrendsSnapshot?
     @State private var selectedInjuryID: String?
     @State private var bodyRestrictions: [RestrictionProfile] = []
+    @State private var painLogs: [PainLogEntry] = []
     @State private var bodyMapView: BodyMapView = .front
     @State private var editingBodyRestriction: RestrictionProfile?
     @State private var editingBodyFocus: BodyMapFocus?
+    @State private var painLogRequest: PainLogEditorRequest?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var exportFiles: TrendsExportFiles?
     @State private var errorMessage: String?
@@ -24,6 +30,14 @@ struct TrendsView: View {
     var body: some View {
         NavigationStack {
             JournalPage(title: "Body") {
+                NavigationLink("Bring to PT") {
+                    PTSummaryView(
+                        assessmentRepository: assessmentRepository,
+                        workoutRepository: workoutRepository,
+                        protocolRepository: protocolRepository, docketRepository: docketRepository)
+                }.accessibilityIdentifier("bring-to-pt")
+                if opensExport { exportSection }
+
                 if let snapshot {
                     bodyOverview(snapshot)
                     JournalRule()
@@ -44,6 +58,14 @@ struct TrendsView: View {
                                     .foregroundStyle(
                                         restriction.isActive
                                             ? Color.journalRedPen : Color.journalInk.opacity(0.7))
+                                }
+                                if let profile = selectedBodyRestriction(in: snapshot) {
+                                    let entries = painLogs.filter {
+                                        profile.affectedAreaIDs.contains($0.bodyAreaID)
+                                    }.prefix(3)
+                                    ForEach(Array(entries)) { entry in
+                                        PainStoryLine(entry: entry)
+                                    }
                                 }
                             }
                             .font(.journal(.subheadline))
@@ -115,10 +137,24 @@ struct TrendsView: View {
                     Task { await saveAffectedAreas(ids, for: profile) }
                 }
             }
+            .sheet(item: $painLogRequest) { request in
+                PainLogEditorView(
+                    repository: assessmentRepository,
+                    entry: request.entry,
+                    preselectedBodyAreaID: request.preselectedBodyAreaID
+                ) { saved in
+                    painLogs.removeAll { $0.id == saved.id }
+                    painLogs.append(saved)
+                    painLogs.sort { $0.occurredAt > $1.occurredAt }
+                }
+            }
             .onReceive(
                 NotificationCenter.default.publisher(for: .healthMetricInclusionDidChange)
             ) { _ in
                 Task { await load() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .painLogDidChange)) { _ in
+                Task { await loadPainLogs() }
             }
             .refreshable { await synchronizeAndLoad() }
             .alert("Couldn’t build trends", isPresented: errorIsPresented) {
@@ -169,12 +205,21 @@ struct TrendsView: View {
                 BodyMapFigure(
                     view: bodyMapView,
                     selectedAreaIDs: Set(
-                        selectedBodyRestriction(in: snapshot)?.affectedAreaIDs ?? [])
-                ) { focus in
-                    guard let profile = selectedBodyRestriction(in: snapshot) else { return }
-                    editingBodyFocus = focus
-                    editingBodyRestriction = profile
-                }
+                        selectedBodyRestriction(in: snapshot)?.affectedAreaIDs ?? []),
+                    onSelectFocus: { focus in
+                        guard let profile = selectedBodyRestriction(in: snapshot) else { return }
+                        editingBodyFocus = focus
+                        editingBodyRestriction = profile
+                    },
+                    onLogPainFocus: { focus in
+                        painLogRequest = PainLogEditorRequest(
+                            preselectedBodyAreaID: painAreaID(
+                                for: focus,
+                                in: selectedBodyRestriction(in: snapshot)
+                            )
+                        )
+                    }
+                )
                 .frame(width: 126, height: 210)
                 VStack(alignment: .leading, spacing: 12) {
                     if let injury = selectedInjury(in: snapshot) {
@@ -232,6 +277,28 @@ struct TrendsView: View {
                 }
                 .accessibilityIdentifier("body-edit-affected-areas")
             }
+            Button {
+                painLogRequest = PainLogEditorRequest(
+                    preselectedBodyAreaID: selectedBodyRestriction(in: snapshot)?
+                        .affectedAreaIDs.first)
+            } label: {
+                Label("log pain →", systemImage: "bandage")
+                    .font(.journal(.subheadline))
+                    .frame(minHeight: 44)
+            }
+            .buttonStyle(JournalLinkButtonStyle())
+            .accessibilityIdentifier("body-log-pain")
+            Text("Tip: hold a body part above to open this log with that area selected.")
+                .font(.journal(.caption))
+                .foregroundStyle(Color.journalInk.opacity(0.65))
+            NavigationLink {
+                PainLogHistoryView(repository: assessmentRepository) { painLogs = $0 }
+            } label: {
+                Text("pain log & corrections →")
+                    .font(.journal(.footnote))
+                    .frame(minHeight: 44)
+            }
+            .accessibilityIdentifier("pain-log-history-link")
             NavigationLink {
                 RestrictionManagementView(repository: assessmentRepository)
             } label: {
@@ -259,6 +326,18 @@ struct TrendsView: View {
 
     private func injuryTimelineID(for restriction: RestrictionProfile) -> String {
         "injury:\(restriction.id)"
+    }
+
+    private func painAreaID(
+        for focus: BodyMapFocus,
+        in restriction: RestrictionProfile?
+    ) -> String? {
+        if let mapped = restriction?.affectedAreaIDs.first(where: {
+            BodyAreaCatalog.definition(for: $0)?.focus == focus
+        }) {
+            return mapped
+        }
+        return BodyAreaCatalog.all.first { $0.focus == focus && $0.isWholeFocus }?.id
     }
 
     private func reportItem(_ title: String, _ text: String, symbol: String) -> some View {
@@ -494,6 +573,7 @@ struct TrendsView: View {
             async let assessments = assessmentRepository.assessments()
             async let restrictions = assessmentRepository.restrictions()
             async let injuries = assessmentRepository.injuryTimeline()
+            async let painLogs = assessmentRepository.painLogs()
             let input = try await TrendsInput(
                 generatedAt: .now,
                 whoop: whoop,
@@ -509,6 +589,7 @@ struct TrendsView: View {
             includedHealthMetrics = await includedMetrics
             snapshot = result
             bodyRestrictions = input.restrictions
+            self.painLogs = try await painLogs
             if let restriction = selectedBodyRestriction(in: result) {
                 bodyMapView = preferredBodyMapView(for: restriction)
             }
@@ -533,6 +614,15 @@ struct TrendsView: View {
     }
 
     @MainActor
+    private func loadPainLogs() async {
+        do {
+            painLogs = try await assessmentRepository.painLogs()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
     private func saveAffectedAreas(_ ids: [String], for profile: RestrictionProfile) async {
         var updated = profile
         updated.affectedAreaIDs = BodyAreaCatalog.validIDs(ids)
@@ -546,6 +636,21 @@ struct TrendsView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+private struct PainStoryLine: View {
+    let entry: PainLogEntry
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(entry.bodyArea?.shortLabel ?? "Pain entry")
+            Spacer()
+            Text("\(entry.intensity)/10")
+                .fontWeight(.bold)
+                .foregroundStyle(Color.journalRedPen)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

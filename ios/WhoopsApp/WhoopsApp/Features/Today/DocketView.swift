@@ -18,6 +18,8 @@ struct DocketView: View {
     let movementLibrary: any MovementLibraryRepository
     let sleepDeadline: SleepDeadline?
 
+    @AppStorage("journalLeftHanded") private var leftHanded = false
+    @State private var completedWorkout: CompletedWorkout?
     @State private var docket: DailyDocket?
     @State private var plans: [WorkoutPlan] = []
     @State private var lastCompleted: DocketItem?
@@ -33,10 +35,16 @@ struct DocketView: View {
         JournalSection(title: "The Docket") {
             if let docket {
                 if docket.items.isEmpty {
-                    Text("nothing committed today.")
+                    Text("Nothing committed today.")
                         .font(.journal(.body))
                         .italic()
                         .foregroundStyle(Color.journalInk.opacity(0.7))
+                    Button("Add workout") {
+                        NotificationCenter.default.post(name: .journalWorkRoute, object: "workout")
+                    }
+                    Button("Capture protocol") {
+                        NotificationCenter.default.post(name: .journalWorkRoute, object: "protocol")
+                    }
                 } else {
                     ForEach(docket.items) { item in
                         docketRow(item)
@@ -57,37 +65,20 @@ struct DocketView: View {
                 ProgressView()
                     .frame(maxWidth: .infinity)
             }
-            if let lastCompleted {
-                HStack(spacing: 8) {
-                    Button {
-                        Task { await undo(lastCompleted) }
-                    } label: {
-                        Label(
-                            "done: \(lastCompleted.title) — undo",
-                            systemImage: "arrow.uturn.backward"
-                        )
-                        .font(.journal(.footnote))
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity, minHeight: 38)
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("docket-undo")
-
-                    Button("adjust") {
-                        recordActualTarget = lastCompleted
-                    }
-                    .font(.journal(.footnote))
-                    .frame(minHeight: 38)
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("docket-adjust")
-                }
-            }
             if let errorMessage {
                 Text(errorMessage)
                     .font(.journal(.footnote))
                     .foregroundStyle(Color.journalRedPen)
             }
         }
+        .preference(
+            key: DocketUndoPreference.self,
+            value: lastCompleted.map { item in
+                DocketUndoAction(
+                    id: item.completionID ?? item.id, title: item.title,
+                    undo: { Task { await undo(item) } }, adjust: { recordActualTarget = item })
+            }
+        )
         .sensoryFeedback(.success, trigger: completionCount)
         .task(id: sleepDeadline) { await reload() }
         .onChange(of: scenePhase) { _, phase in
@@ -103,6 +94,11 @@ struct DocketView: View {
                 existingCompletionID: item.completionID
             ) { completion in
                 await save(completion)
+            }
+        }
+        .sheet(item: $completedWorkout) { workout in
+            WorkoutCompletionView(workout: workout, movementLibrary: movementLibrary) {
+                await saveWorkout($0)
             }
         }
         .sheet(item: $completingWorkoutPlan) { plan in
@@ -124,6 +120,7 @@ struct DocketView: View {
 
     private func oneTapRow(_ item: DocketItem) -> some View {
         HStack(spacing: 8) {
+            if leftHanded { detailsButton(item) }
             Button {
                 Task { await toggle(item) }
             } label: {
@@ -135,19 +132,24 @@ struct DocketView: View {
                 "\(item.title), \(item.isCompleted ? "completed" : "not completed")"
             )
 
-            if item.kind == .protocolItem {
-                Button {
-                    recordActualTarget = item
-                } label: {
-                    Image(systemName: "square.and.pencil")
-                        .foregroundStyle(Color.journalInk.opacity(0.65))
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("docket-record-actual-\(item.id)")
-                .accessibilityLabel("log details for \(item.title)")
+            if !leftHanded { detailsButton(item) }
+        }
+    }
+
+    @ViewBuilder
+    private func detailsButton(_ item: DocketItem) -> some View {
+        if item.kind == .protocolItem {
+            Button {
+                recordActualTarget = item
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .foregroundStyle(Color.journalInk.opacity(0.65))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("docket-record-actual-\(item.id)")
+            .accessibilityLabel("log details for \(item.title)")
         }
     }
 
@@ -155,12 +157,28 @@ struct DocketView: View {
     private func workoutRow(_ item: DocketItem) -> some View {
         if let plan = plans.first(where: { $0.id == item.sourceID }) {
             Button {
-                completingWorkoutPlan = plan
+                if item.isCompleted {
+                    Task {
+                        do {
+                            completedWorkout = try await workoutRepository.completedWorkouts().first
+                            { $0.id == item.completionID }
+                            if completedWorkout == nil {
+                                completedWorkout = try await workoutRepository.completedWorkouts()
+                                    .first { $0.plannedWorkoutID == plan.id }
+                            }
+                            if completedWorkout == nil {
+                                errorMessage =
+                                    "The recorded workout could not be found. Refresh and try again."
+                            }
+                        } catch { errorMessage = error.localizedDescription }
+                    }
+                } else {
+                    completingWorkoutPlan = plan
+                }
             } label: {
                 rowContent(item)
             }
             .buttonStyle(.plain)
-            .disabled(item.isCompleted)
             .accessibilityIdentifier("docket-item-\(item.id)")
             .accessibilityLabel(
                 "\(item.title), \(item.isCompleted ? "completed" : "not completed")"
@@ -340,7 +358,7 @@ struct DocketView: View {
         lastCompleted = item
         undoTask?.cancel()
         undoTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(6))
+            try? await Task.sleep(for: .seconds(15))
             guard !Task.isCancelled else { return }
             lastCompleted = nil
         }
@@ -366,4 +384,21 @@ struct DocketView: View {
         )
         .padding()
     }
+}
+
+struct DocketUndoAction: Equatable, Sendable {
+    let id: String
+    let title: String
+    let undo: @MainActor @Sendable () -> Void
+    let adjust: @MainActor @Sendable () -> Void
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+}
+struct DocketUndoPreference: PreferenceKey {
+    static let defaultValue: DocketUndoAction? = nil
+    static func reduce(value: inout DocketUndoAction?, nextValue: () -> DocketUndoAction?) {
+        value = nextValue() ?? value
+    }
+}
+extension Notification.Name {
+    static let journalWorkRoute = Notification.Name("JournalWorkRoute")
 }

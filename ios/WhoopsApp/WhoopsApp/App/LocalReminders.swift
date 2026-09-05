@@ -308,6 +308,15 @@ enum ReminderNotificationIdentifiers {
 enum PendingAppRoute: String, Equatable, Sendable {
     case today
     case morningCheckIn
+    case painLog
+}
+
+enum HomeScreenQuickAction {
+    static let logPainType = "com.robertcdawson.whoops.log-pain"
+
+    static func route(for shortcutType: String) -> PendingAppRoute? {
+        shortcutType == logPainType ? .painLog : nil
+    }
 }
 
 struct PendingAppRouteStore: @unchecked Sendable {
@@ -419,7 +428,25 @@ final class ReminderNotificationDelegate: NSObject, UIApplicationDelegate,
         let center = UNUserNotificationCenter.current()
         center.delegate = self
         UserNotificationReminderScheduler.registerCategories(on: center)
+        if let shortcut = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem,
+            let route = HomeScreenQuickAction.route(for: shortcut.type)
+        {
+            PendingAppRouteStore().save(route)
+        }
         return true
+    }
+
+    func application(
+        _ application: UIApplication,
+        performActionFor shortcutItem: UIApplicationShortcutItem,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        guard let route = HomeScreenQuickAction.route(for: shortcutItem.type) else {
+            completionHandler(false)
+            return
+        }
+        PendingAppRouteStore().save(route)
+        completionHandler(true)
     }
 
     nonisolated func userNotificationCenter(

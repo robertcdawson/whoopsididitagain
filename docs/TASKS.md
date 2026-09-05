@@ -565,6 +565,68 @@ the existing phone app without deleting its local data. Robert then accepted all
 families, tap-to-complete and app reconciliation, Dynamic Type/VoiceOver, notification actions, and
 App Shortcut/Siri behavior on the physical iPhone.
 
+## Redesign Phase 5: Ad-hoc Pain Entry and Quick Action
+
+Phase 5 of the `docs/DESIGN.md` implementation priority: capture an addressed pain observation in
+three taps without changing the daily assessment or inventing a movement association.
+
+- [x] Add a validated standalone pain-event domain model and additive twentieth SwiftData record.
+- [x] Keep pain events independent from morning check-ins, readiness, experiments, restrictions,
+      workout completion, and deterministic analytics.
+- [x] Add a one-handed sheet with recent/restricted area chips, the complete body-area picker,
+      a 0–10 chip row, and an optional reusable on-device dictation path.
+- [x] Add a static Home Screen **Log Pain** quick action plus cold/warm pending-route handling and
+      a matching `whoops://pain` route.
+- [x] Add a visible Body entry point and a map long press that preselects the applicable area while
+      preserving ordinary-tap affected-area editing and adding a named VoiceOver action.
+- [x] Show matching pain events in the selected body-part story and provide newest-first history.
+- [x] Support correction by stable ID and deletion only after explicit, plain-language confirmation.
+- [x] Add validation, persistence, route, isolation, create/edit/relaunch/delete, and accessibility
+      regression coverage.
+- [x] Update architecture, product contract, decision log, README status, and app version.
+- [x] Run final full unit/UI suites, storage-upgrade verification, formatting, property-list, and
+      diff checks.
+- [ ] Install over the existing physical-phone app without deleting local data and confirm the
+      quick action, long press, dictation, Dynamic Type, and VoiceOver behavior.
+
+Final automated verification passed on September 3, 2026: **186 unit tests and 37 UI tests**, zero
+failures; backend lint/typecheck/10 tests/production build; Swift formatting; property-list and
+project-file validation; iOS build-for-testing; diff checks; and the additive 19-to-20-model
+synthetic store upgrade. The editor also passed native-resolution simulator review. Exact result
+bundles are recorded in `design-qa.md`. The signed 0.10.0 build was installed over the existing
+phone app without deleting its store, and app/widget App Group entitlements match. Phase 5 is not
+complete until the physical-phone checklist passes.
+
+## September 4: Left-thumb experience and Bring to PT
+
+Robert authorized all nine experience improvements, including phase 6, while physical acceptance
+of phase 5 remains open. This supersedes the earlier sequence for implementation, not acceptance.
+
+- [x] Place persistent Save actions at the bottom and mirror note microphones and docket details.
+- [x] Require explicit check-in scores/symptoms, workout RPE/pain, and duration confirmation.
+- [x] Add a short actual-work confirmation path; multiply known closed prescriptions across rounds
+      and require actual review for open-ended or otherwise ambiguous quantities.
+- [x] Preserve optional movement pain as unrecorded, explicit zero, or historical stored value.
+- [x] Keep workout correction reachable from Today and protocol correction after 15-second Undo.
+- [x] Retain saved quantities, pain, and notes when reopening a modified protocol completion.
+- [x] Protect local editor drafts; offer explicit Resume/confirmed Discard, clear successful drafts,
+      retain failed-save edits, and remove drafts associated with deleted source records.
+- [x] Reuse on-device dictation across notes; cancel pending starts and active recordings on exit
+      or backgrounding, retaining typed/transcribed text.
+- [x] Add direct empty-docket routes, compact completed check-in status, nearby source dates,
+      Settings export, searchable restriction demands, and experiment usable-day progress.
+- [x] Allow pain occurrence-time entry/correction without accepting future timestamps.
+- [x] Build a 7/14/30-day or custom PT preview and paginated, selectable-text PDF from the same
+      local summary, with current prescriptions separate from recorded historical completions.
+- [x] Verify the additive 19-to-20-model store upgrade preserves all persisted fields and nils.
+- [x] Complete the final full unit/UI suites and review the resulting simulator screenshots:
+      197 unit tests and all 43 UI cases passed.
+- [x] Install verified 0.11.0 over the existing phone app without uninstalling or resetting data.
+- [ ] Confirm comfortable left-thumb use, interrupted dictation/drafts, native sharing, larger
+      text, VoiceOver, and the outstanding phase-5 quick-action/map flows on the phone.
+
+Exact automated and device evidence is recorded in [`design-qa.md`](../design-qa.md).
+
 ## Milestone 6: Personal Experiment Laboratory
 
 - [x] Define the initial feature-flagged experiment contract and defer unsupported advanced models.

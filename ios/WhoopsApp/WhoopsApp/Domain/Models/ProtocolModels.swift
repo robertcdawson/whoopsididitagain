@@ -51,13 +51,13 @@ enum ProtocolCadence: Codable, Equatable, Hashable, Sendable {
     }
 }
 
-enum ProtocolItemResolution: Equatable, Hashable, Sendable {
+enum ProtocolItemResolution: Codable, Equatable, Hashable, Sendable {
     case matched(movementID: String, name: String)
     case ambiguous(candidateIDs: [String])
     case unknown
 }
 
-struct ParsedProtocolItem: Equatable, Hashable, Identifiable, Sendable {
+struct ParsedProtocolItem: Codable, Equatable, Hashable, Identifiable, Sendable {
     let id: String
     let line: Int
     let originalText: String
@@ -72,7 +72,7 @@ struct ParsedProtocolItem: Equatable, Hashable, Identifiable, Sendable {
     var resolution: ProtocolItemResolution
 }
 
-struct ParsedProtocol: Equatable, Hashable, Identifiable, Sendable {
+struct ParsedProtocol: Codable, Equatable, Hashable, Identifiable, Sendable {
     let id: String
     var title: String
     let rawText: String
@@ -106,7 +106,7 @@ enum ProtocolParseError: Error, Equatable, LocalizedError, Sendable {
 /// One reviewable row on the parse-review screen. Ambiguous rows must be resolved by
 /// tapping a candidate and unknown rows by adding a personal movement before the row
 /// can become part of a saved protocol; the parser itself never picks for the user.
-struct ProtocolReviewItem: Equatable, Identifiable, Sendable {
+struct ProtocolReviewItem: Codable, Equatable, Identifiable, Sendable {
     let id: String
     let originalText: String
     var movementText: String

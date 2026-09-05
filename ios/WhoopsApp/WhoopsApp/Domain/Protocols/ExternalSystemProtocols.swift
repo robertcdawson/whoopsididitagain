@@ -110,6 +110,9 @@ protocol AssessmentRepository: Sendable {
     func checkIns() async throws -> [MorningCheckIn]
     func saveCheckIn(_ checkIn: MorningCheckIn) async throws
     func deleteCheckIn(day: String) async throws
+    func painLogs() async throws -> [PainLogEntry]
+    func savePainLog(_ entry: PainLogEntry) async throws
+    func deletePainLog(id: String) async throws
     func restrictions() async throws -> [RestrictionProfile]
     func saveRestriction(_ restriction: RestrictionProfile) async throws
     func deleteRestriction(id: String) async throws

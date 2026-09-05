@@ -1,9 +1,9 @@
 # Architecture
 
 **Status:** Milestones 5–6 (trends and Personal Experiment Lab), workout/HealthKit stability
-improvements, redesign phases 1–3, and the native Today / Work / Body field-journal shell integrated
+improvements, redesign phases 1–5, and the native Today / Work / Body field-journal shell integrated
 
-**Last updated:** September 1, 2026
+**Last updated:** September 3, 2026
 
 `PROJECT_PLAN.md` is the product source of truth. This document records the architecture that is
 currently implemented.
@@ -58,8 +58,8 @@ restrictions remain unmapped until the user chooses areas, and future catalog ad
 change historical selections. The Body screen and restriction editor share the same picker and
 repository save path; the map does not affect readiness or restriction-demand evaluation.
 
-The combined app keeps one SwiftData container with all 19 record types from both development
-lines: source history, assessment/configuration, planned/actual work, movement definitions,
+The combined app keeps one SwiftData container with 20 record types: source history,
+assessment/configuration, standalone pain events, planned/actual work, movement definitions,
 experiments, protocols, and docket completions. Existing entity names and legacy whole-second
 workout fields are retained; precise duration/result fields remain additive and optional.
 `scripts/verify-store-upgrades.mjs` generates synthetic disk-backed stores from each pre-integration
@@ -192,6 +192,26 @@ high. The cap never raises a lower symptom-derived score, and a missing check-in
 tissue score. The Today screen presents the strongest reasons and the effective recommendation.
 Sleep deadlines are derived locally from wake time, sleep target, expected latency, and wind-down
 duration.
+
+## Standalone pain log
+
+`PainLogEntry` is a separate user-authored event stream with a stable body-area ID, 0–10 intensity,
+optional note, and occurrence time. It deliberately does not reuse `MorningCheckIn`: logging pain
+at an arbitrary time cannot change readiness inputs or experiment outcomes. `PainLogRecord` is a
+new SwiftData entity, so existing stores gain the stream without changing or backfilling any prior
+record. Saves are idempotent by entry ID; history is newest-first; deletes require plain-language
+confirmation and remove only the selected local event.
+
+The editor uses the domain-owned `BodyAreaCatalog`, reuses recent or actively restricted areas as
+suggestions, and reuses the on-device dictation adapter for the optional note. Body shows matching
+events only when their area ID belongs to the selected restriction; this is a descriptive timeline,
+not a diagnosis, causal claim, readiness signal, or movement-clearance rule.
+
+The static Home Screen quick action stores a one-shot `.painLog` route through the same app-owned
+pending-route boundary used by reminders. Cold and warm launches present the editor without moving
+health data into an extension or App Group. The `whoops://pain` URL reaches the same editor. On the
+Body map, tap keeps its existing affected-area behavior; long press opens a preselected pain log,
+with a named VoiceOver action providing the equivalent non-gesture path.
 
 ## Workout planning and completion
 
@@ -504,3 +524,24 @@ Predictive dose-response modeling, interval pacing, anomaly notifications, natur
 historical questions, webhooks, additional equipment integrations, clinical export, and matched-day
 causal adjustment remain deferred. Parsing, scaling, readiness, trends, experiments, weekly review,
 and export do not depend on an LLM.
+
+## Left-thumb editing and PT summary (September 4, 2026)
+
+Editors share bottom Save actions, handed microphone placement, and a protected local draft
+store in Application Support. Versioned draft envelopes are keyed by editor and source/day,
+written atomically after a short debounce and flushed on dismissal/backgrounding. They are
+separate from SwiftData clinical records and never participate in analytics. Resume is explicit;
+discard is confirmed. Successful saves clear drafts; source deletion removes associated drafts.
+
+New check-ins require score and symptom answers. New workout completions require confirmation
+of actual work, duration, RPE, and post-session pain. Copied movement quantities are explicitly
+reviewed through the quick or detailed path. Additive `painWasReported` metadata distinguishes
+new unrecorded movement pain from explicit zero; absent metadata preserves legacy values.
+Pain summaries and CSV exports omit unrecorded pain rather than counting it as zero.
+
+Bring to PT builds one deterministic summary model for native preview and selectable-text PDF.
+The default inclusive interval is the last 14 local calendar days. It includes current restrictions
+and prescriptions, dated protocol completions, workout modifications, standalone pain, and editable
+questions. Current recurrence is never used to manufacture historical adherence denominators.
+PDF generation is local; sharing is initiated through the system share sheet. No clinical milestones,
+healing timelines, causal conclusions, or medical clearance are inferred.

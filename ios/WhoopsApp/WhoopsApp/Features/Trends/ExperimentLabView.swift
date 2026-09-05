@@ -299,6 +299,14 @@ private struct ExperimentDetailView: View {
         Section("Deterministic analysis") {
             if let analysis {
                 LabeledContent("Evidence status", value: analysis.evidenceStatus.rawValue)
+                ProgressView(
+                    "\(experiment.intervention): \(analysis.interventionCount)/\(experiment.minimumObservations) usable days",
+                    value: Double(min(analysis.interventionCount, experiment.minimumObservations)),
+                    total: Double(experiment.minimumObservations))
+                ProgressView(
+                    "\(experiment.comparisonCondition): \(analysis.comparisonCount)/\(experiment.minimumObservations) usable days",
+                    value: Double(min(analysis.comparisonCount, experiment.minimumObservations)),
+                    total: Double(experiment.minimumObservations))
                 LabeledContent(
                     experiment.intervention,
                     value:
@@ -556,6 +564,7 @@ private struct ExperimentObservationRow: View {
 }
 
 private struct ExperimentEditorView: View {
+    private let draftKey: String
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: UUID?
     @State var experiment: ExperimentDefinition
@@ -571,6 +580,7 @@ private struct ExperimentEditorView: View {
         experiment: ExperimentDefinition,
         onSave: @escaping (ExperimentDefinition) async throws -> Void
     ) {
+        draftKey = "experiment:" + (experiment.title.isEmpty ? "new" : experiment.id)
         _experiment = State(initialValue: experiment)
         _inclusionText = State(initialValue: experiment.inclusionCriteria.joined(separator: "\n"))
         _exclusionText = State(initialValue: experiment.exclusionCriteria.joined(separator: "\n"))
@@ -593,11 +603,13 @@ private struct ExperimentEditorView: View {
                 .lineLimit(2...5)
                 TextField("Hypothesis (optional)", text: $experiment.hypothesis, axis: .vertical)
                     .formKeyboardField(dismissOnSubmit: false)
+                    .dictationInput($experiment.hypothesis)
                     .lineLimit(2...5)
             }
             Section("Conditions") {
                 TextField("Condition A", text: $experiment.intervention, axis: .vertical)
                     .formKeyboardField(dismissOnSubmit: false)
+                    .dictationInput($experiment.intervention)
                 TextField(
                     "Condition B", text: $experiment.comparisonCondition, axis: .vertical
                 )
@@ -649,9 +661,11 @@ private struct ExperimentEditorView: View {
             Section("Criteria and context") {
                 TextField("Inclusion criteria, one per line", text: $inclusionText, axis: .vertical)
                     .formKeyboardField(dismissOnSubmit: false)
+                    .dictationInput($inclusionText)
                     .lineLimit(2...6)
                 TextField("Exclusion criteria, one per line", text: $exclusionText, axis: .vertical)
                     .formKeyboardField(dismissOnSubmit: false)
+                    .dictationInput($exclusionText)
                     .lineLimit(2...6)
                 TextField(
                     "Potential confounders, one per line", text: $confounderText, axis: .vertical
@@ -681,11 +695,21 @@ private struct ExperimentEditorView: View {
                     .foregroundStyle(Color.journalInk.opacity(0.7))
             }
         }
+        .recoverableDraft(key: draftKey, value: draftBinding)
         .navigationTitle(experiment.title.isEmpty ? "New Experiment" : "Edit Experiment")
         .navigationBarTitleDisplayMode(.inline)
         .formKeyboardScope($focusedField)
         .onChange(of: experiment.primaryOutcome) { _, outcome in
             experiment.outcomeTiming = outcome.recommendedTiming
+        }
+        .journalSaveBar {
+            Button("Save") {
+                focusedField = nil
+                Task { await save() }
+            }
+            .disabled(!experiment.isValid)
+            .accessibilityIdentifier("save-experiment")
+
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -694,20 +718,36 @@ private struct ExperimentEditorView: View {
                     dismiss()
                 }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    focusedField = nil
-                    Task { await save() }
-                }
-                .disabled(!experiment.isValid)
-                .accessibilityIdentifier("save-experiment")
-            }
+
         }
         .alert("Couldn’t save experiment", isPresented: errorIsPresented) {
             Button("OK", role: .cancel) { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "Unknown error")
         }
+    }
+
+    private struct Draft: Codable, Equatable {
+        var experiment: ExperimentDefinition
+        var inclusion: String
+        var exclusion: String
+        var confounders: String
+        var hasEnd: Bool
+    }
+    private var draftBinding: Binding<Draft> {
+        Binding(
+            get: {
+                Draft(
+                    experiment: experiment, inclusion: inclusionText, exclusion: exclusionText,
+                    confounders: confounderText, hasEnd: hasEndDate)
+            },
+            set: {
+                experiment = $0.experiment
+                inclusionText = $0.inclusion
+                exclusionText = $0.exclusion
+                confounderText = $0.confounders
+                hasEndDate = $0.hasEnd
+            })
     }
 
     private func secondaryBinding(_ outcome: ExperimentOutcome) -> Binding<Bool> {
@@ -738,6 +778,7 @@ private struct ExperimentEditorView: View {
         experiment.updatedAt = .now
         do {
             try await onSave(experiment)
+            try? EditorDraftStore.shared.finish(key: draftKey)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
@@ -755,7 +796,7 @@ private struct ExperimentEditorView: View {
     }
 }
 
-private struct DailyExperimentSelection: Identifiable {
+private struct DailyExperimentSelection: Codable, Equatable, Identifiable {
     let experiment: ExperimentDefinition
     var condition: ExperimentCondition?
 
@@ -771,7 +812,7 @@ struct DailyExperimentLogView: View {
     @State private var date = Date.now
     @State private var selections: [DailyExperimentSelection]
     @State private var existingByExperiment: [String: ExperimentObservation] = [:]
-    @State private var isLoading = false
+    @State private var isLoading = true
     @State private var isSaving = false
     @State private var errorMessage: String?
 
@@ -834,19 +875,24 @@ struct DailyExperimentLogView: View {
                 }
             }
         }
+        .recoverableDraft(
+            key: "experiment-day:" + Self.dayKey(date), value: selectionDraft, ready: !isLoading
+        )
         .navigationTitle("Log Experiment Day")
         .navigationBarTitleDisplayMode(.inline)
+        .journalSaveBar {
+            Button("Save Day") { Task { await save() } }
+                .disabled(
+                    isLoading || isSaving || selections.allSatisfy { $0.condition == nil }
+                )
+                .accessibilityIdentifier("save-experiment-day")
+
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save Day") { Task { await save() } }
-                    .disabled(
-                        isLoading || isSaving || selections.allSatisfy { $0.condition == nil }
-                    )
-                    .accessibilityIdentifier("save-experiment-day")
-            }
+
         }
         .task { await load() }
         .onChange(of: date) { _, _ in
@@ -857,6 +903,18 @@ struct DailyExperimentLogView: View {
         } message: {
             Text(errorMessage ?? "Unknown error")
         }
+    }
+
+    private var selectionDraft: Binding<[DailyExperimentSelection]> {
+        Binding(
+            get: { selections },
+            set: { restored in
+                for index in selections.indices {
+                    if let saved = restored.first(where: { $0.id == selections[index].id }) {
+                        selections[index].condition = saved.condition
+                    }
+                }
+            })
     }
 
     @MainActor
@@ -901,6 +959,7 @@ struct DailyExperimentLogView: View {
                 updates.append(observation)
             }
             try await experimentRepository.saveObservations(updates)
+            try? EditorDraftStore.shared.finish(key: "experiment-day:" + Self.dayKey(date))
             await onSave()
             dismiss()
         } catch {
@@ -1031,8 +1090,10 @@ private struct ExperimentObservationEditorView: View {
             Section {
                 TextField("Confounders, one per line", text: $confounderText, axis: .vertical)
                     .formKeyboardField(dismissOnSubmit: false)
+                    .dictationInput($confounderText)
                 TextField("Notes", text: $observation.notes, axis: .vertical)
                     .formKeyboardField(dismissOnSubmit: false)
+                    .dictationInput($observation.notes)
             } header: {
                 Text("Optional context")
             } footer: {
@@ -1056,9 +1117,24 @@ private struct ExperimentObservationEditorView: View {
         .onChange(of: date) { _, _ in
             loadSelectedDay()
         }
+        .recoverableDraft(key: draftKey, value: draftBinding)
         .navigationTitle("Condition Day")
         .navigationBarTitleDisplayMode(.inline)
         .formKeyboardScope($focusedField)
+        .journalSaveBar {
+            Button("Save") {
+                focusedField = nil
+                Task { await save() }
+            }
+            .disabled(
+                !observation.included
+                    && observation.exclusionReason.trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                    ).isEmpty
+                    || hasDateConflict
+            )
+
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
@@ -1066,19 +1142,7 @@ private struct ExperimentObservationEditorView: View {
                     dismiss()
                 }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    focusedField = nil
-                    Task { await save() }
-                }
-                .disabled(
-                    !observation.included
-                        && observation.exclusionReason.trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        ).isEmpty
-                        || hasDateConflict
-                )
-            }
+
         }
         .alert("Couldn’t save observation", isPresented: errorIsPresented) {
             Button("OK", role: .cancel) { errorMessage = nil }
@@ -1097,6 +1161,24 @@ private struct ExperimentObservationEditorView: View {
         } message: {
             Text("This day will no longer count in the experiment. This cannot be undone.")
         }
+    }
+
+    private var draftKey: String {
+        "experiment-observation:" + experiment.id + ":" + (originalObservationID ?? "new")
+    }
+    private struct Draft: Codable, Equatable {
+        var observation: ExperimentObservation
+        var date: Date
+        var confounders: String
+    }
+    private var draftBinding: Binding<Draft> {
+        Binding(
+            get: { Draft(observation: observation, date: date, confounders: confounderText) },
+            set: {
+                observation = $0.observation
+                date = $0.date
+                confounderText = $0.confounders
+            })
     }
 
     private var outcomeDay: String {
@@ -1161,6 +1243,7 @@ private struct ExperimentObservationEditorView: View {
         observation.updatedAt = .now
         do {
             try await onSave(observation, originalObservationID)
+            try? EditorDraftStore.shared.finish(key: draftKey)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
@@ -1176,6 +1259,7 @@ private struct ExperimentObservationEditorView: View {
         else { return }
         do {
             try await onDelete(existing)
+            try? EditorDraftStore.shared.finish(key: draftKey)
             dismiss()
         } catch {
             errorMessage = error.localizedDescription

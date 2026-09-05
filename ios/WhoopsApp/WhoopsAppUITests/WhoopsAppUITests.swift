@@ -26,8 +26,10 @@ final class WhoopsAppUITests: XCTestCase {
         for _ in 0..<8 where !actual.isHittable { app.swipeUp() }
         actual.tap()
         XCTAssertTrue(app.navigationBars["Record Actual Work"].waitForExistence(timeout: 5))
+        app.buttons["workout-made-changes"].tap()
         replaceWholeField(
             app.textFields["Workout title"], with: workoutTitle, in: app)
+        answerWorkoutRequirements(in: app)
         app.buttons["save-actual-workout"].tap()
         XCTAssertTrue(app.otherElements["journal-page-work"].waitForExistence(timeout: 5))
         assertKeyboardHidden(in: app)
@@ -42,6 +44,9 @@ final class WhoopsAppUITests: XCTestCase {
         XCTAssertEqual(
             app.textFields["Workout title"].value as? String, workoutTitle)
         captureJournal("EditWorkout", app: app)
+        let timing = app.buttons["Start and end times"]
+        revealForTap(timing, in: app)
+        timing.tap()
         XCTAssertTrue(app.datePickers["workout-started-at"].exists)
         XCTAssertTrue(app.datePickers["workout-ended-at"].exists)
         let duration = app.textFields["Session duration in minutes"]
@@ -67,7 +72,8 @@ final class WhoopsAppUITests: XCTestCase {
         // The stepper is seeded from the plan's reported score, not zero, and a stepper (unlike
         // the old text field) can't be set to an absolute value directly. Floor it first so the
         // following taps land on a known, deterministic total.
-        for _ in 0..<60 { repsMinus.tap() }
+        XCTAssertTrue(app.staticTexts["23"].exists)
+        for _ in 0..<23 { repsMinus.tap() }
         for _ in 0..<17 { repsPlus.tap() }
         // A burst of rapid taps leaves the form mid-relayout for a moment; let it settle before
         // the next interaction rather than racing a stale hit-test coordinate.
@@ -75,6 +81,7 @@ final class WhoopsAppUITests: XCTestCase {
         let load = app.textFields["Actual load"].firstMatch
         for _ in 0..<10 where !load.isHittable { app.swipeUp() }
         replaceWholeField(load, with: "12.5", in: app)
+        app.buttons["dismiss-workout-keyboard"].tap()
         app.buttons["save-actual-workout"].tap()
         XCTAssertTrue(app.navigationBars["Edit Workout"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.navigationBars[workoutTitle].waitForExistence(timeout: 5))
@@ -99,6 +106,10 @@ final class WhoopsAppUITests: XCTestCase {
             app.buttons.matching(identifier: "View completed workout: \(workoutTitle)").count, 1)
         detailLink.tap()
         app.buttons["edit-completed-workout"].tap()
+        XCTAssertTrue(app.buttons["Discard draft"].waitForExistence(timeout: 5))
+        app.buttons["Discard draft"].tap()
+        XCTAssertTrue(app.buttons["Keep draft"].waitForExistence(timeout: 5))
+        app.alerts.buttons["Discard draft"].tap()
         XCTAssertEqual(duration.value as? String, "30.25")
         for _ in 0..<12 where !rounds.isHittable { app.swipeUp() }
         XCTAssertEqual(rounds.value as? String, "6")
@@ -280,6 +291,8 @@ final class WhoopsAppUITests: XCTestCase {
         assertKeyboardHidden(in: app)
         tapParseWorkout(in: app)
         XCTAssertTrue(app.navigationBars["Review Workout"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
+        app.buttons["Resume"].tap()
         for _ in 0..<6 where !title.isHittable { app.swipeUp() }
         title.tap()
         title.typeText(" B")
@@ -311,10 +324,12 @@ final class WhoopsAppUITests: XCTestCase {
         for _ in 0..<8 where !actual.isHittable { app.swipeUp() }
         actual.tap()
         XCTAssertTrue(app.navigationBars["Record Actual Work"].waitForExistence(timeout: 5))
+        app.buttons["workout-made-changes"].tap()
         let load = app.textFields["Actual load"].firstMatch
         for _ in 0..<10 where !load.isHittable { app.swipeUp() }
         replaceText(load, with: "18")
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        answerWorkoutRequirements(in: app)
         app.buttons["save-actual-workout"].tap()
         XCTAssertTrue(app.otherElements["journal-page-work"].waitForExistence(timeout: 5))
         assertKeyboardHidden(in: app)
@@ -810,6 +825,7 @@ final class WhoopsAppUITests: XCTestCase {
     @MainActor
     func testDocketShowsWindDownAndCompletesWithUndo() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["WHOOPS_DRAFT_NAMESPACE"] = UUID().uuidString
         app.launch()
 
         XCTAssertTrue(staticText("The Docket", in: app).waitForExistence(timeout: 5))
@@ -831,6 +847,7 @@ final class WhoopsAppUITests: XCTestCase {
     @MainActor
     func testProtocolPastePathReachesTapChipReview() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["WHOOPS_DRAFT_NAMESPACE"] = UUID().uuidString
         app.launch()
 
         openWork(in: app)
@@ -924,9 +941,8 @@ final class WhoopsAppUITests: XCTestCase {
         app.terminate()
         app.launchEnvironment["WHOOPS_TEST_WORKOUT_MODEL"] = "unavailable"
         app.launch()
-        openWork(in: app)
-        entry.tap()
-        entry.typeText("10 Strict Press 45 lb")
+        openWork(in: app, resumeDraft: true)
+        XCTAssertEqual(entry.value as? String, "10 Strict Press 45 lb")
         tapParseWorkout(in: app)
         XCTAssertTrue(app.navigationBars["Review Workout"].waitForExistence(timeout: 5))
         app.swipeUp()
@@ -989,8 +1005,13 @@ final class WhoopsAppUITests: XCTestCase {
     }
 
     @MainActor
-    private func openWork(in app: XCUIApplication) {
+    private func openWork(in app: XCUIApplication, resumeDraft: Bool = false) {
         app.buttons["zone-work"].tap()
+        if resumeDraft {
+            XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
+            app.buttons["Resume"].tap()
+            XCTAssertTrue(app.buttons["Resume"].waitForNonExistence(timeout: 5))
+        }
         let entry = app.textViews["raw-workout-entry"]
         if !entry.exists {
             let composer = app.buttons["workout-composer"]
@@ -1265,8 +1286,251 @@ final class WhoopsAppUITests: XCTestCase {
     }
 
     @MainActor
+    func testCheckInDraftRestoresAfterRelaunchAndRequiresExplicitScores() throws {
+        let app = makeApp()
+        app.launch()
+        app.buttons["morning-check-in"].tap()
+        let pain = app.buttons["checkin-pain-at-rest-chip-6"]
+        XCTAssertTrue(pain.waitForExistence(timeout: 5))
+        pain.tap()
+        app.buttons["Cancel"].tap()
+        app.terminate()
+        app.launch()
+        app.buttons["morning-check-in"].tap()
+        XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
+        app.buttons["Resume"].tap()
+        XCTAssertTrue(app.buttons["checkin-pain-at-rest-chip-6"].isSelected)
+        answerCheckInRequirements(in: app)
+        XCTAssertTrue(app.buttons["check-in-save"].isEnabled)
+        app.buttons["check-in-save"].tap()
+        XCTAssertTrue(app.navigationBars["Morning Check-In"].waitForNonExistence(timeout: 5))
+        app.buttons["morning-check-in"].tap()
+        XCTAssertFalse(app.buttons["Resume"].exists)
+    }
+
+    @MainActor
+    func testPTSummaryPreviewAndPDFPreparation() throws {
+        let app = makeApp()
+        app.launch()
+        app.buttons["zone-body"].tap()
+        let summary = app.buttons["bring-to-pt"]
+        XCTAssertTrue(summary.waitForExistence(timeout: 5))
+        summary.tap()
+        XCTAssertTrue(app.navigationBars["Bring to PT"].waitForExistence(timeout: 5))
+        let prepare = app.buttons["prepare-pt-pdf"]
+        XCTAssertTrue(prepare.waitForExistence(timeout: 10))
+        XCTAssertTrue(prepare.isEnabled)
+        prepare.tap()
+        XCTAssertTrue(app.buttons["share-pt-pdf"].waitForExistence(timeout: 5))
+        captureJournal("PT-Summary", app: app)
+    }
+
+    @MainActor
+    func testDraftDiscardRequiresConfirmationAndKeepsSavedCheckIn() throws {
+        let app = makeApp()
+        app.launch()
+        app.buttons["morning-check-in"].tap()
+        let seven = app.buttons["checkin-pain-at-rest-chip-7"]
+        XCTAssertTrue(seven.waitForExistence(timeout: 5))
+        seven.tap()
+        app.buttons["Cancel"].tap()
+        app.buttons["morning-check-in"].tap()
+        XCTAssertTrue(app.buttons["Discard draft"].waitForExistence(timeout: 5))
+        app.buttons["Discard draft"].tap()
+        XCTAssertTrue(app.buttons["Keep draft"].waitForExistence(timeout: 5))
+        app.buttons["Keep draft"].tap()
+        XCTAssertTrue(app.buttons["Resume"].waitForExistence(timeout: 5))
+        app.buttons["Resume"].tap()
+        XCTAssertTrue(app.buttons["Resume"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(seven.isSelected)
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Morning Check-In"].waitForNonExistence(timeout: 5))
+        app.buttons["morning-check-in"].tap()
+        XCTAssertTrue(app.buttons["Discard draft"].waitForExistence(timeout: 5))
+        app.buttons["Discard draft"].tap()
+        XCTAssertTrue(app.buttons["Keep draft"].waitForExistence(timeout: 5))
+        app.alerts.buttons["Discard draft"].tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Resume"].waitForNonExistence(timeout: 5))
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Morning Check-In"].waitForNonExistence(timeout: 5))
+        app.buttons["morning-check-in"].tap()
+        XCTAssertFalse(app.buttons["Resume"].waitForExistence(timeout: 1))
+    }
+
+    @MainActor
+    func testHandedMicrophoneAndBottomSaveWithKeyboardAtLargeText() throws {
+        for leftHanded in [true, false] {
+            let app = makeApp()
+            app.launchArguments += [
+                "-journalLeftHanded", leftHanded ? "YES" : "NO",
+                "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL",
+            ]
+            app.launch()
+            app.buttons["morning-check-in"].tap()
+            answerCheckInRequirements(in: app)
+            let note = app.descendants(matching: .any).matching(identifier: "check-in-notes")
+                .firstMatch
+            for _ in 0..<15 where !note.isHittable { app.swipeUp() }
+            XCTAssertTrue(note.isHittable)
+            let microphone = app.buttons["Dictate note"]
+            XCTAssertTrue(microphone.exists)
+            XCTAssertGreaterThanOrEqual(microphone.frame.width, 44)
+            if leftHanded {
+                XCTAssertLessThan(microphone.frame.midX, note.frame.midX)
+            } else {
+                XCTAssertGreaterThan(microphone.frame.midX, note.frame.midX)
+            }
+            note.tap()
+            note.typeText("Synthetic keyboard reach check")
+            let save = app.buttons["check-in-save"]
+            XCTAssertTrue(app.keyboards.firstMatch.exists)
+            XCTAssertTrue(save.isHittable)
+            captureJournal(leftHanded ? "Left-Keyboard-Large" : "Right-Keyboard-Large", app: app)
+            save.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            XCTAssertTrue(app.navigationBars["Morning Check-In"].waitForNonExistence(timeout: 5))
+            app.terminate()
+        }
+    }
+
+    @MainActor
+    func testProtocolCorrectionRemainsAvailableAfterUndoExpires() throws {
+        let app = makeApp()
+        app.launch()
+        pasteRingRowProtocol(in: app)
+        let row = ringRowDocketRow(in: app)
+        let details = app.buttons[recordActualIdentifier(for: row)]
+        revealForTap(details, in: app)
+        details.tap()
+        let pain = app.buttons["record-actual-pain-4"]
+        XCTAssertTrue(pain.waitForExistence(timeout: 5))
+        for _ in 0..<8 where !pain.isHittable { app.swipeUp() }
+        pain.tap()
+        app.buttons["record-actual-log"].tap()
+        let undo = app.buttons["docket-undo"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 5))
+        XCTAssertTrue(undo.waitForNonExistence(timeout: 20))
+        revealForTap(details, in: app)
+        details.tap()
+        XCTAssertTrue(pain.waitForExistence(timeout: 5))
+        XCTAssertTrue(pain.isSelected)
+        let zero = app.buttons["record-actual-pain-0"]
+        revealForTap(zero, in: app)
+        zero.tap()
+        app.buttons["record-actual-log"].tap()
+        XCTAssertTrue(app.buttons["record-actual-log"].waitForNonExistence(timeout: 5))
+        revealForTap(details, in: app)
+        details.tap()
+        XCTAssertTrue(zero.waitForExistence(timeout: 5))
+        XCTAssertTrue(zero.isSelected)
+    }
+
+    @MainActor
+    func testWorkoutQuickPathRequiresAnswersAndRetainsBottomSave() throws {
+        let app = makeApp()
+        app.launch()
+        openWork(in: app)
+        let entry = app.textViews["raw-workout-entry"]
+        entry.tap()
+        entry.typeText("3 rounds\n10 Air Squats")
+        tapParseWorkout(in: app)
+        app.buttons["review-and-save-workout"].tap()
+        app.buttons["Save reviewed plan"].tap()
+        let actual = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "record-actual-workout-")
+        ).firstMatch
+        for _ in 0..<10 where !actual.isHittable { app.swipeUp() }
+        actual.tap()
+        let save = app.buttons["save-actual-workout"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertFalse(save.isEnabled)
+        app.buttons["workout-as-planned"].tap()
+        XCTAssertFalse(save.isEnabled)
+        XCTAssertFalse(app.textFields["Actual repetitions"].exists)
+        answerWorkoutRequirements(in: app, openDetails: false)
+        XCTAssertTrue(save.isEnabled)
+        XCTAssertTrue(save.isHittable)
+        captureJournal("Workout-Explicit-Answers", app: app)
+        save.tap()
+        XCTAssertTrue(app.navigationBars["Record Actual Work"].waitForNonExistence(timeout: 5))
+    }
+
+    @MainActor
+    private func answerCheckInRequirements(in app: XCUIApplication) {
+        for id in [
+            "checkin-pain-at-rest-chip-3", "checkin-pain-with-movement-chip-0",
+            "checkin-symptoms-none", "checkin-energy-chip-3", "checkin-motivation-chip-3",
+        ] {
+            let button = app.buttons[id]
+            revealForTap(button, in: app)
+            button.tap()
+            XCTAssertTrue(
+                button.isSelected, "The answer must be selected after its visible target is tapped")
+        }
+    }
+
+    /// SwiftUI can report a control as hittable while it sits behind a pinned action.
+    /// Bring the complete target into the scroll viewport before exercising its tap.
+    @MainActor
+    private func revealForTap(_ element: XCUIElement, in app: XCUIApplication) {
+        for _ in 0..<20 {
+            let navigation = app.navigationBars.firstMatch
+            let top = max(100, navigation.exists ? navigation.frame.maxY + 8 : 100)
+            var bottom = app.frame.maxY - 100
+            for id in ["check-in-save", "save-actual-workout", "record-actual-log", "docket-undo"] {
+                let pinned = app.buttons[id]
+                if pinned.exists, pinned.frame.minY > top {
+                    bottom = min(bottom, pinned.frame.minY - 12)
+                }
+            }
+            if element.exists, element.frame.minY >= top, element.frame.maxY <= bottom,
+                element.isHittable
+            {
+                return
+            }
+            let distance = min(160, (bottom - top) * 0.5)
+            let center = (top + bottom) / 2
+            let scrollingDown = element.exists && element.frame.minY < top
+            let origin = app.coordinate(withNormalizedOffset: .zero)
+            let start = origin.withOffset(
+                CGVector(
+                    dx: app.frame.width * 0.5,
+                    dy: center + (scrollingDown ? -distance : distance) / 2))
+            let end = origin.withOffset(
+                CGVector(
+                    dx: app.frame.width * 0.5,
+                    dy: center + (scrollingDown ? distance : -distance) / 2))
+            start.press(
+                forDuration: 0.1, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.2)
+        }
+        XCTFail("Could not reveal the complete tap target: \(element.identifier)")
+    }
+
+    @MainActor
+    private func answerWorkoutRequirements(in app: XCUIApplication, openDetails: Bool = true) {
+        if app.buttons["dismiss-workout-keyboard"].exists {
+            app.buttons["dismiss-workout-keyboard"].tap()
+        }
+        let changed = app.buttons["workout-made-changes"]
+        for _ in 0..<15 where !changed.isHittable { app.swipeDown() }
+        if openDetails { changed.tap() }
+        let duration = app.textFields["Session duration in minutes"]
+        for _ in 0..<10 where !duration.isHittable { app.swipeUp() }
+        replaceWholeField(duration, with: "45", in: app)
+        if app.buttons["dismiss-workout-keyboard"].exists {
+            app.buttons["dismiss-workout-keyboard"].tap()
+        }
+        for id in ["session-rpe-chip-5", "post-session-pain-chip-0"] {
+            let button = app.buttons[id]
+            for _ in 0..<12 where !button.isHittable { app.swipeUp() }
+            button.tap()
+        }
+    }
+
+    @MainActor
     private func makeApp(appleEnabled: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
+        app.launchEnvironment["WHOOPS_DRAFT_NAMESPACE"] = UUID().uuidString
         app.launchArguments += ["-appleWorkoutParsingEnabled", appleEnabled ? "YES" : "NO"]
         app.launchEnvironment["WHOOPS_TEST_WORKOUT_MODEL"] = "unavailable"
         return app
@@ -1294,8 +1558,100 @@ final class WhoopsAppUITests: XCTestCase {
         painChip.tap()
         XCTAssertTrue(painChip.isSelected)
 
+        answerCheckInRequirements(in: app)
         app.buttons["check-in-save"].tap()
         XCTAssertTrue(app.navigationBars["Morning Check-In"].waitForNonExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testPainLogCanBeCreatedCorrectedAndExplicitlyDeleted() throws {
+        let app = makeApp()
+        app.launch()
+        app.buttons["zone-body"].tap()
+
+        let logPain = app.buttons["body-log-pain"]
+        for _ in 0..<12 where !logPain.isHittable { app.swipeUp() }
+        XCTAssertTrue(logPain.isHittable)
+        logPain.tap()
+        XCTAssertTrue(app.navigationBars["Log Pain"].waitForExistence(timeout: 5))
+
+        app.buttons["pain-log-new-area"].tap()
+        let area = app.buttons["pain-area-row-midline.head-neck.entire"]
+        XCTAssertTrue(area.waitForExistence(timeout: 5))
+        area.tap()
+        XCTAssertTrue(app.staticTexts["pain-log-selected-area"].waitForExistence(timeout: 5))
+
+        let four = app.buttons["pain-log-intensity-4"]
+        for _ in 0..<8 where !four.isHittable { app.swipeUp() }
+        four.tap()
+        let save = app.buttons["pain-log-save"]
+        for _ in 0..<8 where !save.isHittable { app.swipeUp() }
+        XCTAssertTrue(save.isEnabled)
+        save.tap()
+        XCTAssertTrue(app.navigationBars["Log Pain"].waitForNonExistence(timeout: 5))
+
+        let history = app.buttons["pain-log-history-link"]
+        for _ in 0..<12 where !history.isHittable { app.swipeUp() }
+        history.tap()
+        XCTAssertTrue(app.navigationBars["Pain log"].waitForExistence(timeout: 5))
+        let row = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "pain-log-history-row-")
+        ).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["4/10"].exists)
+        let createdRowID = row.identifier
+
+        row.tap()
+        XCTAssertTrue(app.navigationBars["Edit Pain"].waitForExistence(timeout: 5))
+        let three = app.buttons["pain-log-intensity-3"]
+        for _ in 0..<8 where !three.isHittable { app.swipeUp() }
+        three.tap()
+        app.buttons["pain-log-save"].tap()
+        XCTAssertTrue(app.navigationBars["Edit Pain"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["3/10"].waitForExistence(timeout: 5))
+
+        // Reopen the persisted history before deleting. Besides avoiding a sheet-transition
+        // race, this proves the corrected entry survived a complete relaunch.
+        app.terminate()
+        app.launch()
+        app.buttons["zone-body"].tap()
+        let reopenedHistory = app.buttons["pain-log-history-link"]
+        for _ in 0..<12 where !reopenedHistory.isHittable { app.swipeUp() }
+        reopenedHistory.tap()
+        XCTAssertTrue(app.navigationBars["Pain log"].waitForExistence(timeout: 5))
+        let reopenedRow = app.descendants(matching: .any)[createdRowID]
+        XCTAssertTrue(reopenedRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["3/10"].exists)
+
+        let swipeStart = reopenedRow.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+        let swipeEnd = reopenedRow.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5))
+        swipeStart.press(forDuration: 0.1, thenDragTo: swipeEnd)
+        XCTAssertTrue(app.buttons["Delete pain entry"].waitForExistence(timeout: 3))
+        XCTAssertTrue(reopenedRow.exists, "A swipe alone must not delete user-entered pain data")
+        app.buttons["Delete pain entry"].tap()
+        XCTAssertTrue(reopenedRow.waitForNonExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testBodyMapLongPressOpensPreselectedPainLogWithoutOpeningAreaEditor() throws {
+        let app = makeApp()
+        app.launch()
+        app.buttons["zone-body"].tap()
+
+        let arm = app.buttons["body-focus-right.arm"]
+        XCTAssertTrue(arm.waitForExistence(timeout: 5))
+        arm.press(forDuration: 0.6)
+
+        XCTAssertTrue(app.navigationBars["Log Pain"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["pain-log-selected-area"].exists)
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars["Log Pain"].waitForNonExistence(timeout: 5))
+        XCTAssertFalse(
+            app.descendants(matching: .any)["body-area-picker"].waitForExistence(timeout: 1),
+            "A long press must not also run the map's ordinary affected-area tap action"
+        )
     }
 
     @MainActor
@@ -1317,6 +1673,7 @@ final class WhoopsAppUITests: XCTestCase {
         for _ in 0..<8 where !actual.isHittable { app.swipeUp() }
         actual.tap()
         XCTAssertTrue(app.navigationBars["Record Actual Work"].waitForExistence(timeout: 5))
+        app.buttons["workout-made-changes"].tap()
         assertKeyboardHidden(in: app)
 
         XCTAssertFalse(app.textFields["Actual repetitions"].exists)
@@ -1336,6 +1693,7 @@ final class WhoopsAppUITests: XCTestCase {
     @MainActor
     func testDocketProtocolItemLogsAsPrescribedAndOpensRecordActual() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["WHOOPS_DRAFT_NAMESPACE"] = UUID().uuidString
         app.launch()
         pasteRingRowProtocol(in: app)
 
@@ -1351,7 +1709,7 @@ final class WhoopsAppUITests: XCTestCase {
         XCTAssertTrue(undo.waitForExistence(timeout: 5))
 
         let recordActual = app.buttons[recordActualIdentifier(for: row)]
-        for _ in 0..<16 where !recordActual.isHittable { app.swipeUp() }
+        revealForTap(recordActual, in: app)
         XCTAssertTrue(recordActual.waitForExistence(timeout: 5))
         recordActual.tap()
 
@@ -1366,6 +1724,7 @@ final class WhoopsAppUITests: XCTestCase {
     @MainActor
     func testDocketRecordActualPainChipIsUnselectedByDefault() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["WHOOPS_DRAFT_NAMESPACE"] = UUID().uuidString
         app.launch()
         pasteRingRowProtocol(in: app)
 
@@ -1388,6 +1747,7 @@ final class WhoopsAppUITests: XCTestCase {
     @MainActor
     func testRecordActualControlsMeetTapTargetSize() throws {
         let app = XCUIApplication()
+        app.launchEnvironment["WHOOPS_DRAFT_NAMESPACE"] = UUID().uuidString
         app.launch()
         pasteRingRowProtocol(in: app)
 

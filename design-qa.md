@@ -1,5 +1,92 @@
 # Native journal design QA
 
+## September 4 experience improvements — 0.11.0
+
+The approved experience plan includes all nine review areas and phase 6 Bring to PT. Implementation
+is complete; all 197 unit tests and 43 UI cases passed. The signed 0.11.0 build is installed on the
+paired iPhone. Physical acceptance remains pending.
+
+- First focused run: 194 unit tests and three UI flows passed (draft restoration after relaunch,
+  PT preview/PDF preparation, and the short workout path with explicit scores and duration).
+- Additional checks cover reopening modified protocol completions, composite draft-source deletion,
+  missing versus explicit-zero movement pain, confirmed draft discard, correction after Undo expiry,
+  and bottom Save/microphone position in both handedness modes with accessibility text and keyboard.
+- The 19-to-20-model synthetic disk-backed upgrade from `11c8d78` preserved every existing field,
+  including nils. Output: `/tmp/whoops-experience-upgrade.log`.
+- Backend lint, typecheck, 10 tests, and production build passed using arm64 Node 24.19.0. The
+  initial shell selected an x64 Node for the test subprocess; correcting PATH resolved the missing
+  optional Rollup binary without changing dependencies or lockfiles.
+- Native-resolution focused screenshots show readable PT sections and a bottom Share PDF button;
+  the workout editor keeps duration, RPE, pain, and Save visible while details remain expandable.
+- The largest-text keyboard captures show an enabled Save above the keyboard in both handedness
+  modes. Coordinate taps save successfully; microphone hit areas remain at least 44 points.
+- Draft recovery uses a dedicated sheet with an explicit discard-confirmation alert. This avoids
+  competing modal transitions and passed keep, resume, discard, and reopen checks.
+- PDF pagination retains selectable text through a long note. No historical adherence percentage,
+  causal claim, healing date, or clinical clearance is inferred from current prescriptions.
+
+Focused evidence: `/tmp/whoops-experience-build/Logs/Test/Test-WhoopsApp-2026.09.04_16-44-04--0700.xcresult`.
+Final-source unit evidence: `/tmp/whoops-experience-third/Logs/Test/Test-WhoopsApp-2026.09.04_17-00-55--0700.xcresult`
+(197 unit tests passed; the accompanying draft UI test was subsequently corrected and rerun).
+Both-handedness keyboard evidence: `/tmp/whoops-experience-unit-final/Logs/Test/Test-WhoopsApp-2026.09.04_17-03-02--0700.xcresult`;
+native captures are in `/tmp/whoops-experience-final-reach-captures`.
+The signed 0.11.0 device build passes; app and widget both retain
+`group.com.robertcdawson.whoops`. On September 4 at 17:22 Pacific, `devicectl` installed
+`com.robertcdawson.whoops` over the existing app without uninstalling or resetting its store
+(database sequence 3620; `/tmp/whoops-experience-install.log`).
+
+The full UI suite ran in three independent simulator batches. All 43 declared cases have passing
+final results. One older parser test initially attempted to use the composer behind the newly
+required recovery sheet; it now explicitly resumes and verifies the saved input before parsing.
+Its focused rerun passed without further product changes.
+
+- 13/13: `/tmp/whoops-experience-third/Logs/Test/Test-WhoopsApp-2026.09.04_17-05-47--0700.xcresult`.
+- 14/15 initially: `/tmp/whoops-experience-unit-final/Logs/Test/Test-WhoopsApp-2026.09.04_17-06-02--0700.xcresult`;
+  the remaining parser case passed in `/tmp/whoops-experience-third/Logs/Test/Test-WhoopsApp-2026.09.04_17-15-52--0700.xcresult`.
+- 15/15: `/tmp/whoops-experience-build/Logs/Test/Test-WhoopsApp-2026.09.04_17-07-45--0700.xcresult`.
+
+Final native screenshot exports are in `/tmp/whoops-experience-final-ui-captures` and
+`/tmp/whoops-experience-final-pt-captures`. Swift formatting, plist/project/asset validation, and
+`git diff --check` passed.
+
+Phone acceptance must cover left-thumb completion and correction of check-in, protocol, pain, and
+workout entries; first-use speech/microphone permissions and interruption/backgrounding; resumed
+and discarded drafts; larger text and VoiceOver; PT date changes, PDF preview/share; and the pending
+phase-5 cold/warm quick-action and map long-press checks. No physical acceptance is inferred from
+simulator or signed-build results.
+
+## Phase 5 ad-hoc pain addendum (September 3)
+
+**Current result: automated verification passed; physical-phone acceptance pending.**
+
+- The implementation follows the `PainLog` mockup's one-handed order: area chip, 0–10 chip,
+  optional dictated note, then a thumb-zone save action. Native large-sheet scrolling and Dynamic
+  Type take precedence over the fixed HTML frame.
+- Home Screen **Log Pain**, `whoops://pain`, Body's visible action, and a Body-map long press all
+  converge on the same editor. Ordinary map taps retain affected-area editing; VoiceOver has a
+  named Log pain action.
+- Standalone events use stable body-area IDs and remain separate from morning check-ins, readiness,
+  experiments, workout pain, restriction logic, and current trend calculations.
+- Body history supports correction and confirmed deletion. The regression creates an entry, edits
+  the same ID, relaunches to prove persistence, verifies the corrected value, and confirms that a
+  swipe alone cannot permanently delete it.
+- Final-source verification passed: **186 unit tests and 37 UI tests**, with zero failures. The
+  repository-wide check also passed backend lint, typecheck, 10 tests, production build, Swift
+  formatting, and the iOS build-for-testing. The additive 19-to-20-model synthetic store upgrade
+  preserved every seeded field, including nils. The pain editor was visually checked in the
+  simulator at native resolution.
+- The signed 0.10.0 app was installed over the existing phone app without uninstalling or resetting
+  its store. The app and widget signatures carry the same `group.com.robertcdawson.whoops` App
+  Group entitlement.
+- Pending physical acceptance: confirm cold/warm quick-action routing, map long press and ordinary
+  tap, dictation permission/on-device fallback, correction/confirmed deletion, Dynamic Type, and
+  VoiceOver on Robert's iPhone.
+
+Automated result bundles:
+
+- Unit: `/tmp/whoops-phase5-full/Logs/Test/Test-WhoopsApp-2026.09.03_15-55-42--0700.xcresult`
+- UI: `/tmp/whoops-phase5-full/Logs/Test/Test-WhoopsApp-2026.09.03_15-56-28--0700.xcresult`
+
 ## Reopened after physical-phone feedback (August 31)
 
 The previous simulator acceptance below did not cover bottom-action reachability or every

@@ -13,6 +13,8 @@ struct TrainingView: View {
     let protocolRepository: any ProtocolRepository
     var docketRepository: (any DocketRepository)? = nil
 
+    var requestedRoute = ""
+    var routeRequest = 0
     @State private var rawText = ""
     @State private var showingComposer = false
     @State private var protocolPendingDeletion: TherapyProtocol?
@@ -203,6 +205,14 @@ struct TrainingView: View {
             .onChange(of: scenePhase) { _, phase in
                 if phase == .background { cancelParsing() }
             }
+            .onChange(of: routeRequest) { _, _ in
+                if requestedRoute == "protocol" {
+                    isCapturingProtocol = true
+                } else {
+                    showingComposer = true
+                }
+            }
+            .recoverableDraft(key: "workout-intake:new", value: $rawText)
             .task { await load() }
             .refreshable { await load() }
             .onChange(of: editingPlan?.id) { _, _ in focusedField = nil }
@@ -902,8 +912,11 @@ private struct CompletedWorkoutDetailView: View {
                             .font(.journal(.subheadline, weight: .semibold))
                         Text(actualSummary(movement))
                             .foregroundStyle(Color.journalInk.opacity(0.7))
-                        Text("Pain during: \(movement.painDuring)/10")
-                            .font(.journal(.caption))
+                        Text(
+                            movement.reportedPain.map { "Pain during: \($0)/10" }
+                                ?? "Pain during: Not recorded"
+                        )
+                        .font(.journal(.caption))
                         if !movement.modification.isEmpty {
                             Text("Modification: \(movement.modification)")
                                 .font(.journal(.caption))

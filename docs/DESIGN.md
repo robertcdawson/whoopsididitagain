@@ -1,13 +1,13 @@
 # Design
 
-**Status:** Design exploration complete; phases 1–3 of the implementation priority (camera/OCR
+**Status:** Design exploration complete; phases 1–5 of the implementation priority (camera/OCR
 intake + tap-chip review; protocol recurrence + docket generation; one-tap as-prescribed
-recording with editable deviations) implemented. The native field-journal shell and
+recording with editable deviations; outside-app completion; ad-hoc pain entry) implemented. The native field-journal shell and
 Today / Work / Body screen migration, phone-feedback usability corrections, and explicit
 coarse-to-focused affected-area mapping are implemented and approved on Robert's phone, with
-verification tracked in `../design-qa.md`. The dependability gate is closed. Phases 4–6 remain
-separate work — see `ARCHITECTURE.md` and `TASKS.md`.
-**Last updated:** September 1, 2026
+verification tracked in `../design-qa.md`. The dependability gate and phase 4 physical acceptance
+are closed; phase 5 physical acceptance and phase 6 remain — see `ARCHITECTURE.md` and `TASKS.md`.
+**Last updated:** September 3, 2026
 
 This document specifies the app redesign produced in the design exploration session. It is the
 implementation reference for restructuring the app around a three-zone information architecture,
@@ -104,10 +104,12 @@ scrolling, and 44-point touch targets take precedence over the static HTML's fix
 
 Phase 4 is complete and Robert accepted the physical-phone checks on September 3, 2026. The
 interactive docket widget, local opt-in morning/wind-down reminders with safe actions, and App
-Shortcut/Siri completion phrases all use the same app-reconciled bridge. Still outstanding: phase 5
-standalone pain logging and its quick action (`PainLog`), phase 6 bring-to-PT summaries, explicit
-clinical milestone/history storage, and a separately designed dark palette. None is represented by
-an inert new control.
+Shortcut/Siri completion phrases all use the same app-reconciled bridge. Phase 5 is implemented:
+standalone pain logging is available from a Home Screen quick action, a visible Body action, and a
+long press on the Body map; its physical-phone acceptance remains open. Robert authorized phase 6
+as part of the September 4 experience plan: Bring to PT now offers a dated preview and local PDF.
+Its physical-phone acceptance remains open. Explicit clinical milestone/history storage and a
+separately designed dark palette remain outside this work.
 
 ### Seeing the redesign on a phone
 
@@ -284,3 +286,18 @@ defer behind a light-only v1.
   design session — ask the design owner for the link, or export PNGs from it.
 - Earlier explorations (metaphors, alternate directions) are retained on the canvas only and are
   not part of this specification.
+
+## September 4 experience refinements
+
+Left-handed mode now governs microphone and docket-detail placement as well as journal decoration.
+Save actions use a persistent bottom bar, with a separate reachable keyboard Done action. Required
+scores begin unselected; zero is an explicit answer. Workout completion begins with a quantity
+summary and a choice between confirming the plan and editing actual work. Corrections remain
+available from completed docket rows after the 15-second Undo convenience expires.
+
+Unfinished editors offer local draft recovery, including check-in, pain, workout intake and editing,
+protocol intake and review, restrictions, and experiments. Pain timestamps can be backdated or
+corrected. Body provides Bring to PT, with 7/14/30-day and custom intervals and a native PDF share
+path. Settings links directly to export; restriction demand selection uses searchable canonical
+choices while preserving custom values. Plain action labels retain journal personality in supporting
+copy. Physical left-thumb, microphone, and share-sheet acceptance still require the phone.

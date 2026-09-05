@@ -25,6 +25,7 @@ struct ProtocolCaptureView: View {
     var body: some View {
         NavigationStack {
             captureScreen
+                .recoverableDraft(key: "protocol-capture:new", value: $reviewing)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbarBackground(.hidden, for: .navigationBar)
                 .toolbar {
@@ -42,6 +43,9 @@ struct ProtocolCaptureView: View {
                         protocolRepository: protocolRepository,
                         restrictions: restrictions
                     ) {
+                        try? EditorDraftStore.shared.finish(key: "protocol-capture:new")
+                        try? EditorDraftStore.shared.finish(key: "protocol-paste:new")
+                        try? EditorDraftStore.shared.finish(key: "protocol-dictation:new")
                         await onSaved()
                         dismiss()
                     }
@@ -318,23 +322,26 @@ private struct ProtocolPasteSheet: View {
 
                     Spacer()
 
-                    Button {
-                        focusedField = nil
-                        onUse(text)
-                    } label: {
-                        Text("parse it")
-                            .font(.journal(.title3, weight: .semibold))
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                    }
-                    .buttonStyle(JournalPrimaryButtonStyle())
-                    .tint(Color.journalInk)
-                    .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .accessibilityIdentifier("protocol-paste-use")
                 }
                 .padding()
             }
+            .journalSaveBar {
+                Button {
+                    focusedField = nil
+                    onUse(text)
+                } label: {
+                    Text("parse it")
+                        .font(.journal(.title3, weight: .semibold))
+                        .frame(maxWidth: .infinity, minHeight: 52)
+                }
+                .buttonStyle(JournalPrimaryButtonStyle())
+                .tint(Color.journalInk)
+                .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityIdentifier("protocol-paste-use")
+            }
             .journalForm()
             .formKeyboardScope($focusedField)
+            .recoverableDraft(key: "protocol-paste:new", value: $text)
             .navigationTitle("Paste the Sheet")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

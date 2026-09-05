@@ -116,12 +116,14 @@ struct RestrictionManagementView: View {
     }
 
     @MainActor
-    private func save(_ profile: RestrictionProfile) async {
+    private func save(_ profile: RestrictionProfile) async -> Bool {
         do {
             try await repository.saveRestriction(profile)
             profiles = try await repository.restrictions()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -140,14 +142,18 @@ struct RestrictionManagementView: View {
 private struct RestrictionEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: UUID?
+    private let draftKey: String
+    @State private var demandSearch = ""
+    @State private var saveError = false
     @State private var profile: RestrictionProfile
     @State private var showsBodyAreaPicker = false
-    let onSave: (RestrictionProfile) async -> Void
+    let onSave: (RestrictionProfile) async -> Bool
 
     init(
         profile: RestrictionProfile,
-        onSave: @escaping (RestrictionProfile) async -> Void
+        onSave: @escaping (RestrictionProfile) async -> Bool
     ) {
+        draftKey = "restriction:" + (profile.injuryName.isEmpty ? "new" : profile.id)
         _profile = State(initialValue: profile)
         self.onSave = onSave
     }
@@ -193,8 +199,29 @@ private struct RestrictionEditorView: View {
                 }
                 Section("Restriction") {
                     Toggle("Active", isOn: $profile.isActive)
-                    TextField("Movement or demand", text: $profile.movementTag)
-                        .formKeyboardField()
+                    DisclosureGroup(
+                        "Movement or demand: "
+                            + (MovementDemand(rawValue: profile.movementTag)?.displayName
+                                ?? profile.movementTag)
+                    ) {
+                        TextField("Search demands", text: $demandSearch).formKeyboardField()
+                        ForEach(
+                            MovementDemand.allCases.filter {
+                                demandSearch.isEmpty
+                                    || $0.displayName.localizedCaseInsensitiveContains(demandSearch)
+                            }
+                        ) { demand in
+                            Button(demand.displayName) { profile.movementTag = demand.rawValue }
+                                .frame(minHeight: 48)
+                        }
+                        if MovementDemand(rawValue: profile.movementTag) == nil {
+                            TextField("Custom or legacy demand", text: $profile.movementTag)
+                                .formKeyboardField()
+                            Text(
+                                "This value is preserved. Choose a supported demand above for an exact catalog match."
+                            ).font(.journal(.caption))
+                        }
+                    }
                     Picker("Level", selection: $profile.level) {
                         ForEach(RestrictionLevel.allCases) { level in
                             Text(level.displayName).tag(level)
@@ -206,8 +233,15 @@ private struct RestrictionEditorView: View {
                         in: 0...10
                     )
                     TextField("Rationale", text: $profile.rationale, axis: .vertical)
+                        .dictationInput($profile.rationale)
                         .formKeyboardField(dismissOnSubmit: false)
                 }
+            }
+            .recoverableDraft(key: draftKey, value: $profile)
+            .alert("Couldn't save restriction", isPresented: $saveError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Your changes are still here. Try saving again.")
             }
             .navigationTitle("Restriction")
             .formKeyboardScope($focusedField)
@@ -216,6 +250,24 @@ private struct RestrictionEditorView: View {
                     profile.affectedAreaIDs = ids
                 }
             }
+            .journalSaveBar {
+                Button("Save") {
+                    focusedField = nil
+                    Task {
+                        if await onSave(profile) {
+                            try? EditorDraftStore.shared.finish(key: draftKey)
+                            dismiss()
+                        } else {
+                            saveError = true
+                        }
+                    }
+                }
+                .disabled(
+                    profile.injuryName.trimmingCharacters(in: .whitespaces).isEmpty
+                        || profile.movementTag.trimmingCharacters(in: .whitespaces).isEmpty
+                )
+
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -223,19 +275,7 @@ private struct RestrictionEditorView: View {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        focusedField = nil
-                        Task {
-                            await onSave(profile)
-                            dismiss()
-                        }
-                    }
-                    .disabled(
-                        profile.injuryName.trimmingCharacters(in: .whitespaces).isEmpty
-                            || profile.movementTag.trimmingCharacters(in: .whitespaces).isEmpty
-                    )
-                }
+
             }
         }
     }

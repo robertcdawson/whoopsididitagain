@@ -14,6 +14,7 @@ struct TodayView: View {
     let morningCheckInRequest: Int
 
     @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
+    @State private var undoAction: DocketUndoAction?
     @State private var backendState = "Not checked"
     @State private var isCheckingBackend = false
     @State private var isSyncing = false
@@ -52,7 +53,17 @@ struct TodayView: View {
                     Text("Complete a morning check-in to calculate tissue readiness.")
                         .font(.journal(.subheadline))
                 }
-                Button(checkIn == nil ? "Complete morning check-in" : "Edit morning check-in") {
+                if checkIn != nil {
+                    Label("Check-in complete", systemImage: "checkmark.circle").font(
+                        .journal(.caption))
+                }
+                if let assessment {
+                    Text("Confidence: \(assessment.confidence.displayName)").font(
+                        .journal(.caption))
+                    Text(sourceFreshness).font(.journal(.caption)).foregroundStyle(
+                        Color.journalInk.opacity(0.7))
+                }
+                Button(checkIn == nil ? "Complete morning check-in" : "Edit check-in") {
                     isShowingCheckIn = true
                 }
                 .font(.journal(.subheadline))
@@ -234,6 +245,21 @@ struct TodayView: View {
                     .font(.journal(.caption))
                     .foregroundStyle(Color.journalInk.opacity(0.65))
             }
+            .onPreferenceChange(DocketUndoPreference.self) { undoAction = $0 }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if let undoAction {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Recorded: " + undoAction.title).font(.journal(.caption)).lineLimit(2)
+                        HStack {
+                            Button("Undo", action: undoAction.undo).accessibilityIdentifier(
+                                "docket-undo")
+                            Button("Edit details", action: undoAction.adjust)
+                                .accessibilityIdentifier("docket-adjust")
+                        }.buttonStyle(.bordered).frame(minHeight: 48)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(12).background(
+                        Color.journalPaper)
+                }
+            }
             .refreshable { await synchronizeSources() }
             .task { await refreshOnLaunch() }
             .onChange(of: morningCheckInRequest) { _, request in
@@ -276,6 +302,25 @@ struct TodayView: View {
                 Text(assessmentError ?? "Unknown error")
             }
         }
+    }
+
+    private var sourceFreshness: String {
+        let whoop =
+            whoopHistory.lastSyncAt.map {
+                "WHOOP synced " + $0.formatted(.relative(presentation: .named))
+            } ?? "WHOOP: no sync recorded"
+        let health =
+            healthHistory.lastSyncAt.map {
+                "Apple Health synced " + $0.formatted(.relative(presentation: .named))
+            } ?? "Apple Health: no sync recorded"
+        let recovery =
+            latestRecovery.map {
+                "Latest recovery: " + $0.timestamp.formatted(date: .abbreviated, time: .omitted)
+            } ?? "Recovery unavailable"
+        let healthDay =
+            latestHealthDay.map { "Latest Apple Health day: " + $0.day }
+            ?? "Apple Health history unavailable"
+        return recovery + " · " + healthDay + "\n" + whoop + " · " + health
     }
 
     private var latestHealthDay: HealthKitDailySummary? {

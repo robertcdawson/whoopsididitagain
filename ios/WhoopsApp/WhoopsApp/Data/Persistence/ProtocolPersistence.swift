@@ -139,6 +139,7 @@ final class ProtocolPersistence: ProtocolRepository, @unchecked Sendable {
     }
 
     func deleteProtocol(id: String) async throws {
+        try EditorDraftStore.shared.deleteSource(id)
         for record in try context.fetch(FetchDescriptor<TherapyProtocolItemRecord>())
         where record.protocolID == id {
             context.delete(record)

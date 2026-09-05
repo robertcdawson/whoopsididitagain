@@ -89,6 +89,7 @@ struct ProtocolParseReviewView: View {
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
         }
+        .recoverableDraft(key: draftKey, value: draftBinding)
         .safeAreaInset(edge: .bottom) { bottomBar }
         .formKeyboardScope($focusedField)
         .navigationBarTitleDisplayMode(.inline)
@@ -113,6 +114,20 @@ struct ProtocolParseReviewView: View {
         } message: {
             Text(errorMessage ?? "Unknown error")
         }
+    }
+
+    private var draftKey: String { "protocol-review:" + parsed.rawText }
+    private struct Draft: Codable, Equatable {
+        var title: String
+        var items: [ProtocolReviewItem]
+    }
+    private var draftBinding: Binding<Draft> {
+        Binding(
+            get: { Draft(title: title, items: items) },
+            set: {
+                title = $0.title
+                items = $0.items
+            })
     }
 
     // MARK: - Sections
@@ -333,7 +348,7 @@ struct ProtocolParseReviewView: View {
         items.remove(at: index)
         undoTask?.cancel()
         undoTask = Task { @MainActor in
-            try? await Task.sleep(for: .seconds(6))
+            try? await Task.sleep(for: .seconds(15))
             guard !Task.isCancelled else { return }
             lastDropped = nil
         }
@@ -374,6 +389,7 @@ struct ProtocolParseReviewView: View {
         )
         do {
             try await protocolRepository.saveProtocol(therapyProtocol.validated())
+            try? EditorDraftStore.shared.finish(key: draftKey)
             await onSaved()
         } catch {
             errorMessage = error.localizedDescription
