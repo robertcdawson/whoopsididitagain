@@ -74,8 +74,6 @@ struct RecordActualSheet: View {
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
 
-                    logItButton
-
                     if let errorMessage {
                         Text(errorMessage)
                             .font(.journal(.footnote))
@@ -93,7 +91,14 @@ struct RecordActualSheet: View {
                 .frame(height: 2)
         }
         .clipShape(UnevenRoundedRectangle(topLeadingRadius: 22, topTrailingRadius: 22))
+        .journalSaveBar { logItButton }
         .formKeyboardScope($focusedField, doneIdentifier: "dismiss-record-actual-keyboard")
+        .recoverableDraft(key: draftKey, value: $draft)
+    }
+
+    private var draftKey: String {
+        "protocol-actual:" + (item.protocolID ?? "none") + ":" + item.sourceID + ":" + day
+            + ":" + (existingCompletionID ?? "new")
     }
 
     private var titleRow: some View {
@@ -106,7 +111,7 @@ struct RecordActualSheet: View {
 
     private var asPrescribedButton: some View {
         Button {
-            Task { await save(RecordActualDraft(item: item)) }
+            Task { await save(RecordActualDraft(item: item, useRecordedActual: false)) }
         } label: {
             HStack(spacing: 12) {
                 DrawnCheckmarkView(color: .journalPaper, size: 26)
@@ -195,6 +200,7 @@ struct RecordActualSheet: View {
             .font(.journal(.body))
             .foregroundStyle(Color.journalInk)
             .formKeyboardField(dismissOnSubmit: false)
+            .dictationInput($draft.note)
             .textFieldStyle(JournalTextFieldStyle())
             .lineLimit(1...3)
             .accessibilityIdentifier("record-actual-note")
@@ -224,6 +230,7 @@ struct RecordActualSheet: View {
         defer { isSaving = false }
         let completion = draft.completion(item: item, day: day, existingID: existingCompletionID)
         if await onSave(completion) {
+            try? EditorDraftStore.shared.finish(key: draftKey)
             dismiss()
         } else {
             errorMessage = "Couldn't save that. Try again."

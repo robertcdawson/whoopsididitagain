@@ -382,9 +382,38 @@ behavior without weakening source fidelity.
   sleep schedule, Later is a 15-minute one-shot reminder, Siri receives all plausible name matches
   for disambiguation, and every outside-app reader rejects stale local-day snapshots/entities.
 
+## ADR-024: Keep ad-hoc pain separate from the morning assessment
+
+- **Date:** September 3, 2026
+- **Status:** Implemented; physical-device acceptance pending
+- **Decision:** Store each ad-hoc pain report as its own local `PainLogRecord` containing a stable
+  body-area ID, 0–10 intensity, optional note, and timestamp. Do not write or synthesize a
+  `MorningCheckIn`, readiness input, experiment outcome, injury diagnosis, or movement association.
+- **Entry boundary:** A static Home Screen quick action and `whoops://pain` deep link open the same
+  app-owned editor. A Body map long press may preselect the mapped or whole focus area, while an
+  ordinary tap continues to edit affected-area mapping. VoiceOver receives an explicit Log pain
+  action so the long press is not the only path.
+- **Correction and deletion:** Saving an existing ID updates that event. History is newest-first;
+  tapping edits, swiping left requests deletion, and delete always asks for confirmation before
+  removing local data. VoiceOver exposes the same confirmed delete request as a named action.
+- **Rationale:** Pain can occur outside the single daily check-in. Preserving it as a separate event
+  keeps the quick flow honest and reversible without silently changing deterministic analytics or
+  safety logic. Reusing the body-area catalog keeps localization stable and explainable.
+- **Scope:** Phase 5 does not add diagnosis, causal inference, new analytics, automatic movement
+  attribution, backend sync, or clinical export. Bring-to-PT presentation remains Phase 6.
+
 ## Remaining open decisions
 
 The unresolved implementation questions in `PROJECT_PLAN.md` remain open, including the final
 bundle identifier, Apple signing team, production domains, PostgreSQL provider, credential
 encryption mechanism. The workout parsing provider is resolved by ADR-017; any future narration or
 historical-query provider remains a separate decision.
+
+## September 4, 2026 — explicit answers, recoverable drafts, and descriptive PT export
+
+Keep incomplete UI state outside clinical records. Required subjective scores are unselected until
+answered, and new optional movement pain uses additive reporting metadata so missing and zero
+remain distinct. Historical values are preserved. Drafts are protected, local, versioned, and
+explicitly resumed/discarded. Share one deterministic PT summary model between native preview and
+PDF, reporting observed completion counts alongside separately labeled current prescriptions;
+do not reconstruct historical adherence from mutable present-day recurrence.

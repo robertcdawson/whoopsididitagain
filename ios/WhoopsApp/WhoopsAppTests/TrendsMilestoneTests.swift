@@ -3,6 +3,29 @@ import XCTest
 @testable import WhoopsApp
 
 final class TrendsMilestoneTests: XCTestCase {
+    func testUnreportedPainIsExcludedWhileExplicitZeroRemainsAnObservation() {
+        var missing = workout(
+            id: "missing", start: "2026-08-20T17:00:00Z", minutes: 20,
+            rpe: 5, movementPain: 9)
+        missing.movements[0].painWasReported = false
+        var zero = workout(
+            id: "zero", start: "2026-08-19T17:00:00Z", minutes: 20,
+            rpe: 5, movementPain: 0)
+        zero.movements[0].painWasReported = true
+        let input = makeInput(workouts: [missing, zero])
+        let snapshot = DeterministicTrendsEngine().analyze(input, calendar: utcCalendar)
+        XCTAssertEqual(snapshot.painByMovement.first?.observationCount, 1)
+        XCTAssertEqual(snapshot.painByMovement.first?.averagePain, 0)
+        let csv = String(
+            decoding: TrendsExporter.csvData(input: input, snapshot: snapshot), as: UTF8.self)
+        let movementRows = csv.components(separatedBy: "\n").filter {
+            $0.hasPrefix("\"movement\",")
+        }
+        XCTAssertEqual(movementRows.count, 2)
+        XCTAssertTrue(movementRows[0].contains(",\"\",\"pain_0-10\","))
+        XCTAssertTrue(movementRows[1].contains(",\"0\",\"pain_0-10\","))
+    }
+
     func testRecoverySourcesStaySeparateAndBaselineExcludesLatestValue() throws {
         let input = makeInput(
             recoveries: [

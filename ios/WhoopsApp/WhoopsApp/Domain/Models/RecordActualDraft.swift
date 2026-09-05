@@ -5,7 +5,7 @@ import Foundation
 /// `DocketCompletion` on save. This holds UI-editable state rather than policy, so it
 /// lives in `Domain/Models` alongside `ProtocolReviewItem` (see ProtocolModels.swift)
 /// rather than `Domain/Services`, which holds stateless versioned engines.
-struct RecordActualDraft: Equatable {
+struct RecordActualDraft: Codable, Equatable {
     static let setsRange = 0...20
     static let repetitionsRange = 0...200
     static let holdSecondsRange = 0...3600
@@ -19,6 +19,7 @@ struct RecordActualDraft: Equatable {
     private let prescribedSets: Int?
     private let prescribedRepetitions: Int?
     private let prescribedDurationSeconds: Int?
+    private let originalActual: DocketActual?
 
     var sets: Int
     var repetitions: Int
@@ -30,23 +31,32 @@ struct RecordActualDraft: Equatable {
     /// (e.g. an item with no duration) seeds to 0 for display, but `completion(item:day:)`
     /// never reports that dimension unless the user actually steps it away from zero —
     /// it does not invent a value the prescription never made.
-    init(item: DocketItem) {
-        isDurationBased = item.prescribedRepetitions == nil && item.prescribedDurationSeconds != nil
-        prescribedSets = item.prescribedSets
-        prescribedRepetitions = item.prescribedRepetitions
-        prescribedDurationSeconds = item.prescribedDurationSeconds
-        sets = item.prescribedSets ?? 0
-        repetitions = item.prescribedRepetitions ?? 0
-        holdSeconds = item.prescribedDurationSeconds ?? 0
-        painDuring = nil
-        note = ""
+    init(item: DocketItem, useRecordedActual: Bool = true) {
+        let actual = useRecordedActual ? item.recordedActual : nil
+        originalActual = actual
+        prescribedSets = actual == nil ? item.prescribedSets : actual?.sets
+        prescribedRepetitions = actual == nil ? item.prescribedRepetitions : actual?.repetitions
+        prescribedDurationSeconds =
+            actual == nil ? item.prescribedDurationSeconds : actual?.durationSeconds
+        isDurationBased = prescribedRepetitions == nil && prescribedDurationSeconds != nil
+        sets = prescribedSets ?? 0
+        repetitions = prescribedRepetitions ?? 0
+        holdSeconds = prescribedDurationSeconds ?? 0
+        painDuring = actual?.painDuring
+        note = actual?.note ?? ""
     }
 
     /// True only while every value still matches the seeded prescription and nothing has
     /// been asserted beyond it — the moment any control moves, or pain or a note is
     /// recorded, this is a deviation.
     var isAsPrescribed: Bool {
-        sets == (prescribedSets ?? 0)
+        if let originalActual {
+            return originalActual.isAsPrescribed && sets == (originalActual.sets ?? 0)
+                && repetitions == (originalActual.repetitions ?? 0)
+                && holdSeconds == (originalActual.durationSeconds ?? 0)
+                && painDuring == originalActual.painDuring && note == originalActual.note
+        }
+        return sets == (prescribedSets ?? 0)
             && repetitions == (prescribedRepetitions ?? 0)
             && holdSeconds == (prescribedDurationSeconds ?? 0)
             && painDuring == nil

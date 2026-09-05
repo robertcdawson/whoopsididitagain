@@ -3,6 +3,7 @@ import SwiftUI
 struct WorkoutPlanEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var focusedField: UUID?
+    private let draftKey: String
     @State private var plan: WorkoutPlan
     @State private var evaluation: WorkoutEvaluation?
     @State private var isSaving = false
@@ -22,6 +23,7 @@ struct WorkoutPlanEditorView: View {
         movementLibrary: any MovementLibraryRepository,
         onSave: @escaping (WorkoutPlan) async -> Bool
     ) {
+        draftKey = "plan:" + (plan.status == .draft ? "new" : plan.id)
         _plan = State(initialValue: plan)
         self.restrictions = restrictions
         self.scalingEngine = scalingEngine
@@ -167,6 +169,7 @@ struct WorkoutPlanEditorView: View {
                     }
                 }
             }
+            .recoverableDraft(key: draftKey, value: $plan)
             .navigationTitle("Review Workout")
             .onChange(of: plan.movements.map(\.id)) { _, _ in
                 plan.discardOrphanedReportedRepetitionOverrides()
@@ -184,6 +187,15 @@ struct WorkoutPlanEditorView: View {
                     "Edited movement totals are kept. Calculated totals will no longer use this score."
                 )
             }
+            .journalSaveBar {
+                Button("Review & Save") {
+                    focusedField = nil
+                    isConfirmingSave = true
+                }
+                .disabled(isSaving || !isValid)
+                .accessibilityIdentifier("review-and-save-workout")
+
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -191,14 +203,7 @@ struct WorkoutPlanEditorView: View {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Review & Save") {
-                        focusedField = nil
-                        isConfirmingSave = true
-                    }
-                    .disabled(isSaving || !isValid)
-                    .accessibilityIdentifier("review-and-save-workout")
-                }
+
             }
             .confirmationDialog(
                 "Save reviewed plan?",
@@ -536,7 +541,11 @@ struct WorkoutPlanEditorView: View {
         focusedField = nil
         isSaving = true
         if plan.status == .draft { plan.status = .planned }
-        if await onSave(plan) { dismiss() }
+        if await onSave(plan) {
+            try? EditorDraftStore.shared.finish(key: draftKey)
+            try? EditorDraftStore.shared.finish(key: "workout-intake:new")
+            dismiss()
+        }
         isSaving = false
     }
 
@@ -783,6 +792,7 @@ private struct LabeledFormMultilineField: View {
                 .foregroundStyle(Color.journalInk.opacity(0.7))
             TextField("", text: $text, prompt: Text(prompt), axis: .vertical)
                 .formKeyboardField(dismissOnSubmit: false)
+                .dictationInput($text)
                 .lineLimit(1...4)
                 .accessibilityLabel(title)
         }

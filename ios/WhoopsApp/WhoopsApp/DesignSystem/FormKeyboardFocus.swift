@@ -32,6 +32,7 @@ extension View {
 private struct FormKeyboardScope: ViewModifier {
     let focus: FocusState<UUID?>.Binding
     let doneIdentifier: String
+    @AppStorage("journalLeftHanded") private var leftHanded = false
     @Environment(\.scenePhase) private var scenePhase
 
     func body(content: Content) -> some View {
@@ -48,10 +49,11 @@ private struct FormKeyboardScope: ViewModifier {
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if focus.wrappedValue != nil {
                     HStack {
-                        Spacer()
+                        if !leftHanded { Spacer() }
                         Button("Done") { focus.wrappedValue = nil }
                             .buttonStyle(JournalLinkButtonStyle())
                             .accessibilityIdentifier(doneIdentifier)
+                        if leftHanded { Spacer() }
                     }
                     .padding(.horizontal, 20)
                     .padding(.vertical, 4)

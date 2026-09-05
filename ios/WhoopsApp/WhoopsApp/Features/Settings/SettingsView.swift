@@ -7,13 +7,23 @@ struct SettingsView: View {
     @StateObject private var healthKit: HealthKitConnectionModel
     @AppStorage(FeatureFlags.experimentLabKey) private var experimentLabEnabled = false
     let assessmentRepository: any AssessmentRepository
+    let workoutRepository: any WorkoutRepository
+    let experimentRepository: any ExperimentRepository
+    let protocolRepository: any ProtocolRepository
+    let docketRepository: any DocketRepository
+    let whoopRepository: any WhoopRepository
+    let healthKitRepository: any HealthKitRepository
     let reminderService: LocalReminderService
 
     init(
         whoopRepository: any WhoopRepository,
         healthKitRepository: any HealthKitRepository,
         assessmentRepository: any AssessmentRepository,
-        reminderService: LocalReminderService = .live()
+        reminderService: LocalReminderService = .live(),
+        workoutRepository: any WorkoutRepository = PreviewWorkoutRepository(),
+        experimentRepository: any ExperimentRepository = PreviewExperimentRepository(),
+        protocolRepository: any ProtocolRepository = PreviewProtocolRepository(),
+        docketRepository: any DocketRepository = PreviewDocketRepository()
     ) {
         _whoop = StateObject(wrappedValue: WhoopConnectionModel(repository: whoopRepository))
         _healthKit = StateObject(
@@ -21,6 +31,12 @@ struct SettingsView: View {
         )
         self.assessmentRepository = assessmentRepository
         self.reminderService = reminderService
+        self.workoutRepository = workoutRepository
+        self.experimentRepository = experimentRepository
+        self.protocolRepository = protocolRepository
+        self.docketRepository = docketRepository
+        self.whoopRepository = whoopRepository
+        self.healthKitRepository = healthKitRepository
     }
 
     var body: some View {
@@ -166,15 +182,26 @@ struct SettingsView: View {
                     Toggle("Left-handed layout", isOn: $leftHanded)
                         .accessibilityIdentifier("journal-left-handed")
                     Text(
-                        "Moves the notebook margin and Settings control to the other side. Text stays readable in its normal direction."
+                        "Places microphones and frequent secondary controls on the left. Save actions stay at the bottom; reading and number order stay unchanged."
                     )
                     .font(.journal(.caption))
                 }
 
                 Section("Privacy") {
                     Label("Imported health data stays on this device", systemImage: "lock.shield")
-                    Label("Export local data", systemImage: "square.and.arrow.up")
-                        .foregroundStyle(Color.journalInk.opacity(0.7))
+                    NavigationLink {
+                        TrendsView(
+                            whoopRepository: whoopRepository,
+                            healthKitRepository: healthKitRepository,
+                            assessmentRepository: assessmentRepository,
+                            workoutRepository: workoutRepository,
+                            experimentRepository: experimentRepository,
+                            protocolRepository: protocolRepository,
+                            docketRepository: docketRepository, opensExport: true)
+                    } label: {
+                        Label("Export local data", systemImage: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("settings-export")
                 }
 
                 Section("Experimental features") {
@@ -192,10 +219,12 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .journalSaveBar {
+                Button("Done") { dismiss() }.accessibilityIdentifier("close-settings")
+
+            }
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }.accessibilityIdentifier("close-settings")
-                }
+
             }
             .task {
                 await whoop.refresh()

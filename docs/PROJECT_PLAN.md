@@ -667,6 +667,28 @@ disambiguation, and reject cached prior-day snapshots and entity identifiers. Ro
 physical-iPhone signing, notification delivery/actions, Siri behavior, all supported widget families,
 Dynamic Type, and VoiceOver on September 3, 2026, closing the Phase 4 acceptance gate.
 
+### Phase 5 ad-hoc pain contract
+
+Phase 5 adds a standalone local pain-event stream rather than overloading the once-daily morning
+check-in. Each entry has a stable body-area catalog ID, a required 0–10 intensity, an optional
+typed or on-device dictated note, and a timestamp. Creating or correcting one does not change
+readiness, experiment inputs, restriction evaluation, workout pain, or any existing analytics.
+
+The same editor opens from a static Home Screen **Log Pain** quick action, `whoops://pain`, a visible
+Body action, or a long press on a Body map focus. A map launch preselects the selected restriction's
+mapped area in that focus when possible, otherwise its stable whole-focus area. An ordinary map tap
+keeps editing restriction mapping, and VoiceOver exposes a named Log pain action so long press is
+not the sole route. Recent pain areas and active restriction areas are suggestions only; the user
+always chooses the final area and intensity.
+
+Body owns correction and deletion. Tapping a history row edits the same stable ID; swiping left
+requests deletion; confirmation is still required and affects only that local event. Matching
+events appear in the selected restriction's story by shared area ID. This is descriptive history,
+not a diagnosis, causal claim, movement association, or healing timeline. The new model is an
+additive twentieth SwiftData entity; the existing app store is not reset or moved, and no pain or
+health data enters the App Group. Physical-phone acceptance remains required for cold/warm quick
+action routing, long press, dictation permission, Dynamic Type, and VoiceOver.
+
 ### Benefit
 
 WHOOP indicates how much sleep may be needed. This feature determines what that means for tonight’s actual schedule.
@@ -1670,6 +1692,19 @@ motivation
 illnessSymptoms
 notes
 ```
+
+## 12.12A StandalonePainEvent
+
+```text
+id
+occurredAt
+bodyAreaId
+intensity
+note
+```
+
+This event is intentionally independent from `SymptomCheckIn`; it is not an additional daily
+assessment and does not participate in readiness or experiment outcome resolution.
 
 ## 12.13 ReadinessAssessment
 
@@ -2867,3 +2902,13 @@ does not include a current strength test.
 ```
 
 That is the product: not more data, but a better conversation between physiology, training intent, injury reality, and accumulated personal evidence.
+
+### September 4, 2026 — authorized experience improvements
+
+Robert requested implementation of the full experience-review plan, optimized for left-thumb use.
+This includes consistent bottom actions, explicit answers, shorter workout logging, correction and
+local draft recovery, reusable on-device dictation, Today navigation, pain backdating, and an in-app
+bring-to-PT summary with PDF export. Required workout RPE and post-session pain remain mandatory.
+Current prescription settings must not be presented as historical adherence evidence. Existing
+records and uncommitted phase-5 work are preserved; clinical milestone storage and dark mode remain
+separate. Automated checks and physical acceptance are tracked in `../design-qa.md`.

@@ -1,5 +1,51 @@
 import Foundation
 
+enum PainLogValidationError: LocalizedError, Equatable, Sendable {
+    case unknownBodyArea
+    case intensityOutOfRange
+
+    var errorDescription: String? {
+        switch self {
+        case .unknownBodyArea:
+            "Choose a body area before logging pain."
+        case .intensityOutOfRange:
+            "Pain must be recorded from 0 to 10."
+        }
+    }
+}
+
+/// A standalone, user-authored symptom event. It deliberately does not reuse
+/// `MorningCheckIn`: an ad-hoc entry must never alter readiness or experiment inputs.
+struct PainLogEntry: Identifiable, Equatable, Sendable {
+    let id: String
+    var occurredAt: Date
+    var bodyAreaID: String
+    var intensity: Int
+    var note: String
+
+    init(
+        id: String = UUID().uuidString,
+        occurredAt: Date = .now,
+        bodyAreaID: String,
+        intensity: Int,
+        note: String = ""
+    ) throws {
+        guard BodyAreaCatalog.definition(for: bodyAreaID) != nil else {
+            throw PainLogValidationError.unknownBodyArea
+        }
+        guard (0...10).contains(intensity) else {
+            throw PainLogValidationError.intensityOutOfRange
+        }
+        self.id = id
+        self.occurredAt = occurredAt
+        self.bodyAreaID = bodyAreaID
+        self.intensity = intensity
+        self.note = note.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var bodyArea: BodyAreaDefinition? { BodyAreaCatalog.definition(for: bodyAreaID) }
+}
+
 enum RestrictionLevel: String, Codable, CaseIterable, Identifiable, Sendable {
     case monitor
     case limit
@@ -18,7 +64,7 @@ enum RestrictionLevel: String, Codable, CaseIterable, Identifiable, Sendable {
     var isHard: Bool { self == .avoid }
 }
 
-struct RestrictionProfile: Identifiable, Equatable, Sendable {
+struct RestrictionProfile: Codable, Identifiable, Equatable, Sendable {
     let id: String
     var injuryName: String
     var bodyRegion: String
@@ -452,7 +498,7 @@ enum BodyAreaCatalog {
     }
 }
 
-struct MorningCheckIn: Equatable, Sendable {
+struct MorningCheckIn: Codable, Equatable, Sendable {
     let day: String
     var timestamp: Date
     var painAtRest: Int

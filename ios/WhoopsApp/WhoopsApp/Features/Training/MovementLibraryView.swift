@@ -344,6 +344,20 @@ private struct MovementDefinitionEditor: View {
         .navigationTitle(movement.canonicalName.isEmpty ? "New Movement" : "Edit Movement")
         .navigationBarTitleDisplayMode(.inline)
         .formKeyboardScope($focusedField)
+        .journalSaveBar {
+            Button("Save") {
+                focusedField = nil
+                Task { await save() }
+            }
+            .disabled(
+                isSaving
+                    || movement.canonicalName.trimmingCharacters(
+                        in: .whitespacesAndNewlines
+                    ).isEmpty
+            )
+            .accessibilityIdentifier("save-movement")
+
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
@@ -351,19 +365,7 @@ private struct MovementDefinitionEditor: View {
                     dismiss()
                 }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") {
-                    focusedField = nil
-                    Task { await save() }
-                }
-                .disabled(
-                    isSaving
-                        || movement.canonicalName.trimmingCharacters(
-                            in: .whitespacesAndNewlines
-                        ).isEmpty
-                )
-                .accessibilityIdentifier("save-movement")
-            }
+
         }
     }
 
@@ -440,20 +442,22 @@ private struct MovementImportPreviewView: View {
         }
         .navigationTitle("Review Import")
         .navigationBarTitleDisplayMode(.inline)
+        .journalSaveBar {
+            Button("Import") {
+                Task {
+                    isImporting = true
+                    if await onImport() { dismiss() }
+                    isImporting = false
+                }
+            }
+            .disabled(isImporting || !preview.canImport)
+
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Import") {
-                    Task {
-                        isImporting = true
-                        if await onImport() { dismiss() }
-                        isImporting = false
-                    }
-                }
-                .disabled(isImporting || !preview.canImport)
-            }
+
         }
     }
 }

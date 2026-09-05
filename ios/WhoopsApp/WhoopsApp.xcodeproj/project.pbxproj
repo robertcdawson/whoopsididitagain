@@ -99,11 +99,14 @@
 		B50000000000000000000005 /* WhoopsApp/App/DocketAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift */; };
 		B50000000000000000000006 /* WhoopsDocketWidget/WhoopsDocketWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000004 /* WhoopsDocketWidget/WhoopsDocketWidget.swift */; };
 		B50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50000000000000000000007 /* WhoopsAppTests/OutsideAppMilestoneTests.swift */; };
+		B70000000000000000000001 /* WhoopsApp/Features/Trends/PainLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F70000000000000000000001 /* WhoopsApp/Features/Trends/PainLogView.swift */; };
 		B50000000000000000000008 /* WhoopsDocketWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F50000000000000000000006 /* WhoopsDocketWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B60000000000000000000001 /* WhoopsApp/App/LocalReminders.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000001 /* WhoopsApp/App/LocalReminders.swift */; };
 		B60000000000000000000002 /* WhoopsApp/App/DocketAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000002 /* WhoopsApp/App/DocketAppShortcuts.swift */; };
 		B60000000000000000000003 /* WhoopsApp/Features/Settings/ReminderSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000003 /* WhoopsApp/Features/Settings/ReminderSettingsView.swift */; };
 		CBE5C84A30326AFA001C1E49 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = CBE5C84930326AFA001C1E49 /* AppIcon.icon */; };
+		D91000000000000000000000 /* DesignSystem/JournalEditing.swift in Sources */ = {isa = PBXBuildFile; fileRef = E91000000000000000000000; };
+		D92000000000000000000000 = {isa = PBXBuildFile; fileRef = E92000000000000000000000; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -232,6 +235,9 @@
 		F60000000000000000000002 /* WhoopsApp/App/DocketAppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/App/DocketAppShortcuts.swift; sourceTree = "<group>"; };
 		F60000000000000000000003 /* WhoopsApp/Features/Settings/ReminderSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Settings/ReminderSettingsView.swift; sourceTree = "<group>"; };
 		F50000000000000000000008 /* WhoopsDocketWidget/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = WhoopsDocketWidget/Info.plist; sourceTree = "<group>"; };
+		F70000000000000000000001 /* WhoopsApp/Features/Trends/PainLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WhoopsApp/Features/Trends/PainLogView.swift; sourceTree = "<group>"; };
+		E91000000000000000000000 /* DesignSystem/JournalEditing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WhoopsApp/DesignSystem/JournalEditing.swift"; sourceTree = "<group>"; };
+		E92000000000000000000000 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WhoopsApp/Features/Trends/PTSummaryView.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -299,6 +305,7 @@
 			children = (
 				CBE5C84930326AFA001C1E49 /* AppIcon.icon */,
 				F00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift */,
+E92000000000000000000000,
 				F00000000000000000000002 /* WhoopsApp/App/AppTabView.swift */,
 				F50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift */,
 				F50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift */,
@@ -316,6 +323,7 @@
 				F0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift */,
 				F0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift */,
 				F0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift */,
+				F70000000000000000000001 /* WhoopsApp/Features/Trends/PainLogView.swift */,
 				F0000000000000000000000D /* WhoopsApp/Features/Settings/SettingsView.swift */,
 				F0000000000000000000000E /* WhoopsApp/Resources/Assets.xcassets */,
 				F30000000000000000000001 /* WhoopsApp/Resources/Fonts */,
@@ -604,6 +612,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				B00000000000000000000001 /* WhoopsApp/App/WhoopsApp.swift in Sources */,
+D92000000000000000000000,
+				D91000000000000000000000 /* DesignSystem/JournalEditing.swift in Sources */,
 				B00000000000000000000002 /* WhoopsApp/App/AppTabView.swift in Sources */,
 				B50000000000000000000002 /* WhoopsApp/App/OutsideAppDocketCoordinator.swift in Sources */,
 				B50000000000000000000003 /* WhoopsApp/App/DocketAppIntents.swift in Sources */,
@@ -621,6 +631,7 @@
 				B0000000000000000000000A /* WhoopsApp/Features/Today/TodayView.swift in Sources */,
 				B0000000000000000000000B /* WhoopsApp/Features/Training/TrainingView.swift in Sources */,
 				B0000000000000000000000C /* WhoopsApp/Features/Trends/TrendsView.swift in Sources */,
+				B70000000000000000000001 /* WhoopsApp/Features/Trends/PainLogView.swift in Sources */,
 				B0000000000000000000000D /* WhoopsApp/Features/Settings/SettingsView.swift in Sources */,
 				B00000000000000000000014 /* WhoopsApp/Domain/Models/WhoopModels.swift in Sources */,
 				B00000000000000000000015 /* WhoopsApp/Data/Security/KeychainSessionStore.swift in Sources */,
@@ -791,7 +802,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.9.0;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -818,7 +829,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.9.0;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -927,7 +938,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.0;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops.docketwidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -954,7 +965,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.9.0;
+				MARKETING_VERSION = 0.11.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.robertcdawson.whoops.docketwidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

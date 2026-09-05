@@ -3,6 +3,26 @@ import XCTest
 @testable import WhoopsApp
 
 final class OutsideAppMilestoneTests: XCTestCase {
+    func testHomeScreenPainShortcutMapsOnlyItsStableType() {
+        XCTAssertEqual(
+            HomeScreenQuickAction.route(for: HomeScreenQuickAction.logPainType),
+            .painLog
+        )
+        XCTAssertNil(HomeScreenQuickAction.route(for: "com.example.unknown"))
+    }
+
+    func testPendingPainRouteIsConsumedExactlyOnce() throws {
+        let suiteName = "PendingPainRoute-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let store = PendingAppRouteStore(defaults: defaults)
+
+        store.save(.painLog)
+
+        XCTAssertEqual(store.consume(), .painLog)
+        XCTAssertNil(store.consume())
+    }
+
     func testPendingCompletionIsImmediatelyReflectedInEffectiveSnapshot() throws {
         let (store, rootURL) = try temporaryStore()
         defer { try? FileManager.default.removeItem(at: rootURL) }

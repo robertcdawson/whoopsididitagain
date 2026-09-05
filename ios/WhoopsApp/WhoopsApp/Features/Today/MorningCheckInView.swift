@@ -5,6 +5,8 @@ struct MorningCheckInView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @FocusState private var focusedField: UUID?
     @State private var checkIn: MorningCheckIn
+    @State private var answeredScores: Set<String> = []
+    @State private var symptomsAnswered = false
     @State private var isSaving = false
     @State private var isConfirmingDeletion = false
     let isExisting: Bool
@@ -19,6 +21,8 @@ struct MorningCheckInView: View {
     ) {
         _checkIn = State(initialValue: checkIn)
         self.isExisting = isExisting
+        _symptomsAnswered = State(initialValue: isExisting)
+        _answeredScores = State(initialValue: isExisting ? Self.scoreIDs : [])
         self.onSave = onSave
         self.onDelete = onDelete
     }
@@ -27,7 +31,7 @@ struct MorningCheckInView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text("30 seconds, tops").font(.journal(.footnote)).italic()
+                    Text("A few answers for today").font(.journal(.footnote)).italic()
                         .foregroundStyle(Color.journalInk.opacity(0.7))
                     JournalSection(title: "") {
                         scoreChipRow(
@@ -50,6 +54,18 @@ struct MorningCheckInView: View {
                             symptomChip("swollen", value: $checkIn.swelling)
                             symptomChip("weak", value: $checkIn.perceivedWeakness)
                             symptomChip("sick-ish", value: $checkIn.illnessSymptoms)
+                            JournalChip(
+                                label: "None",
+                                isSelected: symptomsAnswered && !checkIn.stiffness
+                                    && !checkIn.swelling && !checkIn.perceivedWeakness
+                                    && !checkIn.illnessSymptoms
+                            ) {
+                                checkIn.stiffness = false
+                                checkIn.swelling = false
+                                checkIn.perceivedWeakness = false
+                                checkIn.illnessSymptoms = false
+                                symptomsAnswered = true
+                            }.accessibilityIdentifier("checkin-symptoms-none")
                         }
                     }
 
@@ -73,6 +89,7 @@ struct MorningCheckInView: View {
                             .formKeyboardField(dismissOnSubmit: false)
                             .accessibilityIdentifier("check-in-notes")
                             .lineLimit(2...5)
+                            .dictationInput($checkIn.notes)
                     }
 
                     if isExisting {
@@ -88,16 +105,17 @@ struct MorningCheckInView: View {
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 Button(
-                    dynamicTypeSize.isAccessibilitySize ? "Save" : "done — go make coffee"
+                    "Save check-in"
                 ) { save() }
                 .buttonStyle(JournalPrimaryButtonStyle())
-                .disabled(isSaving)
+                .disabled(isSaving || answeredScores != Self.scoreIDs || !symptomsAnswered)
                 .accessibilityLabel("Save check-in")
                 .accessibilityIdentifier("check-in-save")
                 .padding(.horizontal, 22)
                 .padding(.vertical, 12)
                 .background(Color.journalPaper)
             }
+            .recoverableDraft(key: draftKey, value: draftBinding)
             .navigationTitle("Morning Check-In")
             .journalForm()
             .formKeyboardScope($focusedField)
@@ -128,6 +146,26 @@ struct MorningCheckInView: View {
         .presentationDragIndicator(.visible)
     }
 
+    private static let scoreIDs: Set<String> = [
+        "checkin-pain-at-rest-chip", "checkin-pain-with-movement-chip", "checkin-energy-chip",
+        "checkin-motivation-chip",
+    ]
+    private var draftKey: String { "checkin:" + checkIn.day }
+    private struct Draft: Codable, Equatable {
+        var checkIn: MorningCheckIn
+        var answered: Set<String>
+        var symptoms: Bool
+    }
+    private var draftBinding: Binding<Draft> {
+        Binding(
+            get: { Draft(checkIn: checkIn, answered: answeredScores, symptoms: symptomsAnswered) },
+            set: {
+                checkIn = $0.checkIn
+                answeredScores = $0.answered
+                symptomsAnswered = $0.symptoms
+            })
+    }
+
     private func scoreChipRow(
         _ title: String,
         value: Binding<Int>,
@@ -136,21 +174,27 @@ struct MorningCheckInView: View {
         idPrefix: String
     ) -> some View {
         VStack(alignment: .leading) {
-            LabeledContent(title, value: "\(value.wrappedValue)")
+            LabeledContent(
+                title,
+                value: answeredScores.contains(idPrefix) ? "\(value.wrappedValue)" : "Not recorded")
             JournalScaleChipRow(
                 range: range,
-                selected: value.wrappedValue,
+                selected: answeredScores.contains(idPrefix) ? value.wrappedValue : nil,
                 selectedFill: selectedFill,
                 accessibilityID: { "\(idPrefix)-\($0)" }
             ) { newValue in
+                answeredScores.insert(idPrefix)
                 value.wrappedValue = newValue
             }
         }
     }
 
     private func symptomChip(_ title: String, value: Binding<Bool>) -> some View {
-        JournalChip(label: title, isSelected: value.wrappedValue) { value.wrappedValue.toggle() }
-            .accessibilityValue(value.wrappedValue ? "Selected" : "Not selected")
+        JournalChip(label: title, isSelected: value.wrappedValue) {
+            value.wrappedValue.toggle()
+            symptomsAnswered = true
+        }
+        .accessibilityValue(value.wrappedValue ? "Selected" : "Not selected")
     }
 
     private func save() {
@@ -159,7 +203,10 @@ struct MorningCheckInView: View {
         isSaving = true
         Task {
             checkIn.timestamp = .now
-            if await onSave(checkIn) { dismiss() }
+            if await onSave(checkIn) {
+                try? EditorDraftStore.shared.finish(key: draftKey)
+                dismiss()
+            }
             isSaving = false
         }
     }
@@ -213,6 +260,18 @@ struct AssessmentOverrideView: View {
             }
             .navigationTitle("Override Recommendation")
             .formKeyboardScope($focusedField)
+            .journalSaveBar {
+                Button("Save") {
+                    focusedField = nil
+                    Task {
+                        isSaving = true
+                        if await onSave(recommendation, note) { dismiss() }
+                        isSaving = false
+                    }
+                }
+                .disabled(isSaving || note.trimmingCharacters(in: .whitespaces).isEmpty)
+
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -220,17 +279,7 @@ struct AssessmentOverrideView: View {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        focusedField = nil
-                        Task {
-                            isSaving = true
-                            if await onSave(recommendation, note) { dismiss() }
-                            isSaving = false
-                        }
-                    }
-                    .disabled(isSaving || note.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
+
             }
             .confirmationDialog(
                 "Remove your override?",

@@ -1,3 +1,4 @@
+import PDFKit
 import SwiftData
 import XCTest
 
@@ -1079,5 +1080,176 @@ final class WorkoutMilestoneTests: XCTestCase {
         XCTAssertEqual(reloaded.segments[1].type, .rest)
         XCTAssertEqual(reloaded.segments[1].durationSeconds, 90)
         XCTAssertTrue(reloaded.segments[1].movements.isEmpty)
+    }
+}
+
+@MainActor
+final class ExperienceImprovementTests: XCTestCase {
+    func testProtocolCorrectionKeepsActualValuesAndDraftRoundTrip() throws {
+        let actual = DocketActual(
+            sets: 2, repetitions: 6, durationSeconds: nil,
+            painDuring: 0, note: "Reduced today", isAsPrescribed: false)
+        let item = DocketItem(
+            id: "item", kind: .protocolItem, sourceID: "source",
+            protocolID: "protocol", title: "Exercise", tag: nil,
+            isCompleted: true, completionID: "saved", prescribedSets: 3,
+            prescribedRepetitions: 10, prescribedDurationSeconds: nil,
+            recordedActual: actual)
+        var draft = try JSONDecoder().decode(
+            RecordActualDraft.self,
+            from: JSONEncoder().encode(RecordActualDraft(item: item)))
+        XCTAssertEqual(
+            draft.completion(item: item, day: "2026-09-04", existingID: "saved").actual, actual)
+        draft.incrementRepetitions()
+        let correction = draft.completion(item: item, day: "2026-09-04", existingID: "saved")
+        XCTAssertEqual(correction.id, "saved")
+        XCTAssertEqual(correction.actual?.repetitions, 7)
+        XCTAssertEqual(correction.actual?.painDuring, 0)
+        XCTAssertEqual(correction.actual?.note, "Reduced today")
+        XCTAssertEqual(RecordActualDraft(item: item, useRecordedActual: false).sets, 3)
+    }
+
+    func testDraftDeletionHandlesCompositeSourceIDsWithoutRemovingOtherSources() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = EditorDraftStore(directory: directory)
+        try store.save("delete", key: "experiment-observation:experiment:2026-09-04")
+        try store.save("keep", key: "experiment-observation:experiment:2026-09-05")
+        try store.deleteSource("experiment:2026-09-04")
+        XCTAssertNil(
+            try store.load(String.self, key: "experiment-observation:experiment:2026-09-04"))
+        XCTAssertEqual(
+            try store.load(String.self, key: "experiment-observation:experiment:2026-09-05"), "keep"
+        )
+    }
+
+    func testAsPlannedUsesAllRoundsAndRejectsOpenEndedPrescriptions() async throws {
+        let parser = VersionedWorkoutParser()
+        let rounds = WorkoutPlan(
+            parsed: try await parser.parse(rawText: "3 rounds\n10 Air Squats\n200 m Row"))
+        let completed = try XCTUnwrap(CompletedWorkout.asPlanned(rounds))
+        XCTAssertEqual(completed.movements[0].actualRepetitions, 30)
+        XCTAssertEqual(completed.movements[1].actualDistanceMeters, 600)
+        XCTAssertNil(completed.movements[0].reportedPain)
+        let openEnded = WorkoutPlan(
+            parsed: try await parser.parse(rawText: "AMRAP 10 minutes\n10 Air Squats"))
+        XCTAssertNil(CompletedWorkout.asPlanned(openEnded))
+        let scored = WorkoutPlan(
+            parsed: try await parser.parse(
+                rawText: "AMRAP 10 minutes\n10 Air Squats\nScore: 3 rounds, 2 reps"))
+        XCTAssertNil(CompletedWorkout.asPlanned(scored))
+        XCTAssertEqual(CompletedWorkout(plan: scored).movements[0].actualRepetitions, 32)
+    }
+
+    func testDraftRoundTripAndExplicitDeletionAreIsolatedFromClinicalRecords() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = EditorDraftStore(directory: directory)
+        let checkIn = MorningCheckIn.empty(day: "2026-09-04")
+        try store.save(checkIn, key: "checkin:2026-09-04")
+        let restored = try store.load(MorningCheckIn.self, key: "checkin:2026-09-04")
+        XCTAssertEqual(restored, checkIn)
+        try store.save("Keep another draft", key: "plan:another")
+        try store.deleteSource("2026-09-04")
+        XCTAssertNil(try store.load(MorningCheckIn.self, key: "checkin:2026-09-04"))
+        XCTAssertEqual(try store.load(String.self, key: "plan:another"), "Keep another draft")
+    }
+
+    func testUnreadableDraftIsNotDeletedOnReadFailure() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(
+            UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = EditorDraftStore(directory: directory)
+        try store.save("Original", key: "plan:one")
+        let file = try XCTUnwrap(
+            FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+                .first)
+        try Data("damaged".utf8).write(to: file)
+        XCTAssertThrowsError(try store.load(String.self, key: "plan:one"))
+        XCTAssertEqual(try Data(contentsOf: file), Data("damaged".utf8))
+    }
+
+    func testMovementPainDistinguishesUnansweredZeroAndLegacyAfterPersistence() async throws {
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: "3 rounds\n10 Air Squats"))
+        var workout = CompletedWorkout(plan: plan)
+        XCTAssertNil(workout.movements[0].reportedPain)
+        workout.movements[0].painWasReported = true
+        XCTAssertEqual(workout.movements[0].reportedPain, 0)
+        workout.movements[0].painWasReported = nil
+        workout.movements[0].painDuring = 3
+        XCTAssertEqual(workout.movements[0].reportedPain, 3)
+        let encoded = try JSONEncoder().encode(workout.movements[0])
+        let decoded = try JSONDecoder().decode(CompletedMovement.self, from: encoded)
+        XCTAssertEqual(decoded.reportedPain, 3)
+        let container = try ModelContainer(
+            for: WorkoutPlanRecord.self, WorkoutSegmentRecord.self, MovementPrescriptionRecord.self,
+            CompletedWorkoutRecord.self, CompletedMovementRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+        let repository = WorkoutPersistence(container: container)
+        workout.movements[0].painWasReported = false
+        try await repository.saveCompletedWorkout(workout)
+        let saved = try await repository.completedWorkouts()
+        XCTAssertNil(saved.first?.movements.first?.reportedPain)
+        XCTAssertEqual(saved.first?.id, workout.id)
+    }
+
+    func testPTSummaryUsesLocalDatesAndDoesNotInventHistoricalAdherence() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let start = ISO8601DateFormatter().date(from: "2026-09-04T07:00:00Z")!
+        let included = try PainLogEntry(
+            id: "in", occurredAt: start.addingTimeInterval(86399),
+            bodyAreaID: BodyAreaCatalog.all[0].id, intensity: 0, note: "explicit zero")
+        let excluded = try PainLogEntry(
+            id: "out", occurredAt: start.addingTimeInterval(-1),
+            bodyAreaID: BodyAreaCatalog.all[0].id, intensity: 9, note: "outside")
+        let summary = PTSummaryBuilder.build(
+            start: start, end: start, calendar: calendar, restrictions: [], protocols: [],
+            completions: [], workouts: [], pain: [included, excluded],
+            questions: "What should I change?")
+        let text = summary.sections.flatMap(\.lines).joined(separator: "\n")
+        XCTAssertTrue(text.contains("explicit zero"))
+        XCTAssertFalse(text.contains("outside"))
+        XCTAssertTrue(text.contains("not historical adherence"))
+        XCTAssertTrue(text.contains("What should I change?"))
+        XCTAssertEqual(
+            PTSummaryBuilder.days(start: start, end: start, calendar: calendar), ["2026-09-04"])
+    }
+
+    func testPTPDFPaginatesLongNotesAndKeepsSelectableText() throws {
+        let note =
+            String(repeating: "Synthetic PT discussion and observations. ", count: 1200)
+            + "END OF LONG NOTE"
+        let summary = PTSummary(
+            start: .now, end: .now, sections: [.init(title: "Questions for PT", lines: [note])])
+        let pdf = try XCTUnwrap(PDFDocument(data: PTSummaryPDF.data(summary)))
+        XCTAssertGreaterThan(pdf.pageCount, 1)
+        XCTAssertTrue(pdf.string?.contains("END OF LONG NOTE") == true)
+        XCTAssertTrue(pdf.string?.contains("Questions for PT") == true)
+    }
+
+    func testCanonicalRestrictionDemandMatchesTheCatalog() async throws {
+        let plan = WorkoutPlan(
+            parsed: try await VersionedWorkoutParser().parse(rawText: "3 rounds\n10 Push-ups"))
+        let restriction = RestrictionProfile(
+            id: "test", injuryName: "Synthetic elbow", bodyRegion: "arm", side: "right",
+            movementTag: MovementDemand.elbowExtension.rawValue, level: .avoid, painThreshold: 3,
+            rationale: "Synthetic limit", isActive: true)
+        let evaluation = await DeterministicWorkoutScalingEngine().evaluate(
+            plan: plan, restrictions: [restriction])
+        XCTAssertFalse(evaluation.conflicts.isEmpty)
+    }
+
+    func testPTDaysCrossDaylightSavingWithoutDroppingOrRepeatingDays() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        let start = calendar.date(from: DateComponents(year: 2026, month: 11, day: 1))!
+        let end = calendar.date(from: DateComponents(year: 2026, month: 11, day: 3))!
+        XCTAssertEqual(
+            PTSummaryBuilder.days(start: start, end: end, calendar: calendar),
+            ["2026-11-01", "2026-11-02", "2026-11-03"])
     }
 }

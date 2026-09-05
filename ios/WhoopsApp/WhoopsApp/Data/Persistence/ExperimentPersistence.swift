@@ -131,6 +131,7 @@ final class ExperimentPersistence: ExperimentRepository, @unchecked Sendable {
     }
 
     func deleteExperiment(id: String) async throws {
+        try EditorDraftStore.shared.deleteSource(id)
         let experimentID = id
         for observation in try context.fetch(
             FetchDescriptor<ExperimentObservationRecord>(
@@ -244,6 +245,7 @@ final class ExperimentPersistence: ExperimentRepository, @unchecked Sendable {
     }
 
     func deleteObservation(id: String) async throws {
+        try EditorDraftStore.shared.deleteSource(id)
         let observationID = id
         var descriptor = FetchDescriptor<ExperimentObservationRecord>(
             predicate: #Predicate { $0.id == observationID }

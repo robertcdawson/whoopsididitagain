@@ -18,6 +18,9 @@ struct AppTabView: View {
     @State private var selectedZone = "Today"
     @State private var showingSettings = false
     @State private var morningCheckInRequest = 0
+    @State private var workRoute = ""
+    @State private var workRouteRequest = 0
+    @State private var painLogRequest: PainLogEditorRequest?
     @AppStorage("journalLeftHanded") private var leftHanded = false
 
     var body: some View {
@@ -50,7 +53,8 @@ struct AppTabView: View {
                     movementLibrary: movementLibrary,
                     protocolParser: protocolParser,
                     protocolRepository: protocolRepository,
-                    docketRepository: docketRepository
+                    docketRepository: docketRepository,
+                    requestedRoute: workRoute, routeRequest: workRouteRequest
                 )
                 .toolbar(.hidden, for: .tabBar)
                 .tabItem {
@@ -63,7 +67,8 @@ struct AppTabView: View {
                     healthKitRepository: healthKitRepository,
                     assessmentRepository: assessmentRepository,
                     workoutRepository: workoutRepository,
-                    experimentRepository: experimentRepository
+                    experimentRepository: experimentRepository,
+                    protocolRepository: protocolRepository, docketRepository: docketRepository
                 )
                 .toolbar(.hidden, for: .tabBar)
                 .tabItem {
@@ -82,18 +87,33 @@ struct AppTabView: View {
                 whoopRepository: whoopRepository,
                 healthKitRepository: healthKitRepository,
                 assessmentRepository: assessmentRepository,
-                reminderService: reminderService
+                reminderService: reminderService,
+                workoutRepository: workoutRepository, experimentRepository: experimentRepository,
+                protocolRepository: protocolRepository, docketRepository: docketRepository
+            )
+        }
+        .sheet(item: $painLogRequest) { request in
+            PainLogEditorView(
+                repository: assessmentRepository,
+                entry: request.entry,
+                preselectedBodyAreaID: request.preselectedBodyAreaID
             )
         }
         .font(.journal())
         .tint(.journalInk)
         // DESIGN.md explicitly permits a light-only journal until dark artwork is designed.
         .preferredColorScheme(.light)
+        .onReceive(NotificationCenter.default.publisher(for: .journalWorkRoute)) { note in
+            workRoute = note.object as? String ?? "workout"
+            workRouteRequest += 1
+            selectedZone = "Work"
+        }
         .onOpenURL { url in
             guard url.scheme == "whoops" else { return }
             switch url.host?.lowercased() {
             case "work": selectedZone = "Work"
             case "body": selectedZone = "Body"
+            case "pain": painLogRequest = PainLogEditorRequest()
             case "settings": showingSettings = true
             default: selectedZone = "Today"
             }
@@ -108,9 +128,13 @@ struct AppTabView: View {
 
     private func consumePendingRoute() {
         guard let route = PendingAppRouteStore().consume() else { return }
-        selectedZone = "Today"
         if route == .morningCheckIn {
+            selectedZone = "Today"
             morningCheckInRequest += 1
+        } else if route == .painLog {
+            painLogRequest = PainLogEditorRequest()
+        } else {
+            selectedZone = "Today"
         }
     }
 

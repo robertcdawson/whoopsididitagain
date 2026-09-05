@@ -389,9 +389,24 @@ struct BodyAreaPicker: View {
 }
 
 struct BodyMapFigure: View {
+    @State private var focusWhoseTapShouldBeSuppressed: BodyMapFocus?
     let view: BodyMapView
     let selectedAreaIDs: Set<String>
     let onSelectFocus: ((BodyMapFocus) -> Void)?
+    let onLogPainFocus: ((BodyMapFocus) -> Void)?
+
+    init(
+        view: BodyMapView,
+        selectedAreaIDs: Set<String>,
+        onSelectFocus: ((BodyMapFocus) -> Void)?,
+        onLogPainFocus: ((BodyMapFocus) -> Void)? = nil
+    ) {
+        self.view = view
+        self.selectedAreaIDs = selectedAreaIDs
+        self.onSelectFocus = onSelectFocus
+        self.onLogPainFocus = onLogPainFocus
+        _focusWhoseTapShouldBeSuppressed = State(initialValue: nil)
+    }
 
     var body: some View {
         ZStack {
@@ -426,7 +441,11 @@ struct BodyMapFigure: View {
             .frame(width: frame.width, height: frame.height)
 
         if let onSelectFocus {
-            Button {
+            let control = Button {
+                if focusWhoseTapShouldBeSuppressed == focus {
+                    focusWhoseTapShouldBeSuppressed = nil
+                    return
+                }
                 onSelectFocus(focus)
             } label: {
                 overlay.contentShape(Rectangle())
@@ -438,6 +457,19 @@ struct BodyMapFigure: View {
             .accessibilityValue(isSelected ? "Selected" : "Not selected")
             .accessibilityAddTraits(isSelected ? .isSelected : [])
             .accessibilityIdentifier("body-focus-\(focus.id)")
+            if let onLogPainFocus {
+                control
+                    .simultaneousGesture(
+                        LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+                            focusWhoseTapShouldBeSuppressed = focus
+                            onLogPainFocus(focus)
+                        }
+                    )
+                    .accessibilityHint("Tap to edit affected areas. Hold to log pain.")
+                    .accessibilityAction(named: "Log pain") { onLogPainFocus(focus) }
+            } else {
+                control
+            }
         } else {
             overlay.position(x: frame.midX, y: frame.midY).accessibilityHidden(true)
         }

@@ -77,6 +77,7 @@ final class DocketPersistence: DocketRepository, @unchecked Sendable {
     }
 
     func deleteCompletion(id: String) async throws {
+        try EditorDraftStore.shared.deleteSource(id)
         if let record = try context.fetch(FetchDescriptor<DocketCompletionRecord>())
             .first(where: { $0.id == id })
         {
