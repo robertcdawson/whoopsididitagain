@@ -238,6 +238,9 @@ Run `npm run db:migrate` before production or any persistent local-backend
 testing. Without `DATABASE_URL`, non-production mode intentionally uses an
 in-memory credential store that is cleared whenever the backend restarts.
 
+Merges to `main` that touch `backend/` deploy to Vercel automatically. Migrations
+do not: apply a new migration to the production database before its PR merges.
+
 ## Documents
 
 - [Privacy Policy](PRIVACY.md) — required by the WHOOP Developer Dashboard
