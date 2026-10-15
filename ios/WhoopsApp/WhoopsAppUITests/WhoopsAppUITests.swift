@@ -880,6 +880,59 @@ final class WhoopsAppUITests: XCTestCase {
         XCTAssertTrue(save.isEnabled)
     }
 
+    /// An ambiguous row must offer a "none of these" path: the fuzzy candidate may be a
+    /// different movement, and picking it would log the wrong thing.
+    @MainActor
+    func testAmbiguousProtocolRowCanBeAddedAsANewMovement() throws {
+        let app = makeApp()
+        app.launch()
+
+        openWork(in: app)
+        let workoutEntry = app.textViews["raw-workout-entry"]
+        XCTAssertTrue(workoutEntry.waitForExistence(timeout: 5))
+        workoutEntry.tap()
+        workoutEntry.typeText("5 Burpees")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 3))
+        let newProtocol = app.buttons["new-protocol"]
+        XCTAssertTrue(newProtocol.waitForExistence(timeout: 5))
+        if !newProtocol.isHittable { app.swipeDown() }
+        newProtocol.tap()
+
+        let pasteLink = app.buttons["protocol-paste-link"]
+        XCTAssertTrue(pasteLink.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 3))
+        pasteLink.tap()
+
+        // The random suffix keeps the name a near-miss against "Ring row" on a device whose
+        // store already holds movements from earlier runs, so the row is always ambiguous.
+        let suffix = UUID().uuidString.prefix(6).lowercased()
+        let entry = app.textViews["protocol-paste-entry"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.tap()
+        entry.typeText("Ring row variant \(suffix) 3x10")
+        app.buttons["protocol-paste-use"].tap()
+
+        XCTAssertTrue(app.staticTexts["found 1 movement."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["which one?"].waitForExistence(timeout: 5))
+        let save = app.buttons["protocol-review-save"]
+        XCTAssertTrue(save.waitForExistence(timeout: 5))
+        XCTAssertFalse(save.isEnabled)
+
+        let addAsNew = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "add-to-movements-")
+        ).firstMatch
+        XCTAssertTrue(addAsNew.waitForExistence(timeout: 5))
+        for _ in 0..<8 where !addAsNew.isHittable { app.swipeUp() }
+        XCTAssertTrue(addAsNew.isHittable)
+        captureJournal("ParseReview-NoneOfThese", app: app)
+        addAsNew.tap()
+
+        XCTAssertTrue(app.staticTexts["added ✓"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["all matched."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["which one?"].exists)
+        XCTAssertTrue(save.isEnabled)
+    }
+
     @MainActor
     func testPersonalMovementCanBeStartedFromLibrary() throws {
         let app = makeApp()

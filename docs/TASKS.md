@@ -663,3 +663,15 @@ until both conditions reach the configured minimum and Robert's judgment support
 - [x] Explain when a selected outcome requires direct WHOOP history rather than Apple Health.
 - [x] Keyset-page and cache source-specific history projections instead of scanning unrelated samples.
 - [x] Move an edited condition day to a new date without copying it or overwriting an occupied day.
+
+## October 15: Ambiguous protocol rows can be added as new movements
+
+Robert's phone showed an ambiguous row ("isometrics @ 45° s1 30s") whose only candidate was an
+earlier personal movement ("multi angle isometrics 3x"). The card offered no way to say "none of
+these", so the row could only be mis-matched or dropped.
+
+- [x] Show a prominent "none of these — add to your movements" chip under the candidate chips.
+- [x] Reuse the unknown-row add-to-library path so the new movement resolves the row in place.
+- [x] Update `DESIGN.md` flow 3 and the `ParseReview` mockup to include the chip.
+- [x] Add a unit test that an ambiguous row resolves to a new movement, not the candidate.
+- [x] Add a UI test that taps the chip and watches the save button enable.
