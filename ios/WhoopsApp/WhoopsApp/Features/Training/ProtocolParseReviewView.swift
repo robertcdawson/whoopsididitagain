@@ -1,8 +1,9 @@
 import SwiftUI
 
 /// Tap-chip review of a parsed PT protocol. Ambiguous rows resolve by tapping a
-/// candidate chip, unknown rows by one tap into the movement library, cadence by
-/// preset chips, and the restriction check runs before anything can be saved.
+/// candidate chip or by adding the row as a new movement, unknown rows by one tap
+/// into the movement library, cadence by preset chips, and the restriction check
+/// runs before anything can be saved.
 struct ProtocolParseReviewView: View {
     @FocusState private var focusedField: UUID?
     let parsed: ParsedProtocol
@@ -570,13 +571,20 @@ private struct ProtocolReviewItemCard: View {
             Text("tap one — the parser won't guess for you.")
                 .font(.journal(.footnote))
                 .foregroundStyle(Color.journalInk.opacity(0.55))
+            addToLibraryRow(label: "none of these — add to your movements")
         }
     }
 
     private var addToLibraryRow: some View {
+        addToLibraryRow(label: "add to your movements")
+    }
+
+    /// The one-tap "new movement" path. Unknown rows show it alone; ambiguous rows show
+    /// it under the candidates so a near-miss never forces the user onto a wrong match.
+    private func addToLibraryRow(label: String) -> some View {
         HStack {
             JournalChip(
-                label: "add to your movements",
+                label: label,
                 isProminent: true,
                 accessibilityID: "add-to-movements-\(item.id)",
                 action: onAddToLibrary

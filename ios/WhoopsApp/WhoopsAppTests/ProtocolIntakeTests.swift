@@ -346,6 +346,41 @@ final class ProtocolIntakeTests: XCTestCase {
         XCTAssertEqual(name, "Scap wall slides")
     }
 
+    func testAmbiguousRowCanBeResolvedToANewMovementInsteadOfACandidate() async throws {
+        let container = try ModelContainer(
+            for: MovementDefinitionRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let library = MovementLibraryPersistence(container: container)
+        try await library.prepareDefaults()
+        let earlier = MovementDefinition.custom(name: "Multi angle isometrics 3x")
+        try await library.saveMovement(earlier)
+
+        let parsed = try await LibraryProtocolParser(library: library).parse(
+            rawText: "Isometrics @ 45° s1 30s",
+            source: .paste
+        )
+        let item = try XCTUnwrap(parsed.items.first)
+        guard case .ambiguous(let candidateIDs) = item.resolution else {
+            return XCTFail("A word-level overlap must surface as a candidate, not a match")
+        }
+        XCTAssertEqual(candidateIDs, [earlier.id])
+
+        var review = ProtocolReviewItem(parsed: item, defaultCadence: .daily)
+        XCTAssertFalse(review.isResolved)
+        XCTAssertNil(review.savedItem(order: 1))
+
+        let added = MovementDefinition.custom(name: review.displayName)
+        try await library.saveMovement(added)
+        review.resolve(toMovementID: added.id, name: added.canonicalName)
+
+        let saved = try XCTUnwrap(review.savedItem(order: 1))
+        XCTAssertEqual(saved.canonicalMovementID, added.id)
+        XCTAssertNotEqual(saved.canonicalMovementID, earlier.id)
+        XCTAssertEqual(saved.displayName, added.canonicalName)
+        XCTAssertEqual(saved.originalText, "Isometrics @ 45° s1 30s")
+    }
+
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(
             for: TherapyProtocolRecord.self,

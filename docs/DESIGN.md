@@ -192,7 +192,9 @@ Flow specs (mockups in parentheses):
 2. **PT protocol intake** (`Capture`) — three equal paths into the same parser: camera (on-device
    Vision OCR → text → existing parser; nothing leaves the phone), paste/share-sheet, dictation.
 3. **Parse review** (`ParseReview`) — parsed items as cards; ambiguity = tap-to-choose candidate
-   chips; unknown movement = one-tap "add to your movements"; cadence = preset chips; restriction
+   chips plus a "none of these" chip that adds the row as a new movement (a near-miss must never
+   force a wrong match); unknown movement = one-tap "add to your movements"; cadence = preset
+   chips; restriction
    check shown before save; swipe-left drops a row; save generates docket entries.
 4. **Record actual** (`RecordActual`) — giant "as prescribed" button; steppers for sets/reps;
    pain chip row; undo note; used for both protocol items and workout movements.
